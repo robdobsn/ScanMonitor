@@ -1,0 +1,59 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Security.Permissions;
+using System.Text;
+using System.Threading.Tasks;
+using NLog;
+
+namespace ScanMonitorApp
+{
+    class ScanFolderWatcher
+    {
+        private static Logger logger = LogManager.GetCurrentClassLogger();
+        public delegate void CallbackDelegate(string fileName, WatcherChangeTypes changeType);
+        CallbackDelegate _callbackOnChanged;
+
+        [PermissionSet(SecurityAction.Demand, Name = "FullTrust")]
+        public bool WatchFolder(string folder, CallbackDelegate callbackOnChanged)
+        {
+            _callbackOnChanged = callbackOnChanged;
+
+            // Create a new FileSystemWatcher and set its properties.
+            FileSystemWatcher watcher = new FileSystemWatcher();
+
+            // Watch the folder
+            try
+            {
+                watcher.Path = folder;
+                /* Watch for changes in LastAccess and LastWrite times, and
+                   the renaming of files or directories. */
+                watcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite
+                   | NotifyFilters.FileName | NotifyFilters.DirectoryName;
+
+                // Only watch pdf files.
+                watcher.Filter = "*.pdf";
+
+                // Add event handlers.
+                watcher.Created += new FileSystemEventHandler(OnCreated);
+
+                // Begin watching.
+                watcher.EnableRaisingEvents = true;
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Failed to watch {0}, excp {1}", folder, excp.Message);
+                return false;
+            }
+            return true;
+        }
+
+        // Define the event handlers. 
+        private void OnCreated(object source, FileSystemEventArgs e)
+        {
+            logger.Info("File: " + e.FullPath + " " + e.ChangeType.ToString());
+            _callbackOnChanged(e.FullPath, e.ChangeType);
+        }
+    }
+}

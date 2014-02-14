@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <id>Ghostscript.NET</id>
+    <version>1.1.3</version>
+    <title>Ghostscript.NET</title>
+    <authors>Josip Habjan</authors>
+    <owners>Josip Habjan</owners>
+    <licenseUrl>http://ghostscriptnet.codeplex.com/license</licenseUrl>
+    <projectUrl>http://ghostscriptnet.codeplex.com/</projectUrl>
+    <iconUrl>http://c.fsdn.com/allura/p/ghostscriptnet/icon</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Ghostscript.NET (written in C#) is the most completed managed wrapper library around the Ghostscript library (32-bit &amp; 64-bit), an interpreter for the PostScript language, PDF, related software and documentation.</description>
+    <releaseNotes>Added GhostscriptPdfInfo.GetInkCoverage function which has ability to return ink coverage for the CMYK inks, separately for each single page (for RGB colors, it does a silent conversion to CMYK color space internally). This function can be used to check if the pdf is grayscale or color. Fixed problem with opening MemoryStream EPS files which contains "EPS Preview Header" (reported by "Chanan Eli"). Fixed problem with empty %%BoundingBox value when handling PostScript files.(thanks to by "Shane_S"). Fixed problem with rasterizing EPS files created with Adobe Illustrator (reported by "Chanan Eli"). Fixed problem with retrieving exported function handle in DynamicNativeLibrary noticed on the Server 2012 R2 with large amount of memory (thanks to "antonyoni"). Assembly is now signed with a strong name key (requested by "netmajor").</releaseNotes>
+    <copyright>Copyright (c) 2013-2014 by Josip Habjan</copyright>
+    <language />
+    <tags>.NET ghostscript pdf converson image</tags>
+  </metadata>
+</package>
