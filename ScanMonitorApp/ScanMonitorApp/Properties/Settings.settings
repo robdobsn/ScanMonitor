@@ -23,5 +23,8 @@
     <Setting Name="DbCollectionForDocs" Type="System.String" Scope="User">
       <Value Profile="(Default)">ScanDocInfo</Value>
     </Setting>
+    <Setting Name="DbCollectionForDocTypes" Type="System.String" Scope="User">
+      <Value Profile="(Default)">DocTypes</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

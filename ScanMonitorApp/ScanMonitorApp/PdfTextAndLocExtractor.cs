@@ -285,10 +285,13 @@ namespace ScanMonitorApp
 
     class PdfTextAndLocExtractor
     {
-        private string CoordStr(iTextSharp.text.pdf.parser.Vector coord)
+        private DocRectangle ConvertToDocRect(iTextSharp.text.pdf.parser.Vector topLeftCoord, iTextSharp.text.pdf.parser.Vector bottomRightCoord)
         {
-            return Convert.ToInt32(coord.Dot(new iTextSharp.text.pdf.parser.Vector(0, 1, 0))).ToString() + "," +
-                Convert.ToInt32(coord.Dot(new iTextSharp.text.pdf.parser.Vector(0, 1, 0))).ToString();
+            int tlX = Convert.ToInt32(topLeftCoord.Dot(new iTextSharp.text.pdf.parser.Vector(0, 1, 0)));
+            int tlY = Convert.ToInt32(topLeftCoord.Dot(new iTextSharp.text.pdf.parser.Vector(1, 0, 0)));
+            int width = Convert.ToInt32(bottomRightCoord.Dot(new iTextSharp.text.pdf.parser.Vector(0, 1, 0))) - tlX;
+            int height = Convert.ToInt32(bottomRightCoord.Dot(new iTextSharp.text.pdf.parser.Vector(1, 0, 0))) - tlY;
+            return new DocRectangle(tlX, tlY, width, height);
         }
 
         public ScanDocAllInfo ExtractDocInfo(string fileName, int maxPagesToExtractFrom)
@@ -302,10 +305,13 @@ namespace ScanMonitorApp
                 int numPagesToUse = pdfReader.NumberOfPages;
                 if (numPagesToUse > maxPagesToExtractFrom)
                     numPagesToUse = maxPagesToExtractFrom;
+                int numPagesWithText = 0;
                 for (int pageIdx = 1; pageIdx < numPagesToUse; pageIdx++)
                 {
                     LocationTextExtractionStrategyEx locationStrategy = new LocationTextExtractionStrategyEx();
                     string text = PdfTextExtractor.GetTextFromPage(pdfReader, pageIdx, locationStrategy);
+                    if (text != "")
+                        numPagesWithText++;
                     extractedTextAndLoc.Add(locationStrategy.TextLocationInfo);
                 }
 
@@ -316,7 +322,8 @@ namespace ScanMonitorApp
                     List<ScanDocAllInfo.ScanTextElem> scanTextElems = new List<ScanDocAllInfo.ScanTextElem>();
                     foreach (LocationTextExtractionStrategyEx.TextInfo txtInfo in pageInfo)
                     {
-                        ScanDocAllInfo.ScanTextElem sti = new ScanDocAllInfo.ScanTextElem(CoordStr(txtInfo.TopLeft) + "," + CoordStr(txtInfo.BottomRight), txtInfo.Text);
+                        DocRectangle boundsRect = ConvertToDocRect(txtInfo.TopLeft, txtInfo.BottomRight);
+                        ScanDocAllInfo.ScanTextElem sti = new ScanDocAllInfo.ScanTextElem(txtInfo.Text, boundsRect);
                         scanTextElems.Add(sti);
                     }
                     ScanDocAllInfo.ScanPageText spt = new ScanDocAllInfo.ScanPageText(scanTextElems);
@@ -328,7 +335,7 @@ namespace ScanMonitorApp
                 DateTime fileDateTime = File.GetCreationTime(fileName);
 
                 // Complete the document info
-                ScanDocAllInfo scanDocAllInfo = new ScanDocAllInfo(uniqueName, pdfReader.NumberOfPages,
+                ScanDocAllInfo scanDocAllInfo = new ScanDocAllInfo(uniqueName, pdfReader.NumberOfPages, numPagesWithText,
                             "", fileDateTime, DateTime.Now, "", scanPages, "");
                 return scanDocAllInfo;
             }

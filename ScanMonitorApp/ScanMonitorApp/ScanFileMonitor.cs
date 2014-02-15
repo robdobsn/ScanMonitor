@@ -18,19 +18,21 @@ namespace ScanMonitorApp
         private List<string> _foldersToMonitor = new List<string>();
         private MongoClient _dbClient;
         public delegate void ReportStatus(string str);
-        ReportStatus _reportStatusFn;
+        private ReportStatus _reportStatusFn;
         private bool _monitorRunning = false;
-        string _pendingDocFolder;
-        string _pendingTmpFolder;
-        int _maxPagesForImages = 0;
-        int _maxPagesForText = 0;
-        string _dbNameForDocs;
-        string _dbCollectionForDocs;
-        DateTime _lastTimeMongoDbConnErrLogged = DateTime.MinValue;
+        private string _pendingDocFolder;
+        private string _pendingTmpFolder;
+        private int _maxPagesForImages = 0;
+        private int _maxPagesForText = 0;
+        private string _dbNameForDocs;
+        private string _dbCollectionForDocs;
+        private DateTime _lastTimeMongoDbConnErrLogged = DateTime.MinValue;
+        private DocTypesMatcher _docTypesMatcher;
 
-        public ScanFileMonitor(ReportStatus reportStatusFn)
+        public ScanFileMonitor(ReportStatus reportStatusFn, DocTypesMatcher docTypesMatcher)
         {
             _reportStatusFn = reportStatusFn;
+            _docTypesMatcher = docTypesMatcher;
         }
 
         public void Start(List<string> foldersToMonitor, string pendingDocFolder, string pendingTmpFolder, 
@@ -244,6 +246,11 @@ namespace ScanMonitorApp
             // Complete info
             scanDocAllInfo.scanPageImageFileBase = Path.Combine(_pendingTmpFolder, scanDocAllInfo.docName);
 
+            // Find matching doc type
+            DocTypeMatchResult docTypeMatchResult = _docTypesMatcher.GetMatchingDocType(scanDocAllInfo);
+            scanDocAllInfo.docType = docTypeMatchResult.docTypeName;
+            scanDocAllInfo.docTypeMatchResult = docTypeMatchResult;
+
             // Add record to mongo database
             AddScanDocRecToMongo(scanDocAllInfo);
         }
@@ -252,8 +259,8 @@ namespace ScanMonitorApp
         {
             // Create a record to indicate a file has been found and processing is pending
             var server = _dbClient.GetServer();
-            var database = server.GetDatabase("ScanDocsDb"); // the name of the database
-            var collection_sdfound = database.GetCollection<ScanDocFound>("scandocfound");
+            var database = server.GetDatabase(_dbNameForDocs); // the name of the database
+            var collection_sdfound = database.GetCollection<ScanDocFound>(_dbCollectionForDocs);
 
             // Check if record exists already
             MongoCursor<ScanDocFound> foundSdf = collection_sdfound.Find(Query.EQ("FileName", fileName));

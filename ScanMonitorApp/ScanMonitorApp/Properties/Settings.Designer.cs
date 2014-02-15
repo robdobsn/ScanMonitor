@@ -103,5 +103,17 @@ namespace ScanMonitorApp.Properties {
                 this["DbCollectionForDocs"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("DocTypes")]
+        public string DbCollectionForDocTypes {
+            get {
+                return ((string)(this["DbCollectionForDocTypes"]));
+            }
+            set {
+                this["DbCollectionForDocTypes"] = value;
+            }
+        }
     }
 }

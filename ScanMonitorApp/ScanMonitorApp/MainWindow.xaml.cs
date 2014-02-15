@@ -34,9 +34,12 @@ namespace ScanMonitorApp
         private int _maxPagesForText = Properties.Settings.Default.MaxPagesForText;
         private string _dbNameForDocs = Properties.Settings.Default.DbNameForDocs;
         private string _dbCollectionForDocs = Properties.Settings.Default.DbCollectionForDocs;
+        private string _dbNameForDocTypes = Properties.Settings.Default.DbNameForDocs;
+        private string _dbCollectionForDocTypes = Properties.Settings.Default.DbCollectionForDocTypes;
 
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private System.Windows.Forms.NotifyIcon _notifyIcon;
+        private DocTypesMatcher _docTypesMatcher;
         private ScanFileMonitor _scanFileMonitor;
 
         private void InitNotifyIcon()
@@ -137,8 +140,11 @@ namespace ScanMonitorApp
             InitNotifyIcon();
             logger.Info("App Started");
 
+            // Document matcher
+            _docTypesMatcher = new DocTypesMatcher(_dbNameForDocs, _dbCollectionForDocTypes);
+
             // Scan folder watcher
-            _scanFileMonitor = new ScanFileMonitor(AddToStatusText);
+            _scanFileMonitor = new ScanFileMonitor(AddToStatusText, _docTypesMatcher);
             _scanFileMonitor.Start(foldersToMonitor, pendingDocFolder, pendingTmpFolder, 
                 maxPagesForImages, _maxPagesForText, _dbNameForDocs, _dbCollectionForDocs);
             
