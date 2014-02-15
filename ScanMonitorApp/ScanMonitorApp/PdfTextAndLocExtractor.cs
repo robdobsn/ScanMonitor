@@ -316,7 +316,7 @@ namespace ScanMonitorApp
                     List<ScanDocAllInfo.ScanTextElem> scanTextElems = new List<ScanDocAllInfo.ScanTextElem>();
                     foreach (LocationTextExtractionStrategyEx.TextInfo txtInfo in pageInfo)
                     {
-                        ScanDocAllInfo.ScanTextElem sti = new ScanDocAllInfo.ScanTextElem(txtInfo.Text, CoordStr(txtInfo.TopLeft) + "," + CoordStr(txtInfo.BottomRight));
+                        ScanDocAllInfo.ScanTextElem sti = new ScanDocAllInfo.ScanTextElem(CoordStr(txtInfo.TopLeft) + "," + CoordStr(txtInfo.BottomRight), txtInfo.Text);
                         scanTextElems.Add(sti);
                     }
                     ScanDocAllInfo.ScanPageText spt = new ScanDocAllInfo.ScanPageText(scanTextElems);
