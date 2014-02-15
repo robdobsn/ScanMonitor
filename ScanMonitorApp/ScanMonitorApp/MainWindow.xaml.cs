@@ -27,13 +27,13 @@ namespace ScanMonitorApp
     /// </summary>
     public partial class MainWindow : MetroWindow
     {
-        private const string pendingDocFolder = @"C:\Users\Rob\Documents\20140209 Train\Scanning\Pending\";
-        private List<string> foldersToMonitor = new List<string> { @"C:\Users\Rob\Documents\20140209 Train\Scanning\TestFiles2" };
-        private const string pendingTmpFolder = @"C:\Users\Rob\Documents\20140209 Train\Scanning\PendingImgs";
-        private const int maxPagesForImages = 10;
-        private const int _maxPagesForText = 10;
-        private string _dbNameForDocs = "ScanManager";
-        private string _dbCollectionForDocs = "ScanDocInfo";
+        private List<string> foldersToMonitor = new List<string> { Properties.Settings.Default.FolderToMonitor };
+        private string pendingDocFolder = Properties.Settings.Default.PendingDocFolder;
+        private string pendingTmpFolder = Properties.Settings.Default.PendingTmpFolder;
+        private int maxPagesForImages = Properties.Settings.Default.MaxPagesForImages;
+        private int _maxPagesForText = Properties.Settings.Default.MaxPagesForText;
+        private string _dbNameForDocs = Properties.Settings.Default.DbNameForDocs;
+        private string _dbCollectionForDocs = Properties.Settings.Default.DbCollectionForDocs;
 
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private System.Windows.Forms.NotifyIcon _notifyIcon;

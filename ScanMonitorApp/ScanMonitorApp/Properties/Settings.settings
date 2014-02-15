@@ -1,7 +1,27 @@
 ﻿<?xml version='1.0' encoding='utf-8'?>
-<SettingsFile xmlns="uri:settings" CurrentProfile="(Default)">
-  <Profiles>
-    <Profile Name="(Default)" />
-  </Profiles>
-  <Settings />
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="ScanMonitorApp.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="FolderToMonitor" Type="System.String" Scope="User">
+      <Value Profile="(Default)">\\SCAN1\Users\Rob\Documents\ScanSnap</Value>
+    </Setting>
+    <Setting Name="PendingDocFolder" Type="System.String" Scope="User">
+      <Value Profile="(Default)">\\MACALLAN\Main\PendingFiling\Scans</Value>
+    </Setting>
+    <Setting Name="PendingTmpFolder" Type="System.String" Scope="User">
+      <Value Profile="(Default)">\\MACALLAN\Main\PendingFiling\TempScanInfo</Value>
+    </Setting>
+    <Setting Name="MaxPagesForImages" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">10</Value>
+    </Setting>
+    <Setting Name="MaxPagesForText" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">10</Value>
+    </Setting>
+    <Setting Name="DbNameForDocs" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">ScanManager</Value>
+    </Setting>
+    <Setting Name="DbCollectionForDocs" Type="System.String" Scope="User">
+      <Value Profile="(Default)">ScanDocInfo</Value>
+    </Setting>
+  </Settings>
 </SettingsFile>
