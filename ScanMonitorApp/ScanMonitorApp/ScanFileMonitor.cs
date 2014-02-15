@@ -86,6 +86,11 @@ namespace ScanMonitorApp
             return watcherCount;
         }
 
+        public void WatchFolderChanged(string fileName, WatcherChangeTypes changeInfo)
+        {
+            MoveAndProcessPdfFile(fileName);
+        }
+
         private bool CheckFileReadyToMove(string fileName)
         {
             // Check the file is writeable
@@ -197,28 +202,33 @@ namespace ScanMonitorApp
             return destFileName;
         }
 
-        public void WatchFolderChanged(string fileName, WatcherChangeTypes changeInfo)
-        {
-            MoveAndProcessPdfFile(fileName);
-        }
-
         public void MoveAndProcessPdfFile(string fileName)
         {
+            logger.Info("START {0}", fileName);
+
             // First check database connection is ok
             if (!CheckMongoConnection())
                 return;
 
+            logger.Info("HERE");
+
             // Wait until file is moveable - or time-out
             if (!WaitForFileToBeMoveable(fileName))
                 return;
+
+            logger.Info("THERE");
 
             // Move file to pending folder
             string destFileName = MoveFileToPendingFolder(fileName);
             if (destFileName == "")
                 return;
 
+            logger.Info("ANOTHER");
+
             // Process Pdf file
             ProcessPdfFile(destFileName);
+
+            logger.Info("DONE");
         }
 
         public void ProcessPdfFile(string fileName)
