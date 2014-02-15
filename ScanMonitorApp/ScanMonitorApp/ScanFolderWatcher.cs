@@ -36,7 +36,9 @@ namespace ScanMonitorApp
                 watcher.Filter = "*.pdf";
 
                 // Add event handlers.
+                watcher.Changed += new FileSystemEventHandler(OnChanged);
                 watcher.Created += new FileSystemEventHandler(OnCreated);
+                watcher.Renamed += new RenamedEventHandler(OnRenamed);
 
                 // Begin watching.
                 watcher.EnableRaisingEvents = true;
@@ -53,7 +55,20 @@ namespace ScanMonitorApp
         private void OnCreated(object source, FileSystemEventArgs e)
         {
             logger.Info("File: " + e.FullPath + " " + e.ChangeType.ToString());
+//            _callbackOnChanged(e.FullPath, e.ChangeType);
+        }
+
+        private void OnChanged(object source, FileSystemEventArgs e)
+        {
+            logger.Info("File: " + e.FullPath + " " + e.ChangeType.ToString());
+//            _callbackOnChanged(e.FullPath, e.ChangeType);
+        }
+
+        private void OnRenamed(object source, RenamedEventArgs e)
+        {
+            logger.Info("File: " + e.FullPath + " " + e.ChangeType.ToString());
             _callbackOnChanged(e.FullPath, e.ChangeType);
         }
+
     }
 }
