@@ -42,8 +42,15 @@ namespace ScanMonitorApp
         {
             topLeftXPercent = x;
             topLeftYPercent = y;
-            width = widthPercent;
-            height = heightPercent;
+            widthPercent = width;
+            heightPercent = height;
+        }
+        public DocRectangle(double x, double y, double width, double height)
+        {
+            topLeftXPercent = Convert.ToInt32(x);
+            topLeftYPercent = Convert.ToInt32(y);
+            widthPercent = Convert.ToInt32(width);
+            heightPercent = Convert.ToInt32(height);
         }
         public int topLeftXPercent;
         public int topLeftYPercent;

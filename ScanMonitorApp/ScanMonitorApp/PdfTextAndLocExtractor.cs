@@ -285,13 +285,14 @@ namespace ScanMonitorApp
 
     class PdfTextAndLocExtractor
     {
-        private DocRectangle ConvertToDocRect(iTextSharp.text.pdf.parser.Vector topLeftCoord, iTextSharp.text.pdf.parser.Vector bottomRightCoord)
+        private DocRectangle ConvertToDocRect(iTextSharp.text.pdf.parser.Vector topLeftCoord, iTextSharp.text.pdf.parser.Vector bottomRightCoord,
+                            iTextSharp.text.Rectangle pageRect)
         {
-            int tlX = Convert.ToInt32(topLeftCoord.Dot(new iTextSharp.text.pdf.parser.Vector(0, 1, 0)));
-            int tlY = Convert.ToInt32(topLeftCoord.Dot(new iTextSharp.text.pdf.parser.Vector(1, 0, 0)));
-            int width = Convert.ToInt32(bottomRightCoord.Dot(new iTextSharp.text.pdf.parser.Vector(0, 1, 0))) - tlX;
-            int height = Convert.ToInt32(bottomRightCoord.Dot(new iTextSharp.text.pdf.parser.Vector(1, 0, 0))) - tlY;
-            return new DocRectangle(tlX, tlY, width, height);
+            double tlX = topLeftCoord.Dot(new iTextSharp.text.pdf.parser.Vector(1, 0, 0));
+            double tlY = topLeftCoord.Dot(new iTextSharp.text.pdf.parser.Vector(0, 1, 0));
+            double width = bottomRightCoord.Dot(new iTextSharp.text.pdf.parser.Vector(1, 0, 0)) - tlX;
+            double height = tlY - bottomRightCoord.Dot(new iTextSharp.text.pdf.parser.Vector(0, 1, 0));
+            return new DocRectangle(tlX * 100 / pageRect.Width, (pageRect.Height - tlY) * 100 / pageRect.Height, width * 100 / pageRect.Width, height * 100 / pageRect.Height);
         }
 
         public ScanDocAllInfo ExtractDocInfo(string fileName, int maxPagesToExtractFrom)
@@ -306,28 +307,31 @@ namespace ScanMonitorApp
                 if (numPagesToUse > maxPagesToExtractFrom)
                     numPagesToUse = maxPagesToExtractFrom;
                 int numPagesWithText = 0;
-                for (int pageIdx = 1; pageIdx < numPagesToUse; pageIdx++)
+                for (int pageNum = 1; pageNum <= numPagesToUse; pageNum++)
                 {
                     LocationTextExtractionStrategyEx locationStrategy = new LocationTextExtractionStrategyEx();
-                    string text = PdfTextExtractor.GetTextFromPage(pdfReader, pageIdx, locationStrategy);
+                    string text = PdfTextExtractor.GetTextFromPage(pdfReader, pageNum, locationStrategy);
                     if (text != "")
                         numPagesWithText++;
                     extractedTextAndLoc.Add(locationStrategy.TextLocationInfo);
                 }
 
                 // Create new structures for the information
+                int pageNumber = 1;
                 List<ScanDocAllInfo.ScanPageText> scanPages = new List<ScanDocAllInfo.ScanPageText>();
                 foreach (List<LocationTextExtractionStrategyEx.TextInfo> pageInfo in extractedTextAndLoc)
                 {
+                    iTextSharp.text.Rectangle pageRect = pdfReader.GetPageSize(pageNumber);
                     List<ScanDocAllInfo.ScanTextElem> scanTextElems = new List<ScanDocAllInfo.ScanTextElem>();
                     foreach (LocationTextExtractionStrategyEx.TextInfo txtInfo in pageInfo)
                     {
-                        DocRectangle boundsRect = ConvertToDocRect(txtInfo.TopLeft, txtInfo.BottomRight);
+                        DocRectangle boundsRect = ConvertToDocRect(txtInfo.TopLeft, txtInfo.BottomRight, pageRect);
                         ScanDocAllInfo.ScanTextElem sti = new ScanDocAllInfo.ScanTextElem(txtInfo.Text, boundsRect);
                         scanTextElems.Add(sti);
                     }
                     ScanDocAllInfo.ScanPageText spt = new ScanDocAllInfo.ScanPageText(scanTextElems);
                     scanPages.Add(spt);
+                    pageNumber++;
                 }
 
                 // File unique name

@@ -19,6 +19,10 @@ using System.IO;
 using System.Windows.Forms;
 using System.Reflection;
 using System.ComponentModel;
+using System.Collections;
+using System.Net;
+using System.Collections.Specialized;
+using System.Web;
 
 namespace ScanMonitorApp
 {
@@ -27,6 +31,8 @@ namespace ScanMonitorApp
     /// </summary>
     public partial class MainWindow : MetroWindow
     {
+        private const bool TEST_MODE = true;
+
         private List<string> foldersToMonitor = new List<string> { Properties.Settings.Default.FolderToMonitor };
         private string pendingDocFolder = Properties.Settings.Default.PendingDocFolder;
         private string pendingTmpFolder = Properties.Settings.Default.PendingTmpFolder;
@@ -41,6 +47,7 @@ namespace ScanMonitorApp
         private System.Windows.Forms.NotifyIcon _notifyIcon;
         private DocTypesMatcher _docTypesMatcher;
         private ScanFileMonitor _scanFileMonitor;
+        private ScanDocHandler _scanDocHandler;
 
         private void InitNotifyIcon()
         {
@@ -143,11 +150,23 @@ namespace ScanMonitorApp
             // Document matcher
             _docTypesMatcher = new DocTypesMatcher(_dbNameForDocs, _dbCollectionForDocTypes);
 
+            // Scanned document handler
+            _scanDocHandler = new ScanDocHandler(AddToStatusText, _docTypesMatcher, pendingDocFolder, pendingTmpFolder,
+                            maxPagesForImages, _maxPagesForText, _dbNameForDocs, _dbCollectionForDocs);
+
             // Scan folder watcher
-            _scanFileMonitor = new ScanFileMonitor(AddToStatusText, _docTypesMatcher);
-            _scanFileMonitor.Start(foldersToMonitor, pendingDocFolder, pendingTmpFolder, 
-                maxPagesForImages, _maxPagesForText, _dbNameForDocs, _dbCollectionForDocs);
-            
+            _scanFileMonitor = new ScanFileMonitor(AddToStatusText, _scanDocHandler);
+            _scanFileMonitor.Start(foldersToMonitor, pendingDocFolder, TEST_MODE);
+
+            // Start the web server
+            WebServer ws = new WebServer("http://localhost:8080");
+            ws.RegisterEndPoint(new WebEndPoint_ScanDocs(_scanDocHandler));
+            ws.Run();
+         }
+
+        private void Test1_Click(object sender, RoutedEventArgs e)
+        {
+            _scanFileMonitor.Test1();
         }
     }
 }

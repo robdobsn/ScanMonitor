@@ -5,6 +5,7 @@
         Title="Scan Monitor" Height="350" Width="525" Closed="Window_Closed"  Icon="res/scanner48x48.ico">
     <Grid>
         <Label x:Name="statusText" Content="Label" HorizontalAlignment="Left" Height="80" VerticalAlignment="Top" Width="517"/>
+        <Button x:Name="Test1" Content="Test1" HorizontalAlignment="Left" Height="43" Margin="31,161,0,0" VerticalAlignment="Top" Width="53" Click="Test1_Click"/>
 
     </Grid>
 </Controls:MetroWindow>
