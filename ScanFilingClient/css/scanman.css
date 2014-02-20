@@ -1,0 +1,161 @@
+body {
+    background-color:black;
+    font-family: 'Hammersmith One', sans-serif;
+    font-size: 13px;
+    color: white;
+}
+
+.docDisplay {
+    width: 50%;
+    float: left;
+}
+.mgmtForm {
+    width: 49%;
+    float: left;
+}
+
+.pageDisplay {
+    position: relative;
+    display: block;
+    border: 5px;
+    background-color: #404040;
+    border-radius: 3px;
+    padding: 5px;
+}
+
+.pageImage {
+    position: none;
+    top:5px; left: 5px;
+    width:100%;
+}
+
+.pageImageCanvas{
+    position: absolute;
+    width:100%;
+    top:5px; left:5px;
+    z-index: 10;
+    /*background-color: rgba(255,0,0,1);*/
+}
+
+.formBkgnd {
+    border: 5px;
+    background-color: #404040;
+    width: 100%;
+    border-radius: 3px;
+    margin-bottom: 10px;
+    padding: 5px;
+    clear:both;
+}
+
+.rightChannel {
+    margin-right: 5px;
+}
+/* Navigation buttons */
+
+.nav-button {
+    display:block;
+    float:left;
+    margin: 2px;
+    padding: 10px;
+    border: 0px;
+    border-color: grey;
+    border-style: solid;
+    border-radius: 3px;
+    background-color: #606060;
+}
+
+.nav-clicked {
+    background-color: blue;
+}
+
+.notificationDiv{
+    clear: both;
+}
+.statusBox {
+    margin: 2px;
+    padding: 10px;    
+    border: 0px;
+    border-color: grey;
+    border-style: solid;
+    border-radius: 3px;
+    color: white;
+    background-color: #606060;
+}
+.touchHere {
+    background-image: url("http://curvefever.com/sites/default/files/ideas12Nov/crosshairs.500.png");
+    background-size: contain;
+    width: 50px;
+    height: 50px;
+    float: left;
+}
+
+.docTypeEditButton {
+    background-image: url("img/edit-icon.png");
+    background-size: contain;
+    width: 50px;
+    height: 50px;
+    float: left;
+}
+
+.docTypeDiv {
+    height: 150px;
+    overflow: hidden;
+}
+
+.docTypeBox {
+    border: 5px;
+    border-radius: 5px;
+    padding: 10px;
+    margin: 2px;
+    display: block;
+    font-size: 30px;
+    color: black;
+    width: 200px;
+    float: left;
+    background: #eeeeee; /* Old browsers */
+background: -moz-linear-gradient(top,  #eeeeee 0%, #cccccc 100%); /* FF3.6+ */
+background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#eeeeee), color-stop(100%,#cccccc)); /* Chrome,Safari4+ */
+background: -webkit-linear-gradient(top,  #eeeeee 0%,#cccccc 100%); /* Chrome10+,Safari5.1+ */
+background: -o-linear-gradient(top,  #eeeeee 0%,#cccccc 100%); /* Opera 11.10+ */
+background: -ms-linear-gradient(top,  #eeeeee 0%,#cccccc 100%); /* IE10+ */
+background: linear-gradient(to bottom,  #eeeeee 0%,#cccccc 100%); /* W3C */
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#eeeeee', endColorstr='#cccccc',GradientType=0 ); /* IE6-9 */
+
+}
+
+.docDateDiv {
+    height: 185px;
+}
+
+.mobiscrolltxt {
+    display: none;
+}
+
+.formSection {
+    margin: 2px;
+    padding: 10px;    
+    border: 0px;
+    border-color: grey;
+    border-style: solid;
+    border-radius: 3px;
+    color: white;
+    background-color: #404040;
+}
+
+.formField {
+    width:40%;
+    border: 1px solid lightblue;
+    padding: 3px;
+}
+
+.formHeading {
+    color: #808080;
+}
+
+.mustTableCell {
+    cursor: pointer;
+}
+
+.mustTable {
+    width:40%;
+}

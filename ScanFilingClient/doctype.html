@@ -1,0 +1,35 @@
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Hammersmith+One" type="text/css">
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
+<script src="js/mindmup-editabletable.js" type="text/javascript"></script>
+<link rel="stylesheet" href="css/scanman.css" type="text/css">
+<script src="js/doctype.js" type="text/javascript"></script>
+<script src="js/canvasMarquee.js" type="text/javascript"></script>
+
+<div class="pageContainer">
+  <div class="mgmtForm">
+    <div class="formBkgnd rightChannel">
+      <div class="notificationDiv">
+          <div class="statusBox"></div>
+      </div>
+    </div>
+    <div class="formBkgnd docTypeInfo">
+      <form id="docTypeEditForm">
+        <div class="formSection">
+          <label for="doctype" class="formHeading">Document Type</label>
+          <input name="doctype" class="formField" id="docTypeEdit" type="text" value="" placeholder="Name for document type"></input>
+        </div>
+        <div class="formSection">
+          <div class="formHeading">Document Must Have</div>
+          <table class="mustTable" id="mustHaveTable"></table>
+        </div>
+    </div>
+  </div>
+  <div class="docDisplay">
+      <div class="pageDisplay">
+          <image class="pageImage">
+            <canvas class="pageImageCanvas" width="1000" height="1000"></canvas>
+          </image>
+      </div>
+  </div>
+</div>
