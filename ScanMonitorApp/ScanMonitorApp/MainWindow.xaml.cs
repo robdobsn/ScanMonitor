@@ -161,12 +161,43 @@ namespace ScanMonitorApp
             // Start the web server
             WebServer ws = new WebServer("http://localhost:8080");
             ws.RegisterEndPoint(new WebEndPoint_ScanDocs(_scanDocHandler));
+            ws.RegisterEndPoint(new WebEndPoint_DocTypes(_docTypesMatcher));
             ws.Run();
          }
 
         private void Test1_Click(object sender, RoutedEventArgs e)
         {
             _scanFileMonitor.Test1();
+        }
+
+        private void Test2_Click(object sender, RoutedEventArgs e)
+        {
+            _scanFileMonitor.Test2();
+        }
+
+        private void Test3_Click(object sender, RoutedEventArgs e)
+        {
+            _scanFileMonitor.Test3();
+        }
+
+        private void AddOldDocTypes_Click(object sender, RoutedEventArgs e)
+        {
+            // Configure open file dialog box
+            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+            dlg.FileName = @"\\MACALLAN\Main\RobAndJudyPersonal\IT\Scanning\rules.xml";
+            dlg.DefaultExt = ".xml"; // Default file extension
+            dlg.Filter = "XML documents (.xml)|*.xml"; // Filter files by extension 
+
+            // Show open file dialog box
+            Nullable<bool> result = dlg.ShowDialog();
+
+            // Process open file dialog box results 
+            if (result == true)
+            {
+                // Open document 
+                string filename = dlg.FileName;
+                _docTypesMatcher.AddOldDocTypes(filename);
+            }
         }
     }
 }

@@ -7,6 +7,7 @@ using NLog;
 using MongoDB.Driver;
 using System.IO;
 using MongoDB.Driver.Builders;
+using Newtonsoft.Json;
 
 namespace ScanMonitorApp
 {
@@ -55,6 +56,13 @@ namespace ScanMonitorApp
             }
         }
 
+        private MongoCollection<ScanDocAllInfo> GetAllInfoCollection()
+        {
+            var server = _dbClient.GetServer();
+            var database = server.GetDatabase(_dbNameForDocs); // the name of the database
+            return database.GetCollection<ScanDocAllInfo>(_dbCollectionForDocs);
+        }
+
         public void ProcessPdfFile(string fileName)
         {
             // First check database connection is ok
@@ -70,37 +78,16 @@ namespace ScanMonitorApp
             ScanDocAllInfo scanDocAllInfo = pdfExtractor.ExtractDocInfo(fileName, _maxPagesForText);
 
             // Complete info
-            scanDocAllInfo.scanPageImageFileBase = Path.Combine(_pendingTmpFolder, scanDocAllInfo.docName);
+            scanDocAllInfo.scanDocInfo.scanPageImageFileBase = Path.Combine(_pendingTmpFolder, scanDocAllInfo.scanDocInfo.docName).Replace('\\','/');
 
             // Find matching doc type
             DocTypeMatchResult docTypeMatchResult = _docTypesMatcher.GetMatchingDocType(scanDocAllInfo);
-            scanDocAllInfo.docType = docTypeMatchResult.docTypeName;
-            scanDocAllInfo.docTypeMatchResult = docTypeMatchResult;
+            scanDocAllInfo.scanDocInfo.docTypeFiled = docTypeMatchResult.docTypeName;
+            scanDocAllInfo.scanDocInfo.docDateFiled = docTypeMatchResult.docDate;
+            scanDocAllInfo.scanDocInfo.docTypeMatchResult = docTypeMatchResult;
 
             // Add record to mongo database
             AddScanDocRecToMongo(scanDocAllInfo);
-        }
-
-        public void AddRecToMongo(string fileName)
-        {
-            // Create a record to indicate a file has been found and processing is pending
-            var server = _dbClient.GetServer();
-            var database = server.GetDatabase(_dbNameForDocs); // the name of the database
-            var collection_sdfound = database.GetCollection<ScanDocFound>(_dbCollectionForDocs);
-
-            // Check if record exists already
-            MongoCursor<ScanDocFound> foundSdf = collection_sdfound.Find(Query.EQ("FileName", fileName));
-            if (foundSdf.Count() == 0)
-            {
-                // Insert record for file
-                ScanDocFound sdf = new ScanDocFound(fileName);
-                collection_sdfound.Insert(sdf);
-                logger.Info("DocFound added for {0}", fileName);
-            }
-            else
-            {
-                logger.Info("DocFound record already present for {0}", fileName);
-            }
         }
 
         public bool CheckMongoConnection()
@@ -109,12 +96,10 @@ namespace ScanMonitorApp
             try
             {
                 // Check connection active
-                var server = _dbClient.GetServer();
-                var database = server.GetDatabase(_dbNameForDocs); // the name of the database
-                var collection_sdinfo = database.GetCollection<ScanDocAllInfo>(_dbCollectionForDocs);
+                MongoCollection<ScanDocAllInfo> collection_sdinfo = GetAllInfoCollection();
 
                 // Check if record exists already
-                MongoCursor<ScanDocAllInfo> foundSdf = collection_sdinfo.Find(Query.EQ("docName", ""));
+                MongoCursor <ScanDocAllInfo> foundSdf = collection_sdinfo.Find(Query.EQ("docName", ""));
                 foreach (ScanDocAllInfo foundRec in foundSdf)
                 {
                     bOk = true;
@@ -139,20 +124,36 @@ namespace ScanMonitorApp
             // Mongo append
             try
             {
-                var server = _dbClient.GetServer();
-                var database = server.GetDatabase(_dbNameForDocs); // the name of the database
-                var collection_sdinfo = database.GetCollection<ScanDocAllInfo>(_dbCollectionForDocs);
+                MongoCollection<ScanDocAllInfo> collection_sdinfo = GetAllInfoCollection();
                 collection_sdinfo.Insert(scanDocAllInfo);
                 // Log it
-                logger.Info("Added record for {0}", scanDocAllInfo.docName);
+                logger.Info("Added scandoc record for {0}", scanDocAllInfo.scanDocInfo.docName);
             }
             catch (Exception excp)
             {
-                logger.Error("Cannot insert rec into {0} Coll... {1} for file {2} excp {3}",
-                            _dbNameForDocs, _dbCollectionForDocs, scanDocAllInfo.docName,
+                logger.Error("Cannot insert scandoc rec into {0} Coll... {1} for file {2} excp {3}",
+                            _dbNameForDocs, _dbCollectionForDocs, scanDocAllInfo.scanDocInfo.docName,
                             excp.Message);
             }
         }
 
+        public string ListScanDocs()
+        {
+            // Get list of documents
+            MongoCollection<ScanDocAllInfo> collection_sdinfo = GetAllInfoCollection();
+            MongoCursor<ScanDocAllInfo> scanDocs = collection_sdinfo.FindAll();
+            List<ScanDocInfo> scanDocInfo = new List<ScanDocInfo>();
+            foreach (ScanDocAllInfo docInfo in scanDocs)
+                scanDocInfo.Add(docInfo.scanDocInfo);
+            return JsonConvert.SerializeObject(scanDocInfo);
+        }
+
+        public string GetScanDoc(string scanDocUniqName)
+        {
+            // Get first matching documents
+            MongoCollection<ScanDocAllInfo> collection_sdinfo = GetAllInfoCollection();
+            ScanDocAllInfo scanDoc = collection_sdinfo.FindOne(Query.EQ ( "scanDocInfo.docName", scanDocUniqName ) );
+            return JsonConvert.SerializeObject(scanDoc);
+        }
     }
 }

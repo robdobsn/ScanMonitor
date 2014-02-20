@@ -4,14 +4,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
+using MongoDB.Bson;
 
 namespace ScanMonitorApp
 {
     public class DocType
     {
+        public ObjectId Id;
         public string docTypeName;
         public List<DocPatternText> mustHaveTexts;
-        public List<DocPatternText> mustNottHaveText;
+        public List<DocPatternText> mustNotHaveTexts;
         public string thumbnailForDocType;
 
     }
@@ -26,6 +28,11 @@ namespace ScanMonitorApp
 
     public class DocPatternText
     {
+        public DocPatternText(string ttm, DocRectangle tb)
+        {
+            textToMatch = ttm;
+            textBounds = tb;
+        }
         public string textToMatch;
         public DocRectangle textBounds;
     }

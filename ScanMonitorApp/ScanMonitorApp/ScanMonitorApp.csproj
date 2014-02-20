@@ -49,6 +49,9 @@
     <Reference Include="MongoDB.Driver">
       <HintPath>..\packages\mongocsharpdriver.1.8.3\lib\net35\MongoDB.Driver.dll</HintPath>
     </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\packages\Newtonsoft.Json.6.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="NLog">
       <HintPath>..\packages\NLog.2.1.0\lib\net45\NLog.dll</HintPath>
     </Reference>
@@ -79,13 +82,14 @@
     </ApplicationDefinition>
     <Compile Include="DocType.cs" />
     <Compile Include="DocTypesMatcher.cs" />
+    <Compile Include="OldXmlRulesManager.cs" />
     <Compile Include="PdfRasterizer.cs" />
     <Compile Include="PdfTextAndLocExtractor.cs" />
-    <Compile Include="ScanDocAllInfo.cs" />
-    <Compile Include="ScanDocFound.cs" />
+    <Compile Include="ScanDocInfo.cs" />
     <Compile Include="ScanDocHandler.cs" />
     <Compile Include="ScanFileMonitor.cs" />
     <Compile Include="ScanFolderWatcher.cs" />
+    <Compile Include="WebEndPoint_DocTypes.cs" />
     <Compile Include="WebEndPoint_ScanDocs.cs" />
     <Compile Include="WebServer\WebEndPoint.cs" />
     <Compile Include="WebServer\WebServer.cs" />

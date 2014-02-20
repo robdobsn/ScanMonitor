@@ -318,18 +318,18 @@ namespace ScanMonitorApp
 
                 // Create new structures for the information
                 int pageNumber = 1;
-                List<ScanDocAllInfo.ScanPageText> scanPages = new List<ScanDocAllInfo.ScanPageText>();
+                List <ScanPageText> scanPages = new List<ScanPageText>();
                 foreach (List<LocationTextExtractionStrategyEx.TextInfo> pageInfo in extractedTextAndLoc)
                 {
                     iTextSharp.text.Rectangle pageRect = pdfReader.GetPageSize(pageNumber);
-                    List<ScanDocAllInfo.ScanTextElem> scanTextElems = new List<ScanDocAllInfo.ScanTextElem>();
+                    List<ScanTextElem> scanTextElems = new List<ScanTextElem>();
                     foreach (LocationTextExtractionStrategyEx.TextInfo txtInfo in pageInfo)
                     {
                         DocRectangle boundsRect = ConvertToDocRect(txtInfo.TopLeft, txtInfo.BottomRight, pageRect);
-                        ScanDocAllInfo.ScanTextElem sti = new ScanDocAllInfo.ScanTextElem(txtInfo.Text, boundsRect);
+                        ScanTextElem sti = new ScanTextElem(txtInfo.Text, boundsRect);
                         scanTextElems.Add(sti);
                     }
-                    ScanDocAllInfo.ScanPageText spt = new ScanDocAllInfo.ScanPageText(scanTextElems);
+                    ScanPageText spt = new ScanPageText(scanTextElems);
                     scanPages.Add(spt);
                     pageNumber++;
                 }
@@ -339,9 +339,9 @@ namespace ScanMonitorApp
                 DateTime fileDateTime = File.GetCreationTime(fileName);
 
                 // Complete the document info
-                ScanDocAllInfo scanDocAllInfo = new ScanDocAllInfo(uniqueName, pdfReader.NumberOfPages, numPagesWithText,
-                            "", fileDateTime, DateTime.Now, "", scanPages, "");
-                return scanDocAllInfo;
+                ScanDocInfo scanDocInfo = new ScanDocInfo(uniqueName, pdfReader.NumberOfPages, numPagesWithText,
+                            "", fileDateTime, fileDateTime, "", "");
+                return new ScanDocAllInfo(scanDocInfo, scanPages);
             }
         }
     }

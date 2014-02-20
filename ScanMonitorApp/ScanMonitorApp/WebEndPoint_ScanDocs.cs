@@ -16,30 +16,26 @@ namespace ScanMonitorApp
         public WebEndPoint_ScanDocs(ScanDocHandler scanDocHandler)
         {
             _scanDocHandler = scanDocHandler;
-            Action = Echo;
-            Name = "echo";
-            Description = "echo to logger";
+            Action = ScanDocs;
+            Name = "scandocs";
+            Description = "scandocs actions";
         }
 
-        private string Echo(List<string> items)
+        private string ScanDocs(List<string> webCmdParams)
         {
-            String text = "";
-            if (items != null && items.Count > 0)
+            if (webCmdParams[0] == "list")
             {
-                foreach (var item in items)
-                {
-                    text += item + " ";
-                }
+                if (webCmdParams.Count > 0)
+                    return _scanDocHandler.ListScanDocs();
             }
-            else
+            else if (webCmdParams[0] == "get")
             {
-                text = "No arguments!";
+                if (webCmdParams.Count > 1)
+                    return _scanDocHandler.GetScanDoc(webCmdParams[1]);
             }
-
-            logger.Info("Write {0}", text);
-
-            return "OK. Wrote out: " + (text.Length == 0 ? "n/a" : text);
+            return "Incorrect parameter to scandocs";
         }
+
 
     }
 }
