@@ -12,29 +12,15 @@ namespace ScanMonitorApp
     {
         public ObjectId Id;
         public string docTypeName;
-        public List<DocPatternText> mustHaveTexts;
-        public List<DocPatternText> mustNotHaveTexts;
+        public string matchExpression;
         public string thumbnailForDocType;
-
     }
 
     public class DocTypeMatchResult
     {
         public string docTypeName = "";
         public DateTime docDate = DateTime.MinValue;
-        public bool matchesMustHaveTexts = false;
-        public bool matchesMustNotHaveTexts = false;
-    }
-
-    public class DocPatternText
-    {
-        public DocPatternText(string ttm, DocRectangle tb)
-        {
-            textToMatch = ttm;
-            textBounds = tb;
-        }
-        public string textToMatch;
-        public DocRectangle textBounds;
+        public int matchCertaintyPercent = 0;
     }
 
     public class DocMatchAction
