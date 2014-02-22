@@ -32,10 +32,11 @@ namespace ScanMonitorApp
     public partial class MainWindow : MetroWindow
     {
         private const bool TEST_MODE = true;
+        private const bool TEST_ON_MACAIR = true;
 
         private List<string> foldersToMonitor = new List<string> { Properties.Settings.Default.FolderToMonitor };
-        private string pendingDocFolder = Properties.Settings.Default.PendingDocFolder;
-        private string pendingTmpFolder = Properties.Settings.Default.PendingTmpFolder;
+        private string pendingDocFolder = TEST_ON_MACAIR ? Properties.Settings.Default.TestPendingDocFolder : Properties.Settings.Default.PendingDocFolder;
+        private string pendingTmpFolder = TEST_ON_MACAIR ? Properties.Settings.Default.TestPendingTmpFolder : Properties.Settings.Default.PendingTmpFolder;
         private int maxPagesForImages = Properties.Settings.Default.MaxPagesForImages;
         private int _maxPagesForText = Properties.Settings.Default.MaxPagesForText;
         private string _dbNameForDocs = Properties.Settings.Default.DbNameForDocs;

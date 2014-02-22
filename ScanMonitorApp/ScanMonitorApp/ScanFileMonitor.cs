@@ -204,7 +204,8 @@ namespace ScanMonitorApp
 
         public void Test1()
         {
-            _scanDocHandler.ProcessPdfFile(@"M:\PendingFiling\Scans\2014_02_04_11_22_27.pdf");
+            // _scanDocHandler.ProcessPdfFile(@"M:\PendingFiling\Scans\2014_02_04_11_22_27.pdf");
+            _scanDocHandler.ProcessPdfFile(@"C:\Users\Rob\Documents\20140209 Train\Scanning\TestFiles\2014_02_04_17_14_50.pdf");
         }
         public void Test2()
         {

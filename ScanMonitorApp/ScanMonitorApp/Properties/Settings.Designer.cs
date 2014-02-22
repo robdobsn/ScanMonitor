@@ -115,5 +115,41 @@ namespace ScanMonitorApp.Properties {
                 this["DbCollectionForDocTypes"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string TestFolderToMonitor {
+            get {
+                return ((string)(this["TestFolderToMonitor"]));
+            }
+            set {
+                this["TestFolderToMonitor"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("C:\\Users\\Rob\\Documents\\20140209 Train\\Scanning\\Pending")]
+        public string TestPendingDocFolder {
+            get {
+                return ((string)(this["TestPendingDocFolder"]));
+            }
+            set {
+                this["TestPendingDocFolder"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("C:\\Users\\Rob\\Documents\\20140209 Train\\Scanning\\PendingImgs")]
+        public string TestPendingTmpFolder {
+            get {
+                return ((string)(this["TestPendingTmpFolder"]));
+            }
+            set {
+                this["TestPendingTmpFolder"] = value;
+            }
+        }
     }
 }

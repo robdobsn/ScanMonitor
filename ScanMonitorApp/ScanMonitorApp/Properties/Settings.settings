@@ -26,5 +26,14 @@
     <Setting Name="DbCollectionForDocTypes" Type="System.String" Scope="User">
       <Value Profile="(Default)">DocTypes</Value>
     </Setting>
+    <Setting Name="TestFolderToMonitor" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="TestPendingDocFolder" Type="System.String" Scope="User">
+      <Value Profile="(Default)">C:\Users\Rob\Documents\20140209 Train\Scanning\Pending</Value>
+    </Setting>
+    <Setting Name="TestPendingTmpFolder" Type="System.String" Scope="User">
+      <Value Profile="(Default)">C:\Users\Rob\Documents\20140209 Train\Scanning\PendingImgs</Value>
+    </Setting>
   </Settings>
 </SettingsFile>
