@@ -49,13 +49,13 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Main\\PendingFiling\\TempScanInfo")]
-        public string PendingTmpFolder {
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Admin\\ScanAdmin\\ScannedDocImgs")]
+        public string DocAdminImgFolderBase {
             get {
-                return ((string)(this["PendingTmpFolder"]));
+                return ((string)(this["DocAdminImgFolderBase"]));
             }
             set {
-                this["PendingTmpFolder"] = value;
+                this["DocAdminImgFolderBase"] = value;
             }
         }
         
@@ -95,12 +95,12 @@ namespace ScanMonitorApp.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("ScanDocInfo")]
-        public string DbCollectionForDocs {
+        public string DbCollectionForDocInfo {
             get {
-                return ((string)(this["DbCollectionForDocs"]));
+                return ((string)(this["DbCollectionForDocInfo"]));
             }
             set {
-                this["DbCollectionForDocs"] = value;
+                this["DbCollectionForDocInfo"] = value;
             }
         }
         
@@ -143,12 +143,24 @@ namespace ScanMonitorApp.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("C:\\Users\\Rob\\Documents\\20140209 Train\\Scanning\\PendingImgs")]
-        public string TestPendingTmpFolder {
+        public string TestDocAdminImgFolderBase {
             get {
-                return ((string)(this["TestPendingTmpFolder"]));
+                return ((string)(this["TestDocAdminImgFolderBase"]));
             }
             set {
-                this["TestPendingTmpFolder"] = value;
+                this["TestDocAdminImgFolderBase"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("ScanDocPages")]
+        public string DbCollectionForDocPages {
+            get {
+                return ((string)(this["DbCollectionForDocPages"]));
+            }
+            set {
+                this["DbCollectionForDocPages"] = value;
             }
         }
     }

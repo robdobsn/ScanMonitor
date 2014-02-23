@@ -63,5 +63,29 @@ namespace ScanMonitorApp
 
             return imgFileNames;
         }
+
+        public static System.Drawing.Image GetImageOfPage(string fileName, int pageNum)
+        {
+            int desired_x_dpi = 150;
+            int desired_y_dpi = 150;
+
+            GhostscriptVersionInfo lastInstalledVersion =
+                GhostscriptVersionInfo.GetLastInstalledVersion(
+                        GhostscriptLicense.GPL | GhostscriptLicense.AFPL,
+                        GhostscriptLicense.GPL);
+
+            GhostscriptRasterizer rasterizer = new GhostscriptRasterizer();
+
+            rasterizer.Open(fileName, lastInstalledVersion, false);
+
+            if (pageNum > rasterizer.PageCount)
+                return null;
+
+            System.Drawing.Image img = rasterizer.GetPage(desired_x_dpi, desired_y_dpi, pageNum);
+
+            rasterizer = null;
+
+            return img;
+        }
     }
 }

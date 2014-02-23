@@ -295,7 +295,7 @@ namespace ScanMonitorApp
             return new DocRectangle(tlX * 100 / pageRect.Width, (pageRect.Height - tlY) * 100 / pageRect.Height, width * 100 / pageRect.Width, height * 100 / pageRect.Height);
         }
 
-        public ScanDocAllInfo ExtractDocInfo(string fileName, int maxPagesToExtractFrom)
+        public ScanDocAllInfo ExtractDocInfo(string uniqName, string fileName, int maxPagesToExtractFrom)
         {
             // Extract text and location from pdf pages
             using (Stream newpdfStream = new FileStream(fileName, FileMode.Open, FileAccess.Read))
@@ -318,7 +318,7 @@ namespace ScanMonitorApp
 
                 // Create new structures for the information
                 int pageNumber = 1;
-                List <ScanPageText> scanPages = new List<ScanPageText>();
+                List<List<ScanTextElem>> scanPagesText = new List<List<ScanTextElem>>();
                 foreach (List<LocationTextExtractionStrategyEx.TextInfo> pageInfo in extractedTextAndLoc)
                 {
                     iTextSharp.text.Rectangle pageRect = pdfReader.GetPageSize(pageNumber);
@@ -329,18 +329,17 @@ namespace ScanMonitorApp
                         ScanTextElem sti = new ScanTextElem(txtInfo.Text, boundsRect);
                         scanTextElems.Add(sti);
                     }
-                    ScanPageText spt = new ScanPageText(scanTextElems);
-                    scanPages.Add(spt);
+                    scanPagesText.Add(scanTextElems);
                     pageNumber++;
                 }
 
-                // File unique name
-                string uniqueName = Path.GetFileNameWithoutExtension(fileName);
+                // Set datetime
                 DateTime fileDateTime = File.GetCreationTime(fileName);
 
                 // Complete the document info
-                ScanDocInfo scanDocInfo = new ScanDocInfo(uniqueName, pdfReader.NumberOfPages, numPagesWithText,
+                ScanDocInfo scanDocInfo = new ScanDocInfo(uniqName, pdfReader.NumberOfPages, numPagesWithText,
                             "", fileDateTime, fileDateTime, "", "");
+                ScanPages scanPages = new ScanPages(uniqName, scanPagesText);
                 return new ScanDocAllInfo(scanDocInfo, scanPages);
             }
         }

@@ -32,15 +32,16 @@ namespace ScanMonitorApp
     public partial class MainWindow : MetroWindow
     {
         private const bool TEST_MODE = true;
-        private const bool TEST_ON_MACAIR = true;
+        private const bool TEST_ON_MACAIR = false;
 
         private List<string> foldersToMonitor = new List<string> { Properties.Settings.Default.FolderToMonitor };
         private string pendingDocFolder = TEST_ON_MACAIR ? Properties.Settings.Default.TestPendingDocFolder : Properties.Settings.Default.PendingDocFolder;
-        private string pendingTmpFolder = TEST_ON_MACAIR ? Properties.Settings.Default.TestPendingTmpFolder : Properties.Settings.Default.PendingTmpFolder;
+        private string docAdminImgFolderBase = TEST_ON_MACAIR ? Properties.Settings.Default.TestDocAdminImgFolderBase : Properties.Settings.Default.DocAdminImgFolderBase;
         private int maxPagesForImages = Properties.Settings.Default.MaxPagesForImages;
         private int _maxPagesForText = Properties.Settings.Default.MaxPagesForText;
         private string _dbNameForDocs = Properties.Settings.Default.DbNameForDocs;
-        private string _dbCollectionForDocs = Properties.Settings.Default.DbCollectionForDocs;
+        private string _dbCollectionForDocInfo = Properties.Settings.Default.DbCollectionForDocInfo;
+        private string _dbCollectionForDocPages = Properties.Settings.Default.DbCollectionForDocPages;
         private string _dbNameForDocTypes = Properties.Settings.Default.DbNameForDocs;
         private string _dbCollectionForDocTypes = Properties.Settings.Default.DbCollectionForDocTypes;
 
@@ -152,8 +153,8 @@ namespace ScanMonitorApp
             _docTypesMatcher = new DocTypesMatcher(_dbNameForDocs, _dbCollectionForDocTypes);
 
             // Scanned document handler
-            _scanDocHandler = new ScanDocHandler(AddToStatusText, _docTypesMatcher, pendingDocFolder, pendingTmpFolder,
-                            maxPagesForImages, _maxPagesForText, _dbNameForDocs, _dbCollectionForDocs);
+            _scanDocHandler = new ScanDocHandler(AddToStatusText, _docTypesMatcher, pendingDocFolder, docAdminImgFolderBase,
+                            maxPagesForImages, _maxPagesForText, _dbNameForDocs, _dbCollectionForDocInfo, _dbCollectionForDocPages);
 
             // Scan folder watcher
             _scanFileMonitor = new ScanFileMonitor(AddToStatusText, _scanDocHandler);

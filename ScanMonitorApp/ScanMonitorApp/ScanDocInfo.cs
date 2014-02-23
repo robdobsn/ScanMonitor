@@ -9,22 +9,22 @@ namespace ScanMonitorApp
 {
     public class ScanDocAllInfo
     {
-        public ScanDocAllInfo(ScanDocInfo sdi, List<ScanPageText> spt)
+        public ScanDocAllInfo(ScanDocInfo sdi, ScanPages spages)
         {
             scanDocInfo = sdi;
-            scanPages = spt;
+            scanPages = spages;
         }
         public ObjectId Id;
         public ScanDocInfo scanDocInfo { get; set; }
-        public List<ScanPageText> scanPages { get; set; }
+        public ScanPages scanPages { get; set; }
     }
 
     public class ScanDocInfo
     {
-        public ScanDocInfo(string a_name, int a_numPages, int a_numPagesWithText, string a_docTypeFiled, 
+        public ScanDocInfo(string a_uniqname, int a_numPages, int a_numPagesWithText, string a_docTypeFiled, 
                         DateTime a_docDateFiled, DateTime a_createDate, string a_docDescr, string scanPgBase)
         {
-            docName = a_name;
+            uniqName = a_uniqname;
             numPages = a_numPages;
             numPagesWithText = a_numPagesWithText;
             docTypeFiled = a_docTypeFiled;
@@ -34,7 +34,8 @@ namespace ScanMonitorApp
             scanPageImageFileBase = scanPgBase;
             docTypeMatchResult = null;
         }
-        public string docName { get; set; }
+        public ObjectId Id;
+        public string uniqName { get; set; }
         public int numPages { get; set; }
         public int numPagesWithText { get; set; }
         public string docTypeFiled { get; set; }
@@ -43,6 +44,24 @@ namespace ScanMonitorApp
         public string docDescr { get; set; }
         public string scanPageImageFileBase { get; set; }
         public DocTypeMatchResult docTypeMatchResult { get; set; }
+
+        public static string GetUniqNameForFile(string fileName)
+        {
+            return System.IO.Path.GetFileNameWithoutExtension(fileName);
+        }
+    }
+
+    public class ScanPages
+    {
+        public ObjectId Id;
+        public string uniqName { get; set; }
+        public List<List<ScanTextElem>> scanPagesText { get; set; }
+
+        public ScanPages(string a_uniqName, List<List<ScanTextElem>> spagesText)
+        {
+            uniqName = a_uniqName;
+            scanPagesText = spagesText;
+        }
     }
 
     public class ScanTextElem
@@ -54,14 +73,5 @@ namespace ScanMonitorApp
         }
         public string text { get; set; }
         public DocRectangle bounds { get; set; }
-    }
-
-    public class ScanPageText
-    {
-        public ScanPageText(List<ScanTextElem> ste)
-        {
-            textElems = ste;
-        }
-        public List<ScanTextElem> textElems { get; set; }
     }
 }

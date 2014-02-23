@@ -1,15 +1,18 @@
 ﻿<Window x:Class="ScanMonitorApp.AuditView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="AuditView" Height="526" Width="833" DataContext="{Binding Mode=OneWay, RelativeSource={RelativeSource Self}}">
+        Title="AuditView" Height="526" Width="833" 
+        >
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
-        <ListView x:Name="auditListView" Height="318" Margin="10,10,385,0" VerticalAlignment="Top" ItemsSource="{Binding AuditDataColl}" SelectionChanged="auditListView_SelectionChanged">
+        <ListView x:Name="auditListView" Height="318" Margin="10,10,385,0" VerticalAlignment="Top" SelectionChanged="auditListView_SelectionChanged">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="Uniq Name" DisplayMemberBinding="{Binding UniqName}"/>
+                    <GridViewColumn Header="DestOk" DisplayMemberBinding="{Binding DestOk}"/>
+                    <GridViewColumn Header="ArcvOk" DisplayMemberBinding="{Binding ArcvOk}"/>
                     <GridViewColumn Header="Doc Type" DisplayMemberBinding="{Binding DocType}"/>
                     <GridViewColumn Header="Proc" DisplayMemberBinding="{Binding ProcStatus}"/>
                     <GridViewColumn Header="Dest File" DisplayMemberBinding="{Binding DestFile}"/>

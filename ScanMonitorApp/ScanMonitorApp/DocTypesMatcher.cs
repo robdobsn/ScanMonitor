@@ -77,7 +77,7 @@ namespace ScanMonitorApp
             return matchResult;
         }
 
-        public bool MatchAgainstDocText(string matchExpression, List<ScanPageText> scanPages)
+        public bool MatchAgainstDocText(string matchExpression, ScanPages scanPages)
         {
             //// Parse the match expresson
             //TinyPgDocExpr.ParseTreeEval tree = new TinyPgDocExpr.ParseTreeEval();
@@ -88,7 +88,7 @@ namespace ScanMonitorApp
             return EvalMatch(st, scanPages);
         }
 
-        public bool EvalMatch(StringTok st, List<ScanPageText> scanPages)
+        public bool EvalMatch(StringTok st, ScanPages scanPages)
         {
             bool result = false;
             string token = "";
@@ -113,12 +113,12 @@ namespace ScanMonitorApp
             return result;
         }
 
-        public bool MatchString(string str, DocRectangle docRec, List<ScanPageText> scanPages)
+        public bool MatchString(string str, DocRectangle docRec, ScanPages scanPages)
         {
-            for (int pageIdx = 0; pageIdx < scanPages.Count; pageIdx++)
+            for (int pageIdx = 0; pageIdx < scanPages.scanPagesText.Count; pageIdx++)
             {
-                ScanPageText scanPageText = scanPages[pageIdx];
-                foreach (ScanTextElem textElem in scanPageText.textElems)
+                List<ScanTextElem> scanPageText = scanPages.scanPagesText[pageIdx];
+                foreach (ScanTextElem textElem in scanPageText)
                 {
                     // Check bounds
                     if (docRec.Contains(textElem.bounds))
