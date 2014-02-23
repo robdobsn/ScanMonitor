@@ -200,5 +200,27 @@ namespace ScanMonitorApp
                 _docTypesMatcher.AddOldDocTypes(filename);
             }
         }
+
+        private void butViewAuditData_Click(object sender, RoutedEventArgs e)
+        {
+            // Configure open file dialog box
+            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+            dlg.FileName = @"\\N7700PRO\Archive\ScanAdmin\ScanLogs\ScanLog.log";
+            dlg.DefaultExt = ".log"; // Default file extension
+            dlg.Filter = "Log documents (.log)|*.log"; // Filter files by extension 
+
+            // Show open file dialog box
+            Nullable<bool> result = dlg.ShowDialog();
+
+            // Process open file dialog box results 
+            if (result == true)
+            {
+                // Open document 
+                string filename = dlg.FileName;
+                AuditView av = new AuditView();
+                av.ReadAuditFile(filename);
+                av.ShowDialog();
+            }
+        }
     }
 }

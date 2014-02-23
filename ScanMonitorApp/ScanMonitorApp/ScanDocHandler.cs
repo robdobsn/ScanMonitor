@@ -63,6 +63,15 @@ namespace ScanMonitorApp
             return database.GetCollection<ScanDocAllInfo>(_dbCollectionForDocs);
         }
 
+        public void RasterizePdfFile(string uniqName, string fileName)
+        {
+            // get uniq name for file
+            // remove _ from uniq name
+            // use first 6 chars (year and month) of uniq name for subfolder name
+            // append subfolder name to scandocsimages folder (- should be scanadminbase + docimages but use a separate setting to allow folder structure changes)
+            // process image files to folder
+        }
+
         public void ProcessPdfFile(string fileName)
         {
             // First check database connection is ok

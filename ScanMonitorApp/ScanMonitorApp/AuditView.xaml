@@ -1,0 +1,27 @@
+﻿<Window x:Class="ScanMonitorApp.AuditView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AuditView" Height="526" Width="833" DataContext="{Binding Mode=OneWay, RelativeSource={RelativeSource Self}}">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        <ListView x:Name="auditListView" Height="318" Margin="10,10,385,0" VerticalAlignment="Top" ItemsSource="{Binding AuditDataColl}" SelectionChanged="auditListView_SelectionChanged">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Uniq Name" DisplayMemberBinding="{Binding UniqName}"/>
+                    <GridViewColumn Header="Doc Type" DisplayMemberBinding="{Binding DocType}"/>
+                    <GridViewColumn Header="Proc" DisplayMemberBinding="{Binding ProcStatus}"/>
+                    <GridViewColumn Header="Dest File" DisplayMemberBinding="{Binding DestFile}"/>
+                    <GridViewColumn Header="Archive File" DisplayMemberBinding="{Binding ArchiveFile}"/>
+                    <GridViewColumn Header="Orig File" DisplayMemberBinding="{Binding OrigFileName}"/>
+                    <GridViewColumn Header="Proc'ed" DisplayMemberBinding="{Binding ProcDateAndTime}"/>
+                    <GridViewColumn Header="Proc Msg" DisplayMemberBinding="{Binding ProcMessage}"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+        <Image x:Name="auditFileImage" Margin="0,10,10,10" HorizontalAlignment="Right" Width="370"/>
+        <Grid x:Name="auditFileInfoGrid" Margin="10,333,385,10"/>
+
+    </Grid>
+</Window>

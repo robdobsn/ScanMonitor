@@ -80,6 +80,9 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="AuditView.xaml.cs">
+      <DependentUpon>AuditView.xaml</DependentUpon>
+    </Compile>
     <Compile Include="DocType.cs" />
     <Compile Include="DocTypesMatcher.cs" />
     <Compile Include="OldXmlRulesManager.cs" />
@@ -93,6 +96,10 @@
     <Compile Include="WebEndPoint_ScanDocs.cs" />
     <Compile Include="WebServer\WebEndPoint.cs" />
     <Compile Include="WebServer\WebServer.cs" />
+    <Page Include="AuditView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
