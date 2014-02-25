@@ -36,14 +36,18 @@ namespace ScanMonitorApp
 
         private List<string> foldersToMonitor = new List<string> { Properties.Settings.Default.FolderToMonitor };
         private string pendingDocFolder = TEST_ON_MACAIR ? Properties.Settings.Default.TestPendingDocFolder : Properties.Settings.Default.PendingDocFolder;
-        private string docAdminImgFolderBase = TEST_ON_MACAIR ? Properties.Settings.Default.TestDocAdminImgFolderBase : Properties.Settings.Default.DocAdminImgFolderBase;
-        private int maxPagesForImages = Properties.Settings.Default.MaxPagesForImages;
-        private int _maxPagesForText = Properties.Settings.Default.MaxPagesForText;
-        private string _dbNameForDocs = Properties.Settings.Default.DbNameForDocs;
-        private string _dbCollectionForDocInfo = Properties.Settings.Default.DbCollectionForDocInfo;
-        private string _dbCollectionForDocPages = Properties.Settings.Default.DbCollectionForDocPages;
+
         private string _dbNameForDocTypes = Properties.Settings.Default.DbNameForDocs;
         private string _dbCollectionForDocTypes = Properties.Settings.Default.DbCollectionForDocTypes;
+        private ScanDocHandlerConfig _scanDocHandlerConfig = new ScanDocHandlerConfig(
+            TEST_ON_MACAIR ? Properties.Settings.Default.TestDocAdminImgFolderBase : Properties.Settings.Default.DocAdminImgFolderBase,
+            Properties.Settings.Default.MaxPagesForImages,
+            Properties.Settings.Default.MaxPagesForText,
+            Properties.Settings.Default.DbNameForDocs,
+            Properties.Settings.Default.DbCollectionForDocInfo,
+            Properties.Settings.Default.DbCollectionForDocPages,
+            Properties.Settings.Default.DbCollectionForFiledDocs
+            );
 
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private System.Windows.Forms.NotifyIcon _notifyIcon;
@@ -150,11 +154,10 @@ namespace ScanMonitorApp
             logger.Info("App Started");
 
             // Document matcher
-            _docTypesMatcher = new DocTypesMatcher(_dbNameForDocs, _dbCollectionForDocTypes);
+            _docTypesMatcher = new DocTypesMatcher(_dbNameForDocTypes, _dbCollectionForDocTypes);
 
             // Scanned document handler
-            _scanDocHandler = new ScanDocHandler(AddToStatusText, _docTypesMatcher, pendingDocFolder, docAdminImgFolderBase,
-                            maxPagesForImages, _maxPagesForText, _dbNameForDocs, _dbCollectionForDocInfo, _dbCollectionForDocPages);
+            _scanDocHandler = new ScanDocHandler(AddToStatusText, _docTypesMatcher, _scanDocHandlerConfig);
 
             // Scan folder watcher
             _scanFileMonitor = new ScanFileMonitor(AddToStatusText, _scanDocHandler);
@@ -167,22 +170,7 @@ namespace ScanMonitorApp
             ws.Run();
          }
 
-        private void Test1_Click(object sender, RoutedEventArgs e)
-        {
-            _scanFileMonitor.Test1();
-        }
-
-        private void Test2_Click(object sender, RoutedEventArgs e)
-        {
-            _scanFileMonitor.Test2();
-        }
-
-        private void Test3_Click(object sender, RoutedEventArgs e)
-        {
-            _scanFileMonitor.Test3();
-        }
-
-        private void AddOldDocTypes_Click(object sender, RoutedEventArgs e)
+        private void butAddOldDocTypes_Click(object sender, RoutedEventArgs e)
         {
             // Configure open file dialog box
             Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
@@ -198,7 +186,7 @@ namespace ScanMonitorApp
             {
                 // Open document 
                 string filename = dlg.FileName;
-                _docTypesMatcher.AddOldDocTypes(filename);
+                MigrateFromOldApp.AddOldDocTypes(filename, _docTypesMatcher);
             }
         }
 
@@ -218,9 +206,35 @@ namespace ScanMonitorApp
             {
                 // Open document 
                 string filename = dlg.FileName;
-                AuditView av = new AuditView();
-                av.ReadAuditFile(filename);
+                AuditView av = new AuditView(_scanDocHandler, _docTypesMatcher);
                 av.ShowDialog();
+            }
+        }
+
+        private void butViewDocTypes_Click(object sender, RoutedEventArgs e)
+        {
+            DocTypeView dtv = new DocTypeView(_scanDocHandler, _docTypesMatcher);
+            dtv.ShowDocTypeList();
+            dtv.ShowDialog();
+        }
+
+        private void butAddOldLogRecs_Click(object sender, RoutedEventArgs e)
+        {
+            // Configure open file dialog box
+            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+            dlg.FileName = @"\\N7700PRO\Archive\ScanAdmin\ScanLogs";
+            dlg.DefaultExt = ".log"; // Default file extension
+            dlg.Filter = "Log documents (.log)|*.log"; // Filter files by extension 
+
+            // Show open file dialog box
+            Nullable<bool> result = dlg.ShowDialog();
+
+            // Process open file dialog box results 
+            if (result == true)
+            {
+                // Open document 
+                string filename = dlg.FileName;
+                MigrateFromOldApp.LoadAuditFileToDb(filename, _scanDocHandler);
             }
         }
     }

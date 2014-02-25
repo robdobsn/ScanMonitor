@@ -164,7 +164,11 @@ namespace ScanMonitorApp
                 AscentLine = ascentLine;
                 DecentLine = decentLine;
 
-                m_orientationVector = m_endLocation.Subtract(m_startLocation).Normalize();
+                m_orientationVector = m_endLocation.Subtract(m_startLocation);
+                if (m_orientationVector.Length == 0)
+                    m_orientationVector = new Vector(1, 0, 0);
+                m_orientationVector = m_orientationVector.Normalize(); 
+
                 m_orientationMagnitude = (int)(Math.Atan2(m_orientationVector[iTextSharp.text.pdf.parser.Vector.I2], m_orientationVector[iTextSharp.text.pdf.parser.Vector.I1]) * 1000);
 
                 // see http://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html
@@ -227,8 +231,13 @@ namespace ScanMonitorApp
                     // note: it's never safe to check floating point numbers for equality, and if two chunks
                     // are truly right on top of each other, which one comes first or second just doesn't matter
                     // so we arbitrarily choose this way.
+                    //if (m_distParallelStart == rhs.m_distParallelStart)
+                    //    return 0;
+
                     rslt = m_distParallelStart < rhs.m_distParallelStart ? -1 : 1;
 
+                    //Console.WriteLine("Comparing {0} with {1}, {2} {3} {4} {5} {6} {7} returns {8}",
+                    //                this, rhs, m_orientationMagnitude, rhs.m_orientationMagnitude, m_distPerpendicular, rhs.m_distPerpendicular, m_distParallelStart, rhs.m_distParallelStart, rslt);
                     return rslt;
                 }
                 else
@@ -295,7 +304,7 @@ namespace ScanMonitorApp
             return new DocRectangle(tlX * 100 / pageRect.Width, (pageRect.Height - tlY) * 100 / pageRect.Height, width * 100 / pageRect.Width, height * 100 / pageRect.Height);
         }
 
-        public ScanDocAllInfo ExtractDocInfo(string uniqName, string fileName, int maxPagesToExtractFrom)
+        public ScanPages ExtractDocInfo(string uniqName, string fileName, int maxPagesToExtractFrom, ref int totalPages)
         {
             // Extract text and location from pdf pages
             using (Stream newpdfStream = new FileStream(fileName, FileMode.Open, FileAccess.Read))
@@ -333,14 +342,10 @@ namespace ScanMonitorApp
                     pageNumber++;
                 }
 
-                // Set datetime
-                DateTime fileDateTime = File.GetCreationTime(fileName);
-
-                // Complete the document info
-                ScanDocInfo scanDocInfo = new ScanDocInfo(uniqName, pdfReader.NumberOfPages, numPagesWithText,
-                            "", fileDateTime, fileDateTime, "", "");
+                // Total pages
+                totalPages = pdfReader.NumberOfPages;
                 ScanPages scanPages = new ScanPages(uniqName, scanPagesText);
-                return new ScanDocAllInfo(scanDocInfo, scanPages);
+                return scanPages;
             }
         }
     }

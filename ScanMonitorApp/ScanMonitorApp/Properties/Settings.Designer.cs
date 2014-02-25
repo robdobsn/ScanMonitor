@@ -12,7 +12,7 @@ namespace ScanMonitorApp.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "12.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "11.0.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -161,6 +161,30 @@ namespace ScanMonitorApp.Properties {
             }
             set {
                 this["DbCollectionForDocPages"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("FiledDocInfo")]
+        public string DbCollectionForFiledDocs {
+            get {
+                return ((string)(this["DbCollectionForFiledDocs"]));
+            }
+            set {
+                this["DbCollectionForFiledDocs"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("DocTypesMacros")]
+        public string DbCollectionForMacroSubst {
+            get {
+                return ((string)(this["DbCollectionForMacroSubst"]));
+            }
+            set {
+                this["DbCollectionForMacroSubst"] = value;
             }
         }
     }

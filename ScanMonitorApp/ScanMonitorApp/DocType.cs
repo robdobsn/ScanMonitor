@@ -11,9 +11,9 @@ namespace ScanMonitorApp
     public class DocType
     {
         public ObjectId Id;
-        public string docTypeName;
-        public string matchExpression;
-        public string thumbnailForDocType;
+        public string docTypeName { get; set; }
+        public string matchExpression { get; set; }
+        public string thumbnailForDocType { get; set; }
     }
 
     public class DocTypeMatchResult

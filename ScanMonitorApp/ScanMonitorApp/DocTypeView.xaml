@@ -1,0 +1,44 @@
+﻿<Window x:Class="ScanMonitorApp.DocTypeView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="DocTypeView" Height="615" Width="1083">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="161*"/>
+            <RowDefinition Height="365*" />
+        </Grid.RowDefinitions>
+        <ListView x:Name="docTypeListView" Margin="10" SelectionChanged="docTypeListView_SelectionChanged" Grid.Row="0" Grid.Column="0">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Doc Type" DisplayMemberBinding="{Binding docTypeName}"/>
+                    <GridViewColumn Header="Match Expression" DisplayMemberBinding="{Binding matchExpression}"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+        <GridSplitter Grid.Column="1" Margin="0,0,413,0" Width="0"/>
+        <Image x:Name="exampleFileImage" Margin="10" Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"/>
+        <GridSplitter Grid.Column="1" Margin="0,0,413,0" Width="0"/>
+        <Grid x:Name="auditFileInfoGrid" Margin="10,10,10,0" Grid.Column="0" Grid.Row="1">
+            <Label Content="Doc Type" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="114" RenderTransformOrigin="0.488,0.429"/>
+            <TextBox x:Name="txtDocTypeName" Height="18" Margin="119,0,10,0" TextWrapping="Wrap" VerticalAlignment="Top"/>
+            <Label Content="Match Expression" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="114" RenderTransformOrigin="0.488,0.429" Margin="0,26,0,0"/>
+            <TextBox x:Name="txtMatchExpression" Margin="119,31,10,0" TextWrapping="Wrap" Height="43" VerticalAlignment="Top"/>
+            <Button x:Name="btnTestMatch" Content="Find Matches" HorizontalAlignment="Left" Height="21" Margin="10,237,0,0" VerticalAlignment="Top" Width="90" Click="btnTestMatch_Click"/>
+            <ListView x:Name="listMatchResults" Margin="119,237,10,10" SelectionChanged="listMatchResults_SelectionChanged">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="Unique Name" DisplayMemberBinding="{Binding uniqName}"/>
+                        <GridViewColumn Header="Match Ok" DisplayMemberBinding="{Binding typeMatchOk}"/>
+                        <GridViewColumn Header="Filed Type" DisplayMemberBinding="{Binding docTypeFiled}"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+            <ProgressBar x:Name="progressDocMatch" HorizontalAlignment="Left" Height="23" Margin="10,267,0,0" VerticalAlignment="Top" Width="90"/>
+            <Label x:Name="lblMatchStatus" Content="" HorizontalAlignment="Left" Height="29" Margin="10,298,0,0" VerticalAlignment="Top" Width="90"/>
+        </Grid>
+    </Grid>
+</Window>

@@ -26,12 +26,12 @@ namespace ScanMonitorApp
             if (webCmdParams[0] == "list")
             {
                 if (webCmdParams.Count > 0)
-                    return _scanDocHandler.ListScanDocs();
+                    return _scanDocHandler.GetListOfScanDocsJson();
             }
             else if (webCmdParams[0] == "get")
             {
                 if (webCmdParams.Count > 1)
-                    return _scanDocHandler.GetScanDoc(webCmdParams[1]);
+                    return _scanDocHandler.GetScanDocJson(webCmdParams[1]);
             }
             return "Incorrect parameter to scandocs";
         }

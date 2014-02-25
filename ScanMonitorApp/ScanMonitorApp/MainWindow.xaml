@@ -5,11 +5,10 @@
         Title="Scan Monitor" Height="350" Width="525" Closed="Window_Closed"  Icon="res/scanner48x48.ico">
     <Grid>
         <Label x:Name="statusText" Content="Label" HorizontalAlignment="Left" Height="80" VerticalAlignment="Top" Width="517"/>
-        <Button x:Name="Test1" Content="Test1" HorizontalAlignment="Left" Height="43" Margin="31,161,0,0" VerticalAlignment="Top" Width="53" Click="Test1_Click"/>
-        <Button x:Name="Test2" Content="Test2" HorizontalAlignment="Left" Height="43" Margin="101,161,0,0" VerticalAlignment="Top" Width="53" Click="Test2_Click"/>
-        <Button x:Name="Test3" Content="Test3" HorizontalAlignment="Left" Height="43" Margin="177,161,0,0" VerticalAlignment="Top" Width="53" Click="Test3_Click"/>
-        <Button x:Name="AddOldDocTypes" Content="Add Old Doc Types" HorizontalAlignment="Left" Margin="21,244,0,0" VerticalAlignment="Top" Width="133" Click="AddOldDocTypes_Click"/>
-        <Button x:Name="butViewAuditData" Content="View Audit Data" HorizontalAlignment="Left" Margin="191,244,0,0" VerticalAlignment="Top" Width="160" Click="butViewAuditData_Click"/>
+        <Button x:Name="butAddOldDocTypes" Content="Add Old Doc Types" HorizontalAlignment="Left" Margin="21,244,0,0" VerticalAlignment="Top" Width="160" Click="butAddOldDocTypes_Click"/>
+        <Button x:Name="butViewAuditData" Content="View Audit Data" HorizontalAlignment="Left" Margin="21,274,0,0" VerticalAlignment="Top" Width="160" Click="butViewAuditData_Click"/>
+        <Button x:Name="butViewDocTypes" Content="View Doc Types" HorizontalAlignment="Left" Margin="186,274,0,0" VerticalAlignment="Top" Width="160" Click="butViewDocTypes_Click"/>
+        <Button x:Name="butAddOldLogRecs2" Content="Add Recs from Old Log" HorizontalAlignment="Left" Margin="186,244,0,0" VerticalAlignment="Top" Width="160" Click="butAddOldLogRecs_Click"/>
 
     </Grid>
 </Controls:MetroWindow>

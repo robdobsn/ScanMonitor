@@ -21,6 +21,7 @@ namespace ScanMonitorApp
         private string _pendingDocFolder;
         private ScanDocHandler _scanDocHandler;
         private bool _testMode = false;
+        private bool bEnabled = false;
 
         public ScanFileMonitor(ReportStatus reportStatusFn, ScanDocHandler scanDocHandler)
         {
@@ -180,6 +181,9 @@ namespace ScanMonitorApp
 
         public void MoveAndProcessPdfFile(string fileName)
         {
+            if (!bEnabled)
+                return;
+
             // Wait until file is moveable - or time-out
             if (!WaitForFileToBeMoveable(fileName))
                 return;
@@ -190,7 +194,9 @@ namespace ScanMonitorApp
                 return;
 
             // Process Pdf file
-            _scanDocHandler.ProcessPdfFile(destFileName);
+            DateTime fileDateTime = File.GetCreationTime(destFileName);
+            string uniqName = ScanDocInfo.GetUniqNameForFile(fileName, fileDateTime);
+            // _scanDocHandler.ProcessPdfFile(destFileName, uniqName);
         }
 
         public void FileMonitorThread()
@@ -201,20 +207,5 @@ namespace ScanMonitorApp
             }
 
         }
-
-        public void Test1()
-        {
-            // _scanDocHandler.ProcessPdfFile(@"M:\PendingFiling\Scans\2014_02_04_11_22_27.pdf");
-            _scanDocHandler.ProcessPdfFile(@"C:\Users\Rob\Documents\20140209 Train\Scanning\TestFiles\2014_02_04_17_14_50.pdf");
-        }
-        public void Test2()
-        {
-            _scanDocHandler.ProcessPdfFile(@"M:\PendingFiling\Scans\2014_02_04_14_32_11.pdf");
-        }
-        public void Test3()
-        {
-            _scanDocHandler.ProcessPdfFile(@"M:\PendingFiling\Scans\2014_02_04_14_33_12.pdf");
-        }
-
     }
 }

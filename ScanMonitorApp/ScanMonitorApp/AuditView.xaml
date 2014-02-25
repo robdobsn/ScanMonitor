@@ -1,13 +1,18 @@
 ﻿<Window x:Class="ScanMonitorApp.AuditView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="AuditView" Height="526" Width="833" 
+        Title="AuditView" Height="562" Width="833" 
         >
-    <Grid>
+    <Grid RenderTransformOrigin="0.498,0.734">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition/>
+            <ColumnDefinition />
+            <ColumnDefinition />
         </Grid.ColumnDefinitions>
-        <ListView x:Name="auditListView" Height="318" Margin="10,10,385,0" VerticalAlignment="Top" SelectionChanged="auditListView_SelectionChanged">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="393*"/>
+            <RowDefinition Height="139*" />
+        </Grid.RowDefinitions>
+        <ListView x:Name="auditListView" Margin="10" SelectionChanged="auditListView_SelectionChanged" Grid.Row="0" Grid.Column="0">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="Uniq Name" DisplayMemberBinding="{Binding UniqName}"/>
@@ -23,8 +28,19 @@
                 </GridView>
             </ListView.View>
         </ListView>
-        <Image x:Name="auditFileImage" Margin="0,10,10,10" HorizontalAlignment="Right" Width="370"/>
-        <Grid x:Name="auditFileInfoGrid" Margin="10,333,385,10"/>
+        <GridSplitter Grid.Column="1" Margin="0,0,413,0" Width="0"/>
+        <Image x:Name="auditFileImage" Margin="10" Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"/>
+        <GridSplitter Grid.Column="1" Margin="0,0,413,0" Width="0"/>
+        <Grid x:Name="auditFileInfoGrid" Margin="10,10,10,0" Grid.Column="0" Grid.Row="1">
+            <Label Content="OrigDocType" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="114" RenderTransformOrigin="0.488,0.429"/>
+            <TextBox x:Name="txtOrigDocTypeName" HorizontalAlignment="Left" Height="18" Margin="119,0,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="263"/>
+            <Label Content="OrigExpression" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="114" RenderTransformOrigin="0.488,0.429" Margin="0,26,0,0"/>
+            <TextBox x:Name="txtOrigExpression" HorizontalAlignment="Left" Height="36" Margin="119,26,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="263"/>
+            <Label Content="NewDocType" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="114" RenderTransformOrigin="0.488,0.429" Margin="0,62,0,0"/>
+            <TextBox x:Name="txtNewDocTypeName" HorizontalAlignment="Left" Height="18" Margin="119,62,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="263"/>
+            <Label Content="NewExpression" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="114" RenderTransformOrigin="0.488,0.429" Margin="0,88,0,0"/>
+            <TextBox x:Name="txtNewExpression" HorizontalAlignment="Left" Height="36" Margin="119,88,0,-5" TextWrapping="Wrap" VerticalAlignment="Top" Width="263"/>
+        </Grid>
 
     </Grid>
 </Window>

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NLog;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
@@ -22,57 +23,21 @@ namespace ScanMonitorApp
     /// </summary>
     public partial class AuditView : Window
     {
-        private List<TextSubst> textSubst = new List<TextSubst>();
+        private static Logger logger = LogManager.GetCurrentClassLogger();
+        private ScanDocHandler _scanDocHandler;
+        private DocTypesMatcher _docTypesMatcher;
 
-        public AuditView()
+        public AuditView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher)
         {
             InitializeComponent();
-            textSubst.Add(new TextSubst(@"\RobAndJudyPersonal\Info\Manuals - ", @"\RobAndJudyPersonal\"));
-            textSubst.Add(new TextSubst(@"\8 Dick Place\Self storage", @"\8 Dick Place\Removals & Storage\Self storage"));
+            _scanDocHandler = scanDocHandler;
+            _docTypesMatcher = docTypesMatcher;
         }
 
         ObservableCollection<AuditData> _auditDataColl = new ObservableCollection<AuditData>();
         public ObservableCollection<AuditData> AuditDataColl
         {
             get { return _auditDataColl; }
-        }
-
-        public void ReadAuditFile(string fileName)
-        {
-            // Read file
-            using (StreamReader sr = new StreamReader(fileName))
-            {
-                while (sr.Peek() >= 0)
-                {
-                    string line = sr.ReadLine();
-                    string[] fields = line.Split('\t');
-                    if (fields[5] != "OK")
-                        continue;
-                    AuditData ad = new AuditData();
-                    ad.ProcDateAndTime = fields[0];
-                    ad.DocType = fields[1];
-                    ad.OrigFileName = fields[2];
-                    string uniqName = ScanDocInfo.GetUniqNameForFile(fields[2]);
-                    ad.UniqName =uniqName;
-                    ad.DestFile = DoTextSubst(fields[3]);
-                    ad.ArchiveFile = fields[4];
-                    ad.ProcStatus = fields[5];
-                    ad.ProcMessage = fields[6];
-                    ad.DestOk = File.Exists(ad.DestFile) ? "" : "NO";
-                    ad.ArcvOk = File.Exists(ad.ArchiveFile) ? "" : "NO";
-                    _auditDataColl.Add(ad);
-                }
-            }
-            auditListView.ItemsSource = _auditDataColl;
-
-            //// Check validity
-            //for (int rowidx = 0; rowidx < auditListView.Items.Count; rowidx++)
-            //{
-            //    AuditData audData = (AuditData)(auditListView.Items[rowidx]);
-            //    string destFile = audData.DestFile;
-            //    if (File.Exists(destFile))
-            //        auditListView.
-            //}
         }
 
         private void auditListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -82,31 +47,56 @@ namespace ScanMonitorApp
                 AuditData selectedRow = e.AddedItems[0] as AuditData;
                 if (selectedRow != null)
                 {
-                    // Get file name
                     string fileName = selectedRow.ArchiveFile;
-                    if (File.Exists(fileName))
+                    string uniqName = System.IO.Path.GetFileNameWithoutExtension(fileName);
+                    string imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, uniqName, 1, false);
+                    try
                     {
-                        System.Drawing.Image img = PdfRasterizer.GetImageOfPage(fileName, 1);
-                        MemoryStream ms = new MemoryStream();
-                        img.Save(ms, System.Drawing.Imaging.ImageFormat.Jpeg);
-                        System.Windows.Media.Imaging.BitmapImage bImg = new System.Windows.Media.Imaging.BitmapImage();
-                        bImg.BeginInit();
-                        bImg.StreamSource = new MemoryStream(ms.ToArray());
-                        bImg.EndInit();
-                        auditFileImage.Source = bImg;
+                        auditFileImage.Source = new BitmapImage(new Uri(imgFileName));
                     }
+                    catch (Exception excp)
+                    {
+                        logger.Error("Loading bitmap file {0} excp {1}", imgFileName, excp.Message);
+                    }
+
+
+                    // Get doc type info
+                    DocType dtype = _docTypesMatcher.GetDocType(selectedRow.DocType);
+                    if (dtype != null)
+                    {
+                        txtOrigDocTypeName.Text = dtype.docTypeName;
+                        txtOrigExpression.Text = dtype.matchExpression;
+                    }
+
+                    ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(selectedRow.UniqName);
+                    txtNewDocTypeName.Text = scanDocAllInfo.scanDocInfo.docTypeMatchResult.docTypeName + "(" + scanDocAllInfo.scanDocInfo.docTypeMatchResult.matchCertaintyPercent.ToString() + "%)";
+                    DocType dtype2 = _docTypesMatcher.GetDocType(scanDocAllInfo.scanDocInfo.docTypeMatchResult.docTypeName);
+                    if (dtype2 != null)
+                    {
+                        txtNewExpression.Text = dtype2.matchExpression;
+                    }
+
+                    // Get file name
+                    //string fileName = selectedRow.ArchiveFile;
+                    //if (File.Exists(fileName))
+                    //{
+                    //    string imgName = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(selectedRow.ArchiveFile), System.IO.Path.GetFileNameWithoutExtension(selectedRow.ArchiveFile) + ".jpg");
+                    //    if (File.Exists(imgName))
+                    //        auditFileImage.Source = new BitmapImage(new Uri(imgName));
+
+                        //System.Drawing.Image img = PdfRasterizer.GetImageOfPage(fileName, 1);
+                        //MemoryStream ms = new MemoryStream();
+                        //img.Save(ms, System.Drawing.Imaging.ImageFormat.Jpeg);
+                        //System.Windows.Media.Imaging.BitmapImage bImg = new System.Windows.Media.Imaging.BitmapImage();
+                        //bImg.BeginInit();
+                        //bImg.StreamSource = new MemoryStream(ms.ToArray());
+                        //bImg.EndInit();
+                        //auditFileImage.Source = bImg;
+                    // }
                 }
             }
         }
 
-        private string DoTextSubst(string inStr)
-        {
-            foreach(TextSubst ts in textSubst)
-            {
-                inStr = inStr.Replace(ts.origText, ts.newText);
-            }
-            return inStr;
-        }
     }
 
     public class AuditData
@@ -123,14 +113,4 @@ namespace ScanMonitorApp
         public string ProcMessage { get; set; }
     }
 
-    public class TextSubst
-    {
-        public TextSubst(string o, string n)
-        {
-            origText = o;
-            newText = n;
-        }
-        public string origText;
-        public string newText;
-    }
 }

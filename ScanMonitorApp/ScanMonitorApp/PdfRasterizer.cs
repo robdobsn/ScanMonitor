@@ -19,7 +19,7 @@ namespace ScanMonitorApp
         private GhostscriptRasterizer _rasterizer = null;
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public List<string> Start(string inputPdfPath, string outputPath, int maxPages)
+        public List<string> Start(string inputPdfPath, string uniqName, string outputPath, int maxPages)
         {
             List<string> imgFileNames = new List<string>();
 
@@ -41,19 +41,15 @@ namespace ScanMonitorApp
 
             _rasterizer.Open(inputPdfPath, _lastInstalledVersion, false);
 
-            string baseName = Path.GetFileNameWithoutExtension(inputPdfPath);
-
             int numPagesToConvert = _rasterizer.PageCount;
             if (numPagesToConvert > maxPages)
                 numPagesToConvert = maxPages;
             for (int pageNumber = 1; pageNumber <= numPagesToConvert; pageNumber++)
             {
-                string pageFilePath = Path.Combine(outputPath, baseName + "_" + pageNumber.ToString() + ".png");
-
+                string pageFileName = GetFilenameOfImageOfPage(outputPath, uniqName, pageNumber, true);
                 System.Drawing.Image img = _rasterizer.GetPage(desired_x_dpi, desired_y_dpi, pageNumber);
-                img.Save(pageFilePath, ImageFormat.Png);
-
-                imgFileNames.Add(pageFilePath); 
+                img.Save(pageFileName, ImageFormat.Png);
+                imgFileNames.Add(pageFileName);
             }
             // Stop timing
             stopwatch.Stop();
@@ -62,6 +58,11 @@ namespace ScanMonitorApp
             logger.Info("Converted {0} ({1} pages) to image files in {2}", inputPdfPath, numPagesToConvert, stopwatch.Elapsed);
 
             return imgFileNames;
+        }
+
+        public static string GetFilenameOfImageOfPage(string baseFolderForImages, string uniqName, int pageNum, bool bCreateFolderIfReqd)
+        {
+            return Path.Combine(ScanDocInfo.GetImageFolderForFile(baseFolderForImages, uniqName, bCreateFolderIfReqd), uniqName + "_" + pageNum.ToString() + ".png").Replace('\\', '/');
         }
 
         public static System.Drawing.Image GetImageOfPage(string fileName, int pageNum)

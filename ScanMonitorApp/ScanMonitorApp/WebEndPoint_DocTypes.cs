@@ -25,12 +25,12 @@ namespace ScanMonitorApp
             if (webCmdParams[0] == "list")
             {
                 if (webCmdParams.Count > 0)
-                    return _docTypesMatcher.ListDocTypes();
+                    return _docTypesMatcher.ListDocTypesJson();
             }
             else if (webCmdParams[0] == "get")
             {
                 if (webCmdParams.Count > 1)
-                    return _docTypesMatcher.GetDocType(Uri.UnescapeDataString(webCmdParams[1]));
+                    return _docTypesMatcher.GetDocTypeJson(Uri.UnescapeDataString(webCmdParams[1]));
             }
             return "Incorrect parameter to doctypes";
         }
