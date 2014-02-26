@@ -20,7 +20,24 @@
             </ListView.View>
         </ListView>
         <GridSplitter Grid.Column="1" Margin="0,0,413,0" Width="0"/>
-        <Image x:Name="exampleFileImage" Margin="10" Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"/>
+        <Image x:Name="exampleFileImage" Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" Grid.ColumnSpan="1" MouseDown="dragSelectionCanvas_MouseDown" MouseMove="dragSelectionCanvas_MouseMove" MouseUp="dragSelectionCanvas_MouseUp" SizeChanged="exampleFileImage_SizeChanged" />
+        <Canvas x:Name="docOverlayCanvas" Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" Grid.ColumnSpan="1" Panel.ZIndex="1">
+            <Border 
+                x:Name="dragSelectionBorder"
+                BorderBrush="Blue"
+                BorderThickness="1"
+                Background="LightBlue"
+                CornerRadius="1"
+                Opacity="0.5"
+                Visibility="Visible" Height="40" Width="102" Canvas.Left="95" Canvas.Top="82"
+            />
+        </Canvas>
+        <!--<Rectangle
+                x:Name="dragSelectionBorder"
+                Opacity="0.5"
+                Fill="LightBlue"
+                Visibility="Visible" Height="40" Width="102" Margin="150,107,285,32" Grid.Column="1" Grid.RowSpan="2"
+            />-->
         <GridSplitter Grid.Column="1" Margin="0,0,413,0" Width="0"/>
         <Grid x:Name="auditFileInfoGrid" Margin="10,10,10,0" Grid.Column="0" Grid.Row="1">
             <Label Content="Doc Type" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="114" RenderTransformOrigin="0.488,0.429"/>
@@ -39,6 +56,7 @@
             </ListView>
             <ProgressBar x:Name="progressDocMatch" HorizontalAlignment="Left" Height="23" Margin="10,267,0,0" VerticalAlignment="Top" Width="90"/>
             <Label x:Name="lblMatchStatus" Content="" HorizontalAlignment="Left" Height="29" Margin="10,298,0,0" VerticalAlignment="Top" Width="90"/>
+            <TextBox x:Name="txtDebug" HorizontalAlignment="Left" Height="127" Margin="25,88,0,0" TextWrapping="Wrap" Text="TextBox" VerticalAlignment="Top" Width="474"/>
         </Grid>
     </Grid>
 </Window>

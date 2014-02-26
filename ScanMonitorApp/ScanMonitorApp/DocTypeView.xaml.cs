@@ -29,6 +29,10 @@ namespace ScanMonitorApp
         BackgroundWorker _bwThread;
         ObservableCollection<DocType> _docTypeColl = new ObservableCollection<DocType>();
         ObservableCollection<DocCompareRslt> _docCompareRslts = new ObservableCollection<DocCompareRslt>();
+        bool _dragSelectActive = false;
+        Point _dragSelectFromPoint;
+        bool _dragSelectOverThreshold = false;
+        private static readonly double DragThreshold = 5;
 
         public DocTypeView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher)
         {
@@ -181,6 +185,98 @@ namespace ScanMonitorApp
                 }
             }
         }
+
+        private void dragSelectionCanvas_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left)
+            {
+                _dragSelectActive = true;
+                _dragSelectFromPoint = e.GetPosition(exampleFileImage);
+                //this.CaptureMouse();
+                e.Handled = true;
+            }
+        }
+
+        private void dragSelectionCanvas_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_dragSelectOverThreshold)
+            {
+                Point curMouseDownPoint = e.GetPosition(exampleFileImage);
+                DrawOverlayRect(_dragSelectFromPoint, curMouseDownPoint);
+                e.Handled = true;
+            }
+            else if (_dragSelectActive)
+            {
+                Point curMouseDownPoint = e.GetPosition(exampleFileImage);
+                var dragDelta = curMouseDownPoint - _dragSelectFromPoint;
+                double dragDistance = Math.Abs(dragDelta.Length);
+                if (dragDistance > DragThreshold)
+                {
+                    //
+                    // When the mouse has been dragged more than the threshold value commence drag selection.
+                    //
+                    _dragSelectOverThreshold = true;
+                    InitDragSelectionRect(_dragSelectFromPoint, curMouseDownPoint);
+                }
+                e.Handled = true;
+            }
+        }
+
+        private void dragSelectionCanvas_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left)
+            {
+                if (_dragSelectOverThreshold)
+                {
+                    //
+                    // Drag selection has ended, apply the 'selection rectangle'.
+                    //
+                    _dragSelectOverThreshold = false;
+//                    ApplyDragSelectionRect();
+                    e.Handled = true;
+                }
+
+                if (_dragSelectActive)
+                {
+                    _dragSelectActive = false;
+                    //this.ReleaseMouseCapture();
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void InitDragSelectionRect(Point pt1, Point pt2)
+        {
+            DrawOverlayRect(pt1, pt2);
+            dragSelectionBorder.Visibility = Visibility.Visible;
+        }
+
+        private void DrawOverlayRect(Point pt1, Point pt2)
+        {
+            // Convert to canvas coords
+            pt1 = exampleFileImage.TranslatePoint(pt1, docOverlayCanvas);
+            pt2 = exampleFileImage.TranslatePoint(pt2, docOverlayCanvas);
+
+            // Find top corner
+            double topLeftX = Math.Min(pt1.X, pt2.X);
+            double topLeftY = Math.Min(pt1.Y, pt2.Y);
+            double width = Math.Abs(pt1.X - pt2.X);
+            double height = Math.Abs(pt1.Y - pt2.Y);
+
+            txtDebug.Text = topLeftX.ToString() + ", " + topLeftY.ToString() + ", " + width.ToString() + ", " + height.ToString();
+
+            // Draw rect
+            Canvas.SetLeft(dragSelectionBorder, topLeftX);
+            Canvas.SetTop(dragSelectionBorder, topLeftY);
+            dragSelectionBorder.Width = width;
+            dragSelectionBorder.Height = height;
+        }
+
+        private void exampleFileImage_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+
+        }
+
     }
 
     public class DocCompareRslt
