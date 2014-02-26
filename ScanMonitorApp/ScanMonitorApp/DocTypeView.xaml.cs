@@ -75,7 +75,7 @@ namespace ScanMonitorApp
                 if (selDocType != null)
                 {
                     txtDocTypeName.Text = selDocType.docTypeName;
-                    txtMatchExpression.Text = selDocType.matchExpression;
+                    //txtMatchExpression.Text = selDocType.matchExpression;
                 }
             }
         }
@@ -274,6 +274,16 @@ namespace ScanMonitorApp
 
         private void exampleFileImage_SizeChanged(object sender, SizeChangedEventArgs e)
         {
+        }
+
+        private void txtMatchExpression_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (txtMatchExpression.Document == null)
+                return;
+
+            string txtExpr = new TextRange(txtMatchExpression.Document.ContentStart, txtMatchExpression.Document.ContentEnd).Text;
+
+            List<DocTypesMatcher.ExprParseTerm> exprParseTermList = _docTypesMatcher.ParseDocMatchExpression(txtExpr, 0);
 
         }
 

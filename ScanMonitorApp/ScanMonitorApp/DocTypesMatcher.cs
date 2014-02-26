@@ -83,6 +83,8 @@ namespace ScanMonitorApp
             string token = "";
             bool curOpIsOr = true;
             bool opIsInverse = false;
+            DocRectangle docRect = new DocRectangle(0, 0, 100, 100);
+            int docRectValIdx = 0;
             while((token = st.GetNextToken()) != null)
             {
                 if (token == "")
@@ -107,13 +109,42 @@ namespace ScanMonitorApp
                     opIsInverse = true;
                 else
                 {
-                    bool tmpRslt = MatchString(token, new DocRectangle(0, 0, 100, 100), scanPages);
+                    // We've reached a terminal token (string to match to text in the document)
+                    string stringToMatch = token;
+                    // See if there is a location defined by the next token
+                    while ((st.PeekNextToken() != null) && (st.PeekNextToken() == ""))
+                        st.GetNextToken();
+                    if ((st.PeekNextToken() != null) && (st.PeekNextToken() == "{"))
+                    {
+                        while ((token = st.GetNextToken()) != null)
+                        {
+                            if (token == "")
+                                continue;
+                            else if (token == "{")
+                                docRectValIdx = 0;
+                            else if (token == ",")
+                                docRectValIdx++;
+                            else if (token == "}")
+                                break;
+                            else
+                            {
+                                double rectVal = Double.Parse(token);
+                                docRect.SetVal(docRectValIdx, rectVal);
+                            }
+                        }
+                    }
+
+                    // Process the match string using the location rectangle
+                    bool tmpRslt = MatchString(stringToMatch, docRect, scanPages);
                     if (opIsInverse)
                         tmpRslt = !tmpRslt;
                     if (curOpIsOr)
                         result |= tmpRslt;
                     else
                         result &= tmpRslt;
+
+                    // Set the docRect to the entire page (ready for next term)
+                    docRect = new DocRectangle(0,0,100,100);
                 }
             }
             return result;
@@ -156,6 +187,13 @@ namespace ScanMonitorApp
                 if (curPos >= tokens.Length)
                     return null;
                 return tokens[curPos++];
+            }
+
+            public string PeekNextToken()
+            {
+                if (curPos >= tokens.Length)
+                    return null;
+                return tokens[curPos];
             }
         }
 
@@ -211,5 +249,114 @@ namespace ScanMonitorApp
             // add an enable / disable field to database and set in UI to turn on / off rules??
             // 
         }
+
+        public int ParserAddTextToPoint(List<ExprParseTerm> parseTermsList, string matchExpression, int lastTxtStartIdx, int chIdx, int curBracketDepth)
+        {
+            string s = matchExpression.Substring(lastTxtStartIdx, chIdx-lastTxtStartIdx);
+            if (s.Trim().Length > 0)
+                parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Text, lastTxtStartIdx, chIdx-lastTxtStartIdx, curBracketDepth));
+            return chIdx + 1;
+        }
+
+        public List<ExprParseTerm> ParseDocMatchExpression(string matchExpression, int cursorPosForBracketMatching)
+        {
+            // Go through the matchExpression finding parse terms
+            List<ExprParseTerm> parseTermsList = new List<ExprParseTerm>();
+            int curBracketDepth = 0;
+            int matchBracketDepth = -1;
+            int lastLocStartIdx = 0;
+            int lastTxtStartIdx = 0;
+            for (int chIdx = 0; chIdx < matchExpression.Length; chIdx++)
+            {
+                switch (matchExpression[chIdx])
+                {
+                    case '(':
+                        {
+                            // Add text upto this point
+                            lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+
+                            // Add bracket
+                            if ((cursorPosForBracketMatching == chIdx) || (cursorPosForBracketMatching == chIdx + 1))
+                                matchBracketDepth = curBracketDepth;
+                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Brackets, chIdx, 1, curBracketDepth++));
+                            break;
+                        }
+                    case ')':
+                        {
+                            // Add text upto this point
+                            lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+
+                            // Add bracket
+                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Brackets, chIdx, 1, --curBracketDepth));
+                            if ((cursorPosForBracketMatching == chIdx) || (cursorPosForBracketMatching == chIdx + 1))
+                                matchBracketDepth = curBracketDepth;
+                            break;
+                        }
+                    case '{':
+                        {
+                            // Add text upto this point
+                            lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+
+                            // Add location bracket
+                            if ((cursorPosForBracketMatching == chIdx) || (cursorPosForBracketMatching == chIdx + 1))
+                                matchBracketDepth = curBracketDepth;
+                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_LocationBrackets, chIdx, 1, curBracketDepth++));
+                            lastLocStartIdx = chIdx + 1;
+                            break;
+                        }
+                    case '}':
+                        {
+                            // Add location text and closing bracket
+                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Location, lastLocStartIdx, chIdx - lastLocStartIdx, curBracketDepth));
+                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_LocationBrackets, chIdx, 1, --curBracketDepth));
+                            if ((cursorPosForBracketMatching == chIdx) || (cursorPosForBracketMatching == chIdx + 1))
+                                matchBracketDepth = curBracketDepth;
+                            lastTxtStartIdx = chIdx + 1;
+                            break;
+                        }
+                    case '&':
+                    case '|':
+                    case '!':
+                        {
+                            // Add text upto this point
+                            lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+
+                            // Add operator
+                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Operator, chIdx, 1, curBracketDepth));
+                            lastTxtStartIdx = chIdx + 1;
+                            break;
+                        }
+                }
+            }
+            lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, matchExpression.Length, curBracketDepth);
+            return parseTermsList;
+        }
+
+        public class ExprParseTerm
+        {
+            public ExprParseTerm(ExprParseTermType type, int pos, int leng, int brackDepth)
+            {
+                termType = type;
+                stPos = pos;
+                termLen = leng;
+                bracketDepth = brackDepth;
+            }
+
+            public enum ExprParseTermType
+            {
+                exprTerm_None,
+                exprTerm_LocationBrackets,
+                exprTerm_Location,
+                exprTerm_Text,
+                exprTerm_Operator,
+                exprTerm_Brackets,
+            }
+            public int stPos = 0;
+            public int termLen = 0;
+            public ExprParseTermType termType = ExprParseTermType.exprTerm_None;
+            public bool matchingBracket = false;
+            public int bracketDepth = 0;
+        }
+
     }
 }
