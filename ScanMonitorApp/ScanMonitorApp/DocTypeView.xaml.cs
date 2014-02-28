@@ -33,6 +33,7 @@ namespace ScanMonitorApp
         Point _dragSelectFromPoint;
         bool _dragSelectOverThreshold = false;
         private static readonly double DragThreshold = 5;
+        private bool bInTextChangedHandler = false;
 
         public DocTypeView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher)
         {
@@ -75,7 +76,9 @@ namespace ScanMonitorApp
                 if (selDocType != null)
                 {
                     txtDocTypeName.Text = selDocType.docTypeName;
-                    //txtMatchExpression.Text = selDocType.matchExpression;
+                    Paragraph para = new Paragraph(new Run(selDocType.matchExpression));
+                    txtMatchExpression.Document.Blocks.Clear();
+                    txtMatchExpression.Document.Blocks.Add(para);
                 }
             }
         }
@@ -276,15 +279,96 @@ namespace ScanMonitorApp
         {
         }
 
+        // Get position of cursor in the text box
+        public int GetCaretPos(RichTextBox txtMatchExpression)
+        {
+            TextPointer curPos = txtMatchExpression.Document.ContentStart;
+            TextPointer caretTextPointer = txtMatchExpression.CaretPosition.GetInsertionPosition(LogicalDirection.Forward);
+            int cursorPosInPlainText = 0;
+            while (curPos != null)
+            {
+                if (curPos.GetPointerContext(LogicalDirection.Forward) == TextPointerContext.Text)
+                {
+                    string textRun = curPos.GetTextInRun(LogicalDirection.Forward);
+                    int stComp = curPos.CompareTo(caretTextPointer);
+                    int enComp = curPos.GetPositionAtOffset(textRun.Length).CompareTo(caretTextPointer);
+                    if (stComp <= 0 && enComp >= 0)
+                    {
+                        for (int i = 0; i < textRun.Length; i++)
+                            if (curPos.GetPositionAtOffset(i).CompareTo(caretTextPointer) >= 0)
+                                return cursorPosInPlainText + i;
+                            return cursorPosInPlainText + textRun.Length;
+                    }
+                    cursorPosInPlainText += textRun.Length;
+                }
+                curPos = curPos.GetNextContextPosition(LogicalDirection.Forward);
+            }
+            return cursorPosInPlainText;
+        }
+
+        // Get position of cursor in the text box
+        public void SetCaretPos(RichTextBox txtMatchExpression, int caretPos)
+        {
+            TextPointer curPos = txtMatchExpression.Document.ContentStart;
+            int cursorPosInPlainText = 0;
+            while (curPos != null)
+            {
+                if (curPos.GetPointerContext(LogicalDirection.Forward) == TextPointerContext.Text)
+                {
+                    string textRun = curPos.GetTextInRun(LogicalDirection.Forward);
+                    if (cursorPosInPlainText + textRun.Length > caretPos)
+                    {
+                        TextPointer newCaretPos = curPos.GetPositionAtOffset(caretPos - cursorPosInPlainText);
+                        txtMatchExpression.CaretPosition = newCaretPos;
+                        //txtMatchExpression.Selection.Select(newCaretPos, newCaretPos.GetNextInsertionPosition(LogicalDirection.Forward));
+                        return;
+                    }
+                    cursorPosInPlainText += textRun.Length;
+                }
+                curPos = curPos.GetNextContextPosition(LogicalDirection.Forward);
+            }
+            txtMatchExpression.CaretPosition = txtMatchExpression.Document.ContentEnd;
+        }
+
         private void txtMatchExpression_TextChanged(object sender, TextChangedEventArgs e)
         {
+            // Avoid re-entering when we change the text programmatically
+            if (bInTextChangedHandler)
+                return;
+
+            // Check the richtextbox is valid
             if (txtMatchExpression.Document == null)
                 return;
 
+            // Extract string
             string txtExpr = new TextRange(txtMatchExpression.Document.ContentStart, txtMatchExpression.Document.ContentEnd).Text;
+            txtExpr = txtExpr.Replace("\r", "");
+            txtExpr = txtExpr.Replace("\n", "");
 
+            // Get current caret position
+            int curCaretPos = GetCaretPos(txtMatchExpression);
+//            TextPointer curCaretPos = txtMatchExpression.CaretPosition.GetInsertionPosition(LogicalDirection.Forward);
+            
+            // Parse using our grammar
             List<DocTypesMatcher.ExprParseTerm> exprParseTermList = _docTypesMatcher.ParseDocMatchExpression(txtExpr, 0);
 
+            // Generate the rich text to highlight string elements
+            Paragraph para = new Paragraph();
+            foreach (DocTypesMatcher.ExprParseTerm parseTerm in exprParseTermList)
+            {
+                Run txtRun = new Run(txtExpr.Substring(parseTerm.stPos, parseTerm.termLen));
+                txtRun.Foreground = parseTerm.GetColour();
+                para.Inlines.Add(txtRun);
+                //TextRange range = new TextRange(m_tags[i].StartPosition, m_tags[i].EndPosition);
+                //range.ApplyPropertyValue(TextElement.ForegroundProperty, new SolidColorBrush(Colors.Blue));
+                //range.ApplyPropertyValue(TextElement.FontWeightProperty, FontWeights.Bold);
+            }
+
+            bInTextChangedHandler = true;
+            txtMatchExpression.Document.Blocks.Clear();
+            txtMatchExpression.Document.Blocks.Add(para);
+            SetCaretPos(txtMatchExpression, curCaretPos);
+            bInTextChangedHandler = false;
         }
 
     }

@@ -8,6 +8,7 @@ using NLog;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using MongoDB.Driver.Builders;
+using System.Windows.Media;
 
 namespace ScanMonitorApp
 {
@@ -253,8 +254,8 @@ namespace ScanMonitorApp
         public int ParserAddTextToPoint(List<ExprParseTerm> parseTermsList, string matchExpression, int lastTxtStartIdx, int chIdx, int curBracketDepth)
         {
             string s = matchExpression.Substring(lastTxtStartIdx, chIdx-lastTxtStartIdx);
-            if (s.Trim().Length > 0)
-                parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Text, lastTxtStartIdx, chIdx-lastTxtStartIdx, curBracketDepth));
+            if (s.Length > 0)
+                parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Text, lastTxtStartIdx, chIdx-lastTxtStartIdx, curBracketDepth, 0));
             return chIdx + 1;
         }
 
@@ -266,6 +267,7 @@ namespace ScanMonitorApp
             int matchBracketDepth = -1;
             int lastLocStartIdx = 0;
             int lastTxtStartIdx = 0;
+            int locationBracketIdx = 0;
             for (int chIdx = 0; chIdx < matchExpression.Length; chIdx++)
             {
                 switch (matchExpression[chIdx])
@@ -278,7 +280,7 @@ namespace ScanMonitorApp
                             // Add bracket
                             if ((cursorPosForBracketMatching == chIdx) || (cursorPosForBracketMatching == chIdx + 1))
                                 matchBracketDepth = curBracketDepth;
-                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Brackets, chIdx, 1, curBracketDepth++));
+                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Brackets, chIdx, 1, curBracketDepth++, 0));
                             break;
                         }
                     case ')':
@@ -287,7 +289,7 @@ namespace ScanMonitorApp
                             lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
 
                             // Add bracket
-                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Brackets, chIdx, 1, --curBracketDepth));
+                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Brackets, chIdx, 1, --curBracketDepth, 0));
                             if ((cursorPosForBracketMatching == chIdx) || (cursorPosForBracketMatching == chIdx + 1))
                                 matchBracketDepth = curBracketDepth;
                             break;
@@ -300,18 +302,19 @@ namespace ScanMonitorApp
                             // Add location bracket
                             if ((cursorPosForBracketMatching == chIdx) || (cursorPosForBracketMatching == chIdx + 1))
                                 matchBracketDepth = curBracketDepth;
-                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_LocationBrackets, chIdx, 1, curBracketDepth++));
+                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_LocationBrackets, chIdx, 1, curBracketDepth++, locationBracketIdx));
                             lastLocStartIdx = chIdx + 1;
                             break;
                         }
                     case '}':
                         {
                             // Add location text and closing bracket
-                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Location, lastLocStartIdx, chIdx - lastLocStartIdx, curBracketDepth));
-                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_LocationBrackets, chIdx, 1, --curBracketDepth));
+                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Location, lastLocStartIdx, chIdx - lastLocStartIdx, curBracketDepth, locationBracketIdx));
+                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_LocationBrackets, chIdx, 1, --curBracketDepth, locationBracketIdx));
                             if ((cursorPosForBracketMatching == chIdx) || (cursorPosForBracketMatching == chIdx + 1))
                                 matchBracketDepth = curBracketDepth;
                             lastTxtStartIdx = chIdx + 1;
+                            locationBracketIdx++;
                             break;
                         }
                     case '&':
@@ -322,7 +325,7 @@ namespace ScanMonitorApp
                             lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
 
                             // Add operator
-                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Operator, chIdx, 1, curBracketDepth));
+                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Operator, chIdx, 1, curBracketDepth, locationBracketIdx));
                             lastTxtStartIdx = chIdx + 1;
                             break;
                         }
@@ -334,12 +337,22 @@ namespace ScanMonitorApp
 
         public class ExprParseTerm
         {
-            public ExprParseTerm(ExprParseTermType type, int pos, int leng, int brackDepth)
+            Brush[] locBrushes = new Brush[]
+                {
+                    new SolidColorBrush(Colors.Pink),
+                    new SolidColorBrush(Colors.Goldenrod),
+                    new SolidColorBrush(Colors.BurlyWood),
+                    new SolidColorBrush(Colors.Indigo),
+                    new SolidColorBrush(Colors.Chartreuse),
+                    new SolidColorBrush(Colors.Coral)
+                };
+            public ExprParseTerm(ExprParseTermType type, int pos, int leng, int brackDepth, int locBrackIdx)
             {
                 termType = type;
                 stPos = pos;
                 termLen = leng;
                 bracketDepth = brackDepth;
+                locationBracketIdx = locBrackIdx;
             }
 
             public enum ExprParseTermType
@@ -348,14 +361,37 @@ namespace ScanMonitorApp
                 exprTerm_LocationBrackets,
                 exprTerm_Location,
                 exprTerm_Text,
-                exprTerm_Operator,
+                exprTerm_Operator,      
                 exprTerm_Brackets,
+            }
+            public Brush GetColour()
+            {
+                if (termType == ExprParseTermType.exprTerm_Location)
+                    return GetLocationBrush();
+                return GetTermTypeBrush();
+            }
+            Brush GetLocationBrush()
+            {
+                int idx = locationBracketIdx % locBrushes.Length;
+                return locBrushes[idx];
+            }
+            Brush GetTermTypeBrush()
+            {
+                switch(termType)
+                {
+                    case ExprParseTermType.exprTerm_LocationBrackets: { return new SolidColorBrush(Colors.Blue); }
+                    case ExprParseTermType.exprTerm_Brackets: { return new SolidColorBrush(Colors.Green); }
+                    case ExprParseTermType.exprTerm_Text: { return new SolidColorBrush(Colors.Black); }
+                    case ExprParseTermType.exprTerm_Operator: { return new SolidColorBrush(Colors.Chocolate); }
+                }
+                return new SolidColorBrush(Colors.Black);
             }
             public int stPos = 0;
             public int termLen = 0;
             public ExprParseTermType termType = ExprParseTermType.exprTerm_None;
             public bool matchingBracket = false;
             public int bracketDepth = 0;
+            public int locationBracketIdx = 0;
         }
 
     }
