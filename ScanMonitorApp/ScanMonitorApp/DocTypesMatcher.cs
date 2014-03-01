@@ -334,10 +334,11 @@ namespace ScanMonitorApp
             lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, matchExpression.Length, curBracketDepth);
             return parseTermsList;
         }
+    }
 
-        public class ExprParseTerm
-        {
-            Brush[] locBrushes = new Brush[]
+    public class ExprParseTerm
+    {
+        private static Brush[] locBrushes = new Brush[]
                 {
                     new SolidColorBrush(Colors.Pink),
                     new SolidColorBrush(Colors.Goldenrod),
@@ -346,53 +347,56 @@ namespace ScanMonitorApp
                     new SolidColorBrush(Colors.Chartreuse),
                     new SolidColorBrush(Colors.Coral)
                 };
-            public ExprParseTerm(ExprParseTermType type, int pos, int leng, int brackDepth, int locBrackIdx)
-            {
-                termType = type;
-                stPos = pos;
-                termLen = leng;
-                bracketDepth = brackDepth;
-                locationBracketIdx = locBrackIdx;
-            }
-
-            public enum ExprParseTermType
-            {
-                exprTerm_None,
-                exprTerm_LocationBrackets,
-                exprTerm_Location,
-                exprTerm_Text,
-                exprTerm_Operator,      
-                exprTerm_Brackets,
-            }
-            public Brush GetColour()
-            {
-                if (termType == ExprParseTermType.exprTerm_Location)
-                    return GetLocationBrush();
-                return GetTermTypeBrush();
-            }
-            Brush GetLocationBrush()
-            {
-                int idx = locationBracketIdx % locBrushes.Length;
-                return locBrushes[idx];
-            }
-            Brush GetTermTypeBrush()
-            {
-                switch(termType)
-                {
-                    case ExprParseTermType.exprTerm_LocationBrackets: { return new SolidColorBrush(Colors.Blue); }
-                    case ExprParseTermType.exprTerm_Brackets: { return new SolidColorBrush(Colors.Green); }
-                    case ExprParseTermType.exprTerm_Text: { return new SolidColorBrush(Colors.Black); }
-                    case ExprParseTermType.exprTerm_Operator: { return new SolidColorBrush(Colors.Chocolate); }
-                }
-                return new SolidColorBrush(Colors.Black);
-            }
-            public int stPos = 0;
-            public int termLen = 0;
-            public ExprParseTermType termType = ExprParseTermType.exprTerm_None;
-            public bool matchingBracket = false;
-            public int bracketDepth = 0;
-            public int locationBracketIdx = 0;
+        public ExprParseTerm(ExprParseTermType type, int pos, int leng, int brackDepth, int locBrackIdx)
+        {
+            termType = type;
+            stPos = pos;
+            termLen = leng;
+            bracketDepth = brackDepth;
+            locationBracketIdx = locBrackIdx;
         }
 
+        public enum ExprParseTermType
+        {
+            exprTerm_None,
+            exprTerm_LocationBrackets,
+            exprTerm_Location,
+            exprTerm_Text,
+            exprTerm_Operator,
+            exprTerm_Brackets,
+        }
+        public Brush GetBrush()
+        {
+            if (termType == ExprParseTermType.exprTerm_Location)
+                return GetLocationBrush(locationBracketIdx);
+            return GetTermTypeBrush();
+        }
+        public static Brush GetBrushForLocationIdx(int locIdx)
+        {
+            return GetLocationBrush(locIdx);
+        }
+        private static Brush GetLocationBrush(int locIdx)
+        {
+            int idx = locIdx % locBrushes.Length;
+            return locBrushes[idx];
+        }
+        private Brush GetTermTypeBrush()
+        {
+            switch (termType)
+            {
+                case ExprParseTermType.exprTerm_LocationBrackets: { return new SolidColorBrush(Colors.Blue); }
+                case ExprParseTermType.exprTerm_Brackets: { return new SolidColorBrush(Colors.Green); }
+                case ExprParseTermType.exprTerm_Text: { return new SolidColorBrush(Colors.Black); }
+                case ExprParseTermType.exprTerm_Operator: { return new SolidColorBrush(Colors.Chocolate); }
+            }
+            return new SolidColorBrush(Colors.Black);
+        }
+        public int stPos = 0;
+        public int termLen = 0;
+        public ExprParseTermType termType = ExprParseTermType.exprTerm_None;
+        public bool matchingBracket = false;
+        public int bracketDepth = 0;
+        public int locationBracketIdx = 0;
     }
+
 }
