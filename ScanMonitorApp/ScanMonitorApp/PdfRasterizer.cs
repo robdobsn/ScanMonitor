@@ -47,9 +47,16 @@ namespace ScanMonitorApp
             for (int pageNumber = 1; pageNumber <= numPagesToConvert; pageNumber++)
             {
                 string pageFileName = GetFilenameOfImageOfPage(outputPath, uniqName, pageNumber, true);
-                System.Drawing.Image img = _rasterizer.GetPage(desired_x_dpi, desired_y_dpi, pageNumber);
-                img.Save(pageFileName, ImageFormat.Png);
-                imgFileNames.Add(pageFileName);
+                try
+                {
+                    System.Drawing.Image img = _rasterizer.GetPage(desired_x_dpi, desired_y_dpi, pageNumber);
+                    img.Save(pageFileName, ImageFormat.Png);
+                    imgFileNames.Add(pageFileName);
+                }
+                catch (Exception excp)
+                {
+                    logger.Error("Failed to create image of page {0}", pageFileName, excp.Message);
+                }
             }
             // Stop timing
             stopwatch.Stop();
