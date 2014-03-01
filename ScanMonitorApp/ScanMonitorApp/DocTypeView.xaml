@@ -20,17 +20,9 @@
             </ListView.View>
         </ListView>
         <GridSplitter Grid.Column="1" Margin="0,0,413,0" Width="0"/>
-        <Image x:Name="exampleFileImage" Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" Grid.ColumnSpan="1" MouseDown="dragSelectionCanvas_MouseDown" MouseMove="dragSelectionCanvas_MouseMove" MouseUp="dragSelectionCanvas_MouseUp" SizeChanged="exampleFileImage_SizeChanged" />
-        <Canvas x:Name="docOverlayCanvas" Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" Grid.ColumnSpan="1" Panel.ZIndex="1">
-            <Border 
-                x:Name="dragSelectionBorder"
-                BorderBrush="Blue"
-                BorderThickness="1"
-                Background="LightBlue"
-                CornerRadius="1"
-                Opacity="0.5"
-                Visibility="Visible" Height="40" Width="102" Canvas.Left="95" Canvas.Top="82"
-            />
+        <Image x:Name="exampleFileImage" Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" Grid.ColumnSpan="1" MouseDown="dragSelectionCanvas_MouseDown" MouseMove="dragSelectionCanvas_MouseMove" MouseUp="dragSelectionCanvas_MouseUp" />
+        <Canvas x:Name="docOverlayCanvas" Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" Grid.ColumnSpan="1" Panel.ZIndex="1" SizeChanged="docOverlayCanvas_SizeChanged">
+
         </Canvas>
         <!--<Rectangle
                 x:Name="dragSelectionBorder"

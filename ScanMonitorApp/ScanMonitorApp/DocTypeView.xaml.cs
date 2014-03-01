@@ -32,8 +32,14 @@ namespace ScanMonitorApp
         bool _dragSelectActive = false;
         Point _dragSelectFromPoint;
         bool _dragSelectOverThreshold = false;
+        string _dragSelectionRectName;
+        bool _dragFromTopLeft = false;
+        Point _dragSelectOppositeCorner;
         private static readonly double DragThreshold = 5;
         private bool bInTextChangedHandler = false;
+        List<VisRect> _visMatchRectangles = new List<VisRect>();
+        private const int TOP_ELLIPSE_OFFSET = 6;
+        private const int BOTTOM_ELLIPSE_OFFSET = 5;
 
         public DocTypeView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher)
         {
@@ -134,7 +140,7 @@ namespace ScanMonitorApp
                         _docCompareRslts.Add(compRslt);
                     });
                 docIdx++;
-                worker.ReportProgress((int) (docIdx * 100 / fdiList.Count));
+                worker.ReportProgress((int)(docIdx * 100 / fdiList.Count));
             }
         }
 
@@ -195,7 +201,30 @@ namespace ScanMonitorApp
             {
                 _dragSelectActive = true;
                 _dragSelectFromPoint = e.GetPosition(exampleFileImage);
-                //this.CaptureMouse();
+                if (sender.GetType() == typeof(Rectangle))
+                {
+                    if (e.GetPosition((Rectangle)sender).X < 20 && e.GetPosition((Rectangle)sender).Y < 20)
+                    {
+                        _dragFromTopLeft = true;
+                        _dragSelectionRectName = ((Rectangle)sender).Name;
+                    }
+                    else if ((e.GetPosition((Rectangle)sender).X > ((Rectangle)sender).Width - 20) &&
+                                (e.GetPosition((Rectangle)sender).Y > ((Rectangle)sender).Height - 20))
+                    {
+                        _dragFromTopLeft = false;
+                        _dragSelectionRectName = ((Rectangle)sender).Name;
+                    }
+                    else
+                    {
+                        _dragSelectionRectName = "";
+                    }
+                }
+                else
+                {
+                    _dragSelectionRectName = "";
+                }
+
+                exampleFileImage.CaptureMouse();
                 e.Handled = true;
             }
         }
@@ -205,7 +234,7 @@ namespace ScanMonitorApp
             if (_dragSelectOverThreshold)
             {
                 Point curMouseDownPoint = e.GetPosition(exampleFileImage);
-                DrawOverlayRect(_dragSelectFromPoint, curMouseDownPoint);
+                RubberbandRect(_dragSelectFromPoint, curMouseDownPoint, _dragSelectionRectName, false);
                 e.Handled = true;
             }
             else if (_dragSelectActive)
@@ -219,7 +248,7 @@ namespace ScanMonitorApp
                     // When the mouse has been dragged more than the threshold value commence drag selection.
                     //
                     _dragSelectOverThreshold = true;
-                    InitDragSelectionRect(_dragSelectFromPoint, curMouseDownPoint);
+                    RubberbandRect(_dragSelectFromPoint, curMouseDownPoint, _dragSelectionRectName, true);
                 }
                 e.Handled = true;
             }
@@ -235,14 +264,14 @@ namespace ScanMonitorApp
                     // Drag selection has ended, apply the 'selection rectangle'.
                     //
                     _dragSelectOverThreshold = false;
-//                    ApplyDragSelectionRect();
+                    //                    ApplyDragSelectionRect();
                     e.Handled = true;
                 }
 
                 if (_dragSelectActive)
                 {
                     _dragSelectActive = false;
-                    //this.ReleaseMouseCapture();
+                    exampleFileImage.ReleaseMouseCapture();
                     e.Handled = true;
                 }
             }
@@ -251,7 +280,6 @@ namespace ScanMonitorApp
         private void InitDragSelectionRect(Point pt1, Point pt2)
         {
             DrawOverlayRect(pt1, pt2);
-            dragSelectionBorder.Visibility = Visibility.Visible;
         }
 
         private void DrawOverlayRect(Point pt1, Point pt2)
@@ -269,14 +297,10 @@ namespace ScanMonitorApp
             txtDebug.Text = topLeftX.ToString() + ", " + topLeftY.ToString() + ", " + width.ToString() + ", " + height.ToString();
 
             // Draw rect
-            Canvas.SetLeft(dragSelectionBorder, topLeftX);
-            Canvas.SetTop(dragSelectionBorder, topLeftY);
-            dragSelectionBorder.Width = width;
-            dragSelectionBorder.Height = height;
-        }
-
-        private void exampleFileImage_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
+            //Canvas.SetLeft(dragSelectionBorder, topLeftX);
+            //Canvas.SetTop(dragSelectionBorder, topLeftY);
+            //dragSelectionBorder.Width = width;
+            //dragSelectionBorder.Height = height;
         }
 
         // Get position of cursor in the text box
@@ -297,7 +321,7 @@ namespace ScanMonitorApp
                         for (int i = 0; i < textRun.Length; i++)
                             if (curPos.GetPositionAtOffset(i).CompareTo(caretTextPointer) >= 0)
                                 return cursorPosInPlainText + i;
-                            return cursorPosInPlainText + textRun.Length;
+                        return cursorPosInPlainText + textRun.Length;
                     }
                     cursorPosInPlainText += textRun.Length;
                 }
@@ -347,10 +371,13 @@ namespace ScanMonitorApp
 
             // Get current caret position
             int curCaretPos = GetCaretPos(txtMatchExpression);
-//            TextPointer curCaretPos = txtMatchExpression.CaretPosition.GetInsertionPosition(LogicalDirection.Forward);
-            
+            //            TextPointer curCaretPos = txtMatchExpression.CaretPosition.GetInsertionPosition(LogicalDirection.Forward);
+
             // Parse using our grammar
             List<DocTypesMatcher.ExprParseTerm> exprParseTermList = _docTypesMatcher.ParseDocMatchExpression(txtExpr, 0);
+
+            // Clear visual rectangles
+            ClearVisRectangles();
 
             // Generate the rich text to highlight string elements
             Paragraph para = new Paragraph();
@@ -359,18 +386,275 @@ namespace ScanMonitorApp
                 Run txtRun = new Run(txtExpr.Substring(parseTerm.stPos, parseTerm.termLen));
                 txtRun.Foreground = parseTerm.GetColour();
                 para.Inlines.Add(txtRun);
-                //TextRange range = new TextRange(m_tags[i].StartPosition, m_tags[i].EndPosition);
-                //range.ApplyPropertyValue(TextElement.ForegroundProperty, new SolidColorBrush(Colors.Blue));
-                //range.ApplyPropertyValue(TextElement.FontWeightProperty, FontWeights.Bold);
+                // Check for location rectangle
+                if (parseTerm.termType == DocTypesMatcher.ExprParseTerm.ExprParseTermType.exprTerm_Location)
+                {
+                    AddVisRectangle(txtExpr.Substring(parseTerm.stPos, parseTerm.termLen), parseTerm);
+                }
             }
 
+            // Switch to new doc contents
             bInTextChangedHandler = true;
             txtMatchExpression.Document.Blocks.Clear();
             txtMatchExpression.Document.Blocks.Add(para);
             SetCaretPos(txtMatchExpression, curCaretPos);
             bInTextChangedHandler = false;
+
+            DrawVisRectangles();
         }
 
+        private void ClearVisRectangles()
+        {
+            _visMatchRectangles.Clear();
+        }
+
+        private void AddVisRectangle(string rectLocStr, DocTypesMatcher.ExprParseTerm parseTerm)
+        {
+            VisRect visRect = new VisRect();
+            visRect.docRect = new DocRectangle(rectLocStr);
+            visRect.parseTerm = parseTerm;
+            _visMatchRectangles.Add(visRect);
+        }
+
+        private void DrawVisRectangles()
+        {
+            docOverlayCanvas.Children.Clear();
+            if (exampleFileImage.ActualHeight <= 0 || double.IsNaN(exampleFileImage.ActualHeight))
+                return;
+            foreach (VisRect visRect in _visMatchRectangles)
+                DrawVisRect(visRect);
+        }
+
+        private DocRectangle ConvertImgRectToCanvas(DocRectangle imgRect)
+        {
+            double tlx = exampleFileImage.ActualWidth * imgRect.topLeftXPercent / 100;
+            double tly = exampleFileImage.ActualHeight * imgRect.topLeftYPercent / 100;
+            Point tlPoint = exampleFileImage.TranslatePoint(new Point(tlx, tly), docOverlayCanvas);
+            double wid = exampleFileImage.ActualWidth * imgRect.widthPercent / 100;
+            double hig = exampleFileImage.ActualHeight * imgRect.heightPercent / 100;
+            Point brPoint = exampleFileImage.TranslatePoint(new Point(tlx + wid, tly + hig), docOverlayCanvas);
+            return new DocRectangle(tlPoint.X, tlPoint.Y, brPoint.X - tlPoint.X, brPoint.Y - tlPoint.Y);
+        }
+
+        private void DrawVisRect(VisRect visRect)
+        {
+            Rectangle rect = new Rectangle();
+            rect.Opacity = 0.5;
+            rect.Fill = visRect.parseTerm.GetColour();
+            DocRectangle canvasRect = ConvertImgRectToCanvas(visRect.docRect);
+            rect.Width = canvasRect.widthPercent;
+            rect.Height = canvasRect.heightPercent;
+            rect.Name = "visRect_" + visRect.parseTerm.locationBracketIdx.ToString();
+            docOverlayCanvas.Children.Add(rect);
+            rect.SetValue(Canvas.LeftProperty, canvasRect.topLeftXPercent);
+            rect.SetValue(Canvas.TopProperty, canvasRect.topLeftYPercent);
+/*            Ellipse ell1 = new Ellipse();
+            ell1.Opacity = 0.75;
+            ell1.Stroke = visRect.parseTerm.GetColour();
+            ell1.StrokeThickness = 2;
+            ell1.Width = 10;
+            ell1.Height = 10;
+            ell1.Name = "ell1_" + visRect.parseTerm.locationBracketIdx.ToString();
+            docOverlayCanvas.Children.Add(ell1);
+            ell1.SetValue(Canvas.LeftProperty, canvasRect.topLeftXPercent - TOP_ELLIPSE_OFFSET);
+            ell1.SetValue(Canvas.TopProperty, canvasRect.topLeftYPercent - TOP_ELLIPSE_OFFSET);
+            Ellipse ell2 = new Ellipse();
+            ell2.Opacity = 0.75;
+            ell2.Stroke = visRect.parseTerm.GetColour();
+            ell2.StrokeThickness = 2;
+            ell2.Width = 10;
+            ell2.Height = 10;
+            ell2.Name = "ell2_" + visRect.parseTerm.locationBracketIdx.ToString();
+            docOverlayCanvas.Children.Add(ell2);
+            ell2.SetValue(Canvas.LeftProperty, canvasRect.bottomRightXPercent - BOTTOM_ELLIPSE_OFFSET);
+            ell2.SetValue(Canvas.TopProperty, canvasRect.bottomRightYPercent - BOTTOM_ELLIPSE_OFFSET);
+ */ 
+            rect.MouseDown += new MouseButtonEventHandler(dragSelectionCanvas_MouseDown);
+            rect.MouseMove += new MouseEventHandler(dragSelectionCanvas_MouseMove);
+            rect.MouseUp += new MouseButtonEventHandler(dragSelectionCanvas_MouseUp);
+            //                rect.AddHandler(UIElement.MouseDownEvent, visRectDragHandler_MouseDown);
+        }
+
+        private void RubberbandRect(Point pt1, Point pt2, string rectName, bool firstTime)
+        {
+            double topLeftX = 0;
+            double topLeftY = 0;
+            double width = 0;
+            double height = 0;
+            string[] rectParts = rectName.Split('_');
+            if (rectParts.Length < 2)
+                return;
+//            string ell1Name = "ell1_" + rectParts[1];
+//            string ell2Name = "ell2_" + rectParts[1];
+            if (pt2.X > exampleFileImage.ActualWidth)
+                pt2.X = exampleFileImage.ActualWidth - 1;
+            if (pt2.Y > exampleFileImage.ActualHeight)
+                pt2.Y = exampleFileImage.ActualHeight - 1;
+            if (pt2.X < 0)
+                pt2.X = 0;
+            if (pt2.Y < 0)
+                pt2.Y = 0;
+            Point mousePt = exampleFileImage.TranslatePoint(pt2, docOverlayCanvas);
+
+            // Move vis rect
+            foreach (UIElement child in docOverlayCanvas.Children)
+            {
+                if (child.GetType() == typeof(Rectangle))
+                {
+                    Rectangle rect = (Rectangle)child;
+                    if (rect.Name == rectName)
+                    {
+                        if (firstTime)
+                        {
+                            _dragSelectOppositeCorner = new Point(_dragFromTopLeft ? ((double)(rect.GetValue(Canvas.LeftProperty))) + rect.Width : (double)rect.GetValue(Canvas.LeftProperty),
+                                            _dragFromTopLeft ? ((double)(rect.GetValue(Canvas.TopProperty))) + rect.Height : (double)rect.GetValue(Canvas.TopProperty));
+                        }
+                        else
+                        {
+                            topLeftX = Math.Min(mousePt.X, _dragSelectOppositeCorner.X);
+                            topLeftY = Math.Min(mousePt.Y, _dragSelectOppositeCorner.Y);
+                            width = Math.Abs(mousePt.X - _dragSelectOppositeCorner.X);
+                            height = Math.Abs(mousePt.Y - _dragSelectOppositeCorner.Y);
+                            rect.SetValue(Canvas.LeftProperty, topLeftX);
+                            rect.SetValue(Canvas.TopProperty, topLeftY);
+                            rect.Width = width;
+                            rect.Height = height;
+                        }
+                        break;
+                    }
+                }
+            }
+/*            foreach (UIElement child in docOverlayCanvas.Children)
+            {
+                if (child.GetType() == typeof(Ellipse))
+                {
+                    Ellipse ellip = (Ellipse)child;
+                    if (ellip.Name == ell1Name)
+                    {
+                        ellip.SetValue(Canvas.LeftProperty, topLeftX-TOP_ELLIPSE_OFFSET);
+                        ellip.SetValue(Canvas.TopProperty, topLeftY-TOP_ELLIPSE_OFFSET);
+                    }
+                    else if (ellip.Name == ell2Name)
+                    {
+                        ellip.SetValue(Canvas.LeftProperty, topLeftX + width - BOTTOM_ELLIPSE_OFFSET);
+                        ellip.SetValue(Canvas.TopProperty, topLeftY + height - BOTTOM_ELLIPSE_OFFSET);
+                    }
+                }
+            }
+ * */
+        }
+
+        private void RubberbandRect2(Point pt1, Point pt2, string rectName, bool firstTime)
+        {
+            // Find rect in list
+            string[] rectParts = rectName.Split('_');
+            if (rectParts.Length < 2)
+                return;
+            int rectIdx = Convert.ToInt32(rectParts[1]);
+            if (rectIdx >= _visMatchRectangles.Count)
+                return;
+            VisRect visRect = _visMatchRectangles[rectIdx];
+            if (firstTime)
+            {
+                _dragSelectOppositeCorner = new Point(_dragFromTopLeft ? visRect.docRect.bottomRightXPercent : visRect.docRect.topLeftXPercent,
+                                _dragFromTopLeft ? visRect.docRect.bottomRightYPercent : visRect.docRect.topLeftYPercent);
+            }
+
+            // Convert to canvas coords
+            //pt1 = exampleFileImage.TranslatePoint(pt1, docOverlayCanvas);
+            //pt2 = exampleFileImage.TranslatePoint(pt2, docOverlayCanvas);
+
+            if (_dragFromTopLeft)
+            {
+                // Find top corner of new rect
+                Point brPoint = _dragSelectOppositeCorner;
+                Point mousePoint = new Point(pt2.X * 100 / exampleFileImage.ActualWidth, pt2.Y * 100 / exampleFileImage.ActualHeight);
+                double topLeftX = Math.Min(brPoint.X, mousePoint.X);
+                double topLeftY = Math.Min(brPoint.Y, mousePoint.Y);
+
+                // Find width / height of new rect
+                double width = Math.Abs(brPoint.X - mousePoint.X);
+                double height = Math.Abs(brPoint.Y - mousePoint.Y);
+
+                // Change rect info
+                //Console.WriteLine("Mouse: " + mousePoint.X + " " + mousePoint.Y);
+                //Console.WriteLine("OldVis: " + visRect.docRect.topLeftXPercent  + " " +
+                //    visRect.docRect.topLeftYPercent + " " +
+                //    visRect.docRect.bottomRightXPercent + " " +
+                //    visRect.docRect.bottomRightYPercent);
+                visRect.docRect = new DocRectangle(topLeftX, topLeftY, width, height);
+    //            Console.WriteLine("NewVis: " + topLeftX + " " +
+    //topLeftY + " " +
+    //(width + topLeftX) + " " +
+    //(height+topLeftY));
+
+          
+            }
+
+            // Move vis rect
+            foreach (UIElement child in docOverlayCanvas.Children)
+            {
+                if (child.GetType() == typeof(Rectangle))
+                {
+                    Rectangle rect = (Rectangle)child;
+
+                }
+                    if (((Rectangle)child).Name == rectName)
+                    {
+                        
+                        break;
+                    }
+            }
+            
+
+            // Redraw this rect
+            string ell1Name = "ell1_" + rectParts[1];
+            string ell2Name = "ell2_" + rectParts[1];
+            foreach (UIElement child in docOverlayCanvas.Children)
+            {
+                if (child.GetType() == typeof(Rectangle))
+                    if (((Rectangle)child).Name == rectName)
+                    {
+                        docOverlayCanvas.Children.Remove(child);
+                        break;
+                    }
+            }
+            foreach (UIElement child in docOverlayCanvas.Children)
+            {
+                if (child.GetType() == typeof(Ellipse))
+                    if (((Ellipse)child).Name == ell1Name)
+                    {
+                        docOverlayCanvas.Children.Remove(child);
+                        break;
+                    }
+            }
+            foreach (UIElement child in docOverlayCanvas.Children)
+            {
+                if (child.GetType() == typeof(Ellipse))
+                    if (((Ellipse)child).Name == ell2Name)
+                    {
+                        docOverlayCanvas.Children.Remove(child);
+                        break;
+                    }
+            }
+            DrawVisRect(visRect);
+
+        }
+
+        private void docOverlayCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            DrawVisRectangles();
+        }
+    }
+
+    public class VisRect
+    {
+        public DocTypesMatcher.ExprParseTerm parseTerm;
+        public DocRectangle docRect;
+        public Point BottomRightPoint()
+        {
+            return new Point(docRect.bottomRightXPercent, docRect.bottomRightYPercent);
+        }
     }
 
     public class DocCompareRslt
