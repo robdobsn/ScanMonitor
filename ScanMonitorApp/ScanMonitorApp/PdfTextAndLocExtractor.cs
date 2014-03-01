@@ -334,8 +334,8 @@ namespace ScanMonitorApp
                     List<ScanTextElem> scanTextElems = new List<ScanTextElem>();
                     foreach (LocationTextExtractionStrategyEx.TextInfo txtInfo in pageInfo)
                     {
-                        DocRectangle boundsRect = ConvertToDocRect(txtInfo.TopLeft, txtInfo.BottomRight, pageRect);
-                        ScanTextElem sti = new ScanTextElem(txtInfo.Text, boundsRect);
+                        DocRectangle boundsRectPercent = ConvertToDocRect(txtInfo.TopLeft, txtInfo.BottomRight, pageRect);
+                        ScanTextElem sti = new ScanTextElem(txtInfo.Text, boundsRectPercent);
                         scanTextElems.Add(sti);
                     }
                     scanPagesText.Add(scanTextElems);

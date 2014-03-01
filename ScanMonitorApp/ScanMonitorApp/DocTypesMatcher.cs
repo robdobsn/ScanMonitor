@@ -84,7 +84,7 @@ namespace ScanMonitorApp
             string token = "";
             bool curOpIsOr = true;
             bool opIsInverse = false;
-            DocRectangle docRect = new DocRectangle(0, 0, 100, 100);
+            DocRectangle docRectPercent = new DocRectangle(0, 0, 100, 100);
             int docRectValIdx = 0;
             while((token = st.GetNextToken()) != null)
             {
@@ -110,6 +110,9 @@ namespace ScanMonitorApp
                     opIsInverse = true;
                 else
                 {
+                    // Check for location on empty string
+                    if (token == "{")
+                        return result;
                     // We've reached a terminal token (string to match to text in the document)
                     string stringToMatch = token;
                     // See if there is a location defined by the next token
@@ -130,28 +133,31 @@ namespace ScanMonitorApp
                             else
                             {
                                 double rectVal = Double.Parse(token);
-                                docRect.SetVal(docRectValIdx, rectVal);
+                                docRectPercent.SetVal(docRectValIdx, rectVal);
                             }
                         }
                     }
 
                     // Process the match string using the location rectangle
-                    bool tmpRslt = MatchString(stringToMatch, docRect, scanPages);
-                    if (opIsInverse)
-                        tmpRslt = !tmpRslt;
-                    if (curOpIsOr)
-                        result |= tmpRslt;
-                    else
-                        result &= tmpRslt;
+                    if (stringToMatch.Trim().Length >= 0)
+                    {
+                        bool tmpRslt = MatchString(stringToMatch, docRectPercent, scanPages);
+                        if (opIsInverse)
+                            tmpRslt = !tmpRslt;
+                        if (curOpIsOr)
+                            result |= tmpRslt;
+                        else
+                            result &= tmpRslt;
+                    }
 
                     // Set the docRect to the entire page (ready for next term)
-                    docRect = new DocRectangle(0,0,100,100);
+                    docRectPercent = new DocRectangle(0,0,100,100);
                 }
             }
             return result;
         }
 
-        public bool MatchString(string str, DocRectangle docRec, ScanPages scanPages)
+        public bool MatchString(string str, DocRectangle docRectPercent, ScanPages scanPages)
         {
             for (int pageIdx = 0; pageIdx < scanPages.scanPagesText.Count; pageIdx++)
             {
@@ -159,7 +165,7 @@ namespace ScanMonitorApp
                 foreach (ScanTextElem textElem in scanPageText)
                 {
                     // Check bounds
-                    if (docRec.Contains(textElem.bounds))
+                    if (docRectPercent.Intersects(textElem.bounds))
                     {
                         if (textElem.text.IndexOf(str, StringComparison.OrdinalIgnoreCase) >= 0)
                             return true;
@@ -178,7 +184,7 @@ namespace ScanMonitorApp
             {
                 //char[] terms = new char[] {'(', ')', '&', '|' };
                 //tokens = inStr.Split(terms);
-                string pattern = @"(\()|(\))|(\&)|(\|)|(\!)";
+                string pattern = @"(\()|(\))|(\&)|(\|)|(\!)|(\{)|(\})|(\,)";
                 tokens = Regex.Split(inStr, pattern);
                 curPos = 0;
             }

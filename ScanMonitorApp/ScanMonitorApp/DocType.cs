@@ -31,19 +31,19 @@ namespace ScanMonitorApp
 
     public class DocRectangle
     {
-        public DocRectangle(int x, int y, int width, int height)
+        public DocRectangle(int x, int y, int wid, int hig)
         {
             topLeftXPercent = x;
             topLeftYPercent = y;
-            widthPercent = width;
-            heightPercent = height;
+            widthPercent = wid;
+            heightPercent = hig;
         }
-        public DocRectangle(double x, double y, double width, double height)
+        public DocRectangle(double x, double y, double wid, double hig)
         {
             topLeftXPercent = x;
             topLeftYPercent = y;
-            widthPercent = width;
-            heightPercent = height;
+            widthPercent = wid;
+            heightPercent = hig;
         }
         public double bottomRightXPercent { get { return topLeftXPercent + widthPercent; } }
         public double bottomRightYPercent { get { return topLeftYPercent + heightPercent; } }
@@ -92,6 +92,19 @@ namespace ScanMonitorApp
                             ((rect.topLeftXPercent + rect.widthPercent) <= (this.topLeftXPercent + this.widthPercent)) &&
                             (this.topLeftYPercent <= rect.topLeftYPercent) &&
                             ((rect.topLeftYPercent + rect.heightPercent) <= (this.topLeftYPercent + this.heightPercent));
+        }
+
+        public bool Intersects(DocRectangle rect)
+        {
+            if (topLeftXPercent > rect.bottomRightXPercent)
+                return false;
+            if (bottomRightXPercent < rect.topLeftXPercent)
+                return false;
+            if (topLeftYPercent > rect.bottomRightYPercent)
+                return false;
+            if (bottomRightYPercent < rect.topLeftYPercent)
+                return false;
+            return true;
         }
     }
 }
