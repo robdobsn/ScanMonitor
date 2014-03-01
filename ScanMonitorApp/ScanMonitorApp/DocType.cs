@@ -40,11 +40,36 @@ namespace ScanMonitorApp
         }
         public DocRectangle(double x, double y, double width, double height)
         {
-            topLeftXPercent = Convert.ToInt32(x);
-            topLeftYPercent = Convert.ToInt32(y);
-            widthPercent = Convert.ToInt32(width);
-            heightPercent = Convert.ToInt32(height);
+            topLeftXPercent = x;
+            topLeftYPercent = y;
+            widthPercent = width;
+            heightPercent = height;
         }
+        public double bottomRightXPercent { get { return topLeftXPercent + widthPercent; } }
+        public double bottomRightYPercent { get { return topLeftYPercent + heightPercent; } }
+
+        public DocRectangle(string rectCoordStr)
+        {
+            topLeftXPercent = 0;
+            topLeftYPercent = 0;
+            widthPercent = 100;
+            heightPercent = 100;
+            try
+            {
+                string[] splitStr = rectCoordStr.Split(',');
+                if (splitStr.Length > 0)
+                    topLeftXPercent = Convert.ToDouble(splitStr[0]);
+                if (splitStr.Length > 1)
+                    topLeftYPercent = Convert.ToDouble(splitStr[1]);
+                if (splitStr.Length > 2)
+                    widthPercent = Convert.ToDouble(splitStr[2]);
+                if (splitStr.Length > 3)
+                    heightPercent = Convert.ToDouble(splitStr[3]);
+            }
+            catch
+            { }
+        }
+            
         public void SetVal(int valIdx, double val)
         {
             switch(valIdx)
@@ -56,10 +81,10 @@ namespace ScanMonitorApp
             }
         }
 
-        public int topLeftXPercent;
-        public int topLeftYPercent;
-        public int widthPercent;
-        public int heightPercent;
+        public double topLeftXPercent;
+        public double topLeftYPercent;
+        public double widthPercent;
+        public double heightPercent;
 
         public bool Contains(DocRectangle rect)
         {
