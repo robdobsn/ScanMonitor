@@ -212,11 +212,11 @@ namespace ScanMonitorApp
                 MongoCollection<FiledDocInfo> collection_fileddoc = GetFiledDocsCollection();
                 collection_fileddoc.Insert(filedDocInfo);
                 // Log it
-                logger.Info("Added scandocpages record for {0}", filedDocInfo.uniqName);
+                logger.Info("Added fileddoc record for {0}", filedDocInfo.uniqName);
             }
             catch (Exception excp)
             {
-                logger.Error("Cannot insert scandocpages into {0} Coll... {1} for file {2} excp {3}",
+                logger.Error("Cannot insert fileddoc into {0} Coll... {1} for file {2} excp {3}",
                             _scanConfig._dbNameForDocs, _scanConfig._dbCollectionForFiledDocs, filedDocInfo.uniqName,
                             excp.Message);
             }
