@@ -37,7 +37,7 @@ namespace ScanMonitorApp
                     {
                         if (newDocType.matchExpression != "")
                             newDocType.matchExpression += " & ";
-                        chkItem.checkString.Replace(",", "&");
+                        chkItem.checkString = chkItem.checkString.Replace(",", "&");
                         if (chkItem.checkString.Contains('|'))
                             newDocType.matchExpression += "( " + chkItem.checkString + " )";
                         else
@@ -52,7 +52,7 @@ namespace ScanMonitorApp
                     {
                         if (notStr != "( ")
                             notStr += " & ";
-                        chkItem.checkString.Replace(",", "&");
+                        chkItem.checkString = chkItem.checkString.Replace(",", "&");
                         if (chkItem.checkString.Contains('|'))
                             notStr += "( " + chkItem.checkString + " )";
                         else
@@ -70,10 +70,15 @@ namespace ScanMonitorApp
                     newDocType.thumbnailForDocType = "";
                 docTypesMatcher.AddDocTypeRecToMongo(newDocType);
             }
+
+            logger.Info("Finished loading legacy doc types");
+
         }
 
         public static void LoadAuditFileToDb(string fileName, ScanDocHandler scanDocHandler)
         {
+            bool TEST_ON_LOCAL_DATA = true;
+
             // Read file
             using (StreamReader sr = new StreamReader(fileName))
             {
@@ -93,13 +98,15 @@ namespace ScanMonitorApp
                     ad.UniqName = uniqName;
                     ad.DestFile = DoTextSubst(fields[3]);
                     ad.ArchiveFile = fields[4];
+                    if (TEST_ON_LOCAL_DATA)
+                        ad.ArchiveFile = ad.ArchiveFile.Replace(@"\\N7700PRO\Archive\ScanAdmin\ScanBackups\", @"C:\Users\Rob\Dropbox\20140227 Train\ScanBackups\");
                     ad.ProcMessage = fields[5];
                     ad.ProcStatus = fields[6];
-                    ad.DestOk = File.Exists(ad.DestFile) ? "" : "NO";
+                    ad.DestOk = "?"; // File.Exists(ad.DestFile) ? "" : "NO";
                     bool arcvExists = File.Exists(ad.ArchiveFile);
                     if (!arcvExists)
                     {
-                        Console.WriteLine("File missing " + ad.ArchiveFile);
+//                        Console.WriteLine("File missing " + ad.ArchiveFile);
                         continue;
                     }
                     ad.ArcvOk = arcvExists ? "" : "NO";
@@ -121,7 +128,7 @@ namespace ScanMonitorApp
                 }
             }
 
-            logger.Info("Finished loading legacy doc types");
+            logger.Info("Finished loading from old log");
 
             //// Sort to find duplicates
             //bool sortIt = false;
