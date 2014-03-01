@@ -68,7 +68,7 @@ namespace ScanMonitorApp
                     newDocType.thumbnailForDocType = oldDocType.thumbFileNames[0].Replace('\\', '/');
                 else
                     newDocType.thumbnailForDocType = "";
-                docTypesMatcher.AddDocTypeRecToMongo(newDocType);
+                docTypesMatcher.AddOrUpdateDocTypeRecInDb(newDocType);
             }
 
             logger.Info("Finished loading legacy doc types");

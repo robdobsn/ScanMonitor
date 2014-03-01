@@ -69,8 +69,11 @@ namespace ScanMonitorApp
         public void ShowDocTypeList()
         {
             List<DocType> docTypes = _docTypesMatcher.ListDocTypes();
+            var docTypesSorted = from docType in docTypes
+                           orderby docType.docTypeName
+                           select docType;
             _docTypeColl.Clear();
-            foreach (DocType dt in docTypes)
+            foreach (DocType dt in docTypesSorted)
                 _docTypeColl.Add(dt);
             docTypeListView.ItemsSource = _docTypeColl;
         }
@@ -362,6 +365,21 @@ namespace ScanMonitorApp
 
             // Extract string
             string txtExpr = GetMatchExprFromEditBox();
+            string compareStr = _selectedDocType.matchExpression;
+            if (compareStr == null)
+                compareStr = "";
+            if ((_selectedDocType != null) && (compareStr.Trim() != txtExpr.Trim()))
+            {
+                btnCancelTypeChanges.IsEnabled = true;
+                btnSaveTypeChanges.IsEnabled = true;
+                docTypeListView.IsEnabled = false;
+            }
+            else
+            {
+                btnCancelTypeChanges.IsEnabled = false;
+                btnSaveTypeChanges.IsEnabled = false;
+                docTypeListView.IsEnabled = true;
+            }
 
             // Parse using our grammar
             List<ExprParseTerm> exprParseTermList = _docTypesMatcher.ParseDocMatchExpression(txtExpr, 0);
@@ -725,6 +743,19 @@ namespace ScanMonitorApp
         {
             DrawVisRectangles();
         }
+
+        private void btnSaveTypeChanges_Click(object sender, RoutedEventArgs e)
+        {
+            _selectedDocType.matchExpression = GetMatchExprFromEditBox();
+            _docTypesMatcher.AddOrUpdateDocTypeRecInDb(_selectedDocType);
+            SetTxtMatchExprBoxText(_selectedDocType.matchExpression);
+        }
+
+        private void btnCancelTypeChanges_Click(object sender, RoutedEventArgs e)
+        {
+            SetTxtMatchExprBoxText(_selectedDocType.matchExpression);
+        }
+
     }
 
     public class VisRect

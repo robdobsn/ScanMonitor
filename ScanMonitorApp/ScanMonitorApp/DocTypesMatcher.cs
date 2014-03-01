@@ -230,15 +230,15 @@ namespace ScanMonitorApp
             return collection_doctypes.FindOne(Query.EQ("docTypeName", docTypeName));
         }
 
-        public void AddDocTypeRecToMongo(DocType docType)
+        public void AddOrUpdateDocTypeRecInDb(DocType docType)
         {
             // Mongo append
             try
             {
                 MongoCollection<DocType> collection_docTypes = GetDocTypesCollection();
-                collection_docTypes.Insert(docType);
+                collection_docTypes.Save(docType);
                 // Log it
-                logger.Info("Added doctype record for {0}", docType.docTypeName);
+                logger.Info("Added/updated doctype record for {0}", docType.docTypeName);
             }
             catch (Exception excp)
             {

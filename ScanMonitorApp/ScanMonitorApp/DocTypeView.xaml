@@ -33,7 +33,7 @@
         <GridSplitter Grid.Column="1" Margin="0,0,413,0" Width="0"/>
         <Grid x:Name="auditFileInfoGrid" Margin="10,10,10,0" Grid.Column="0" Grid.Row="1">
             <Label Content="Doc Type" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="114" RenderTransformOrigin="0.488,0.429"/>
-            <TextBox x:Name="txtDocTypeName" Height="18" Margin="119,0,10,0" TextWrapping="Wrap" VerticalAlignment="Top"/>
+            <TextBox x:Name="txtDocTypeName" Height="18" Margin="119,0,10,0" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False"/>
             <Label Content="Match Expression" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="114" RenderTransformOrigin="0.488,0.429" Margin="0,26,0,0"/>
             <RichTextBox x:Name="txtMatchExpression" Margin="119,31,10,0" Height="88" VerticalAlignment="Top" TextChanged="txtMatchExpression_TextChanged">
                 <RichTextBox.Resources>
@@ -55,6 +55,8 @@
             <ProgressBar x:Name="progressDocMatch" HorizontalAlignment="Left" Height="23" Margin="10,267,0,0" VerticalAlignment="Top" Width="90"/>
             <Label x:Name="lblMatchStatus" Content="" HorizontalAlignment="Left" Height="29" Margin="10,298,0,0" VerticalAlignment="Top" Width="90"/>
             <TextBox x:Name="txtDebug" HorizontalAlignment="Left" Height="47" Margin="25,168,0,0" TextWrapping="Wrap" Text="TextBox" VerticalAlignment="Top" Width="474"/>
+            <Button x:Name="btnSaveTypeChanges" Content="Save" HorizontalAlignment="Left" Height="21" Margin="319,124,0,0" VerticalAlignment="Top" Width="92" Click="btnSaveTypeChanges_Click" IsEnabled="False"/>
+            <Button x:Name="btnCancelTypeChanges" Content="Cancel" HorizontalAlignment="Left" Height="21" Margin="416,124,0,0" VerticalAlignment="Top" Width="92" Click="btnCancelTypeChanges_Click" IsEnabled="False"/>
         </Grid>
     </Grid>
 </Window>
