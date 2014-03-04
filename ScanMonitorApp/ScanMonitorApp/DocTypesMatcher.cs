@@ -27,6 +27,14 @@ namespace ScanMonitorApp
             _dbClient = new MongoClient(connectionString);
         }
 
+        public bool Setup()
+        {
+            var collection_doctypes = GetDocTypesCollection();
+            collection_doctypes.EnsureIndex(new IndexKeysBuilder()
+                        .Ascending("docTypeName"), IndexOptions.SetUnique(true));
+            return true;
+        }
+
         private MongoCollection<DocType> GetDocTypesCollection()
         {
             // Setup db connection
@@ -37,12 +45,8 @@ namespace ScanMonitorApp
 
         public DocTypeMatchResult GetMatchingDocType(ScanPages scanPages)
         {
-            // Setup db connection
-            var server = _dbClient.GetServer();
-            var database = server.GetDatabase(_dbNameForDocTypes); // the name of the database
-            var collection_doctypes = database.GetCollection<DocType>(_dbCollectionForDocTypes);
-
             // Get list of types
+            var collection_doctypes = GetDocTypesCollection();
             MongoCursor<DocType> foundSdf = collection_doctypes.FindAll();
             foreach (DocType doctype in foundSdf)
             {
@@ -59,13 +63,23 @@ namespace ScanMonitorApp
             // Setup check info
             DocTypeMatchResult matchResult = new DocTypeMatchResult();
             matchResult.matchCertaintyPercent = 0;
-            if (docType.matchExpression == null)
+            matchResult.matchResultCode = DocTypeMatchResult.MatchResultCodes.NOT_FOUND;
+            if (!docType.isEnabled)
+            {
+                matchResult.matchResultCode = DocTypeMatchResult.MatchResultCodes.DISABLED;
                 return matchResult;
+            }
+            if (docType.matchExpression == null)
+            {
+                matchResult.matchResultCode = DocTypeMatchResult.MatchResultCodes.NO_EXPR;
+                return matchResult;
+            }
 
             // Check the expression
             if (MatchAgainstDocText(docType.matchExpression, scanPages))
             {
                 matchResult.matchCertaintyPercent = 100;
+                matchResult.matchResultCode = DocTypeMatchResult.MatchResultCodes.FOUND_MATCH;
                 matchResult.docTypeName = docType.docTypeName;
             }
 
@@ -88,7 +102,7 @@ namespace ScanMonitorApp
             int docRectValIdx = 0;
             while((token = st.GetNextToken()) != null)
             {
-                if (token == "")
+                if (token.Trim() == "")
                     continue;
                 else if (token == ")")
                     return result;
@@ -167,7 +181,7 @@ namespace ScanMonitorApp
                     // Check bounds
                     if (docRectPercent.Intersects(textElem.bounds))
                     {
-                        if (textElem.text.IndexOf(str, StringComparison.OrdinalIgnoreCase) >= 0)
+                        if (textElem.text.IndexOf(str.Trim(), StringComparison.OrdinalIgnoreCase) >= 0)
                             return true;
                     }
                 }
@@ -230,13 +244,13 @@ namespace ScanMonitorApp
             return collection_doctypes.FindOne(Query.EQ("docTypeName", docTypeName));
         }
 
-        public void AddOrUpdateDocTypeRecInDb(DocType docType)
+        public bool AddOrUpdateDocTypeRecInDb(DocType docType)
         {
             // Mongo append
             try
             {
                 MongoCollection<DocType> collection_docTypes = GetDocTypesCollection();
-                collection_docTypes.Save(docType);
+                collection_docTypes.Save(docType, SafeMode.True);
                 // Log it
                 logger.Info("Added/updated doctype record for {0}", docType.docTypeName);
             }
@@ -245,7 +259,9 @@ namespace ScanMonitorApp
                 logger.Error("Cannot insert doctype rec into {0} Coll... {1} for file {2} excp {3}",
                             _dbNameForDocTypes, _dbCollectionForDocTypes, docType.docTypeName,
                             excp.Message);
+                return false;
             }
+            return true;
         }
 
         public void ApplyAliasList(string origDocType, string newDocType)
