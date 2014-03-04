@@ -10,32 +10,35 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="161*"/>
             <RowDefinition Height="365*" />
+            <RowDefinition Height="25" />
         </Grid.RowDefinitions>
         <ListView x:Name="docTypeListView" Margin="10" SelectionChanged="docTypeListView_SelectionChanged" Grid.Row="0" Grid.Column="0">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="Height" Value="18" />
+                </Style>
+            </ListView.ItemContainerStyle>
             <ListView.View>
                 <GridView>
+                    <GridViewColumn Header="Enabled" DisplayMemberBinding="{Binding isEnabled}"/>
                     <GridViewColumn Header="Doc Type" DisplayMemberBinding="{Binding docTypeName}"/>
                     <GridViewColumn Header="Match Expression" DisplayMemberBinding="{Binding matchExpression}"/>
+                    <GridViewColumn Header="Previous Name" DisplayMemberBinding="{Binding previousName}"/>
                 </GridView>
             </ListView.View>
         </ListView>
         <GridSplitter Grid.Column="1" Margin="0,0,413,0" Width="0"/>
-        <Image x:Name="exampleFileImage" Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" Grid.ColumnSpan="1" MouseDown="dragSelectionCanvas_MouseDown" MouseMove="dragSelectionCanvas_MouseMove" MouseUp="dragSelectionCanvas_MouseUp" />
-        <Canvas x:Name="docOverlayCanvas" Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" Grid.ColumnSpan="1" Panel.ZIndex="1" SizeChanged="docOverlayCanvas_SizeChanged">
-
-        </Canvas>
-        <!--<Rectangle
-                x:Name="dragSelectionBorder"
-                Opacity="0.5"
-                Fill="LightBlue"
-                Visibility="Visible" Height="40" Width="102" Margin="150,107,285,32" Grid.Column="1" Grid.RowSpan="2"
-            />-->
+        <Image x:Name="exampleFileImage" Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" Grid.ColumnSpan="1" MouseDown="exampleFileImage_MouseDown" MouseMove="exampleFileImage_MouseMove" MouseUp="exampleFileImage_MouseUp" MouseLeave="exampleFileImage_MouseLeave" />
+        <Canvas x:Name="docOverlayCanvas" Grid.Row="0" Grid.Column="1" Grid.RowSpan="2" Grid.ColumnSpan="1" Panel.ZIndex="1" SizeChanged="docOverlayCanvas_SizeChanged"></Canvas>
+        <Popup x:Name="exampleFileImageToolTip" AllowsTransparency="True" Placement="Relative" PlacementTarget="{Binding ElementName=exampleFileImage}" IsEnabled="False">
+            <TextBlock x:Name="exampleFileImageToolText" Background="Azure" FontSize="15" IsEnabled="False">ToolText</TextBlock>
+        </Popup>
         <GridSplitter Grid.Column="1" Margin="0,0,413,0" Width="0"/>
-        <Grid x:Name="auditFileInfoGrid" Margin="10,10,10,0" Grid.Column="0" Grid.Row="1">
-            <Label Content="Doc Type" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="114" RenderTransformOrigin="0.488,0.429"/>
-            <TextBox x:Name="txtDocTypeName" Height="18" Margin="119,0,10,0" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False"/>
-            <Label Content="Match Expression" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="114" RenderTransformOrigin="0.488,0.429" Margin="0,26,0,0"/>
-            <RichTextBox x:Name="txtMatchExpression" Margin="119,31,10,0" Height="88" VerticalAlignment="Top" TextChanged="txtMatchExpression_TextChanged">
+        <Grid x:Name="auditFileInfoGrid" Margin="10,10,10,0" Grid.Column="0" Grid.Row="1" Grid.RowSpan="2">
+            <Label Content="Doc Type" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="109" RenderTransformOrigin="0.488,0.429" Margin="5,42,0,0"/>
+            <TextBox x:Name="txtDocTypeName" Height="18" Margin="119,42,10,0" TextWrapping="Wrap" VerticalAlignment="Top" TextChanged="txtDocTypeName_TextChanged" IsEnabled="False"/>
+            <Label Content="Match Expression" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="104" RenderTransformOrigin="0.488,0.429" Margin="5,73,0,0"/>
+            <RichTextBox x:Name="txtMatchExpression" Margin="119,73,10,0" Height="88" VerticalAlignment="Top" TextChanged="txtMatchExpression_TextChanged" IsEnabled="False">
                 <RichTextBox.Resources>
                     <Style TargetType="{x:Type Paragraph}">
                         <Setter Property="Margin" Value="0"/>
@@ -44,19 +47,31 @@
             </RichTextBox>
             <Button x:Name="btnTestMatch" Content="Find Matches" HorizontalAlignment="Left" Height="21" Margin="10,237,0,0" VerticalAlignment="Top" Width="90" Click="btnTestMatch_Click"/>
             <ListView x:Name="listMatchResults" Margin="119,237,10,10" SelectionChanged="listMatchResults_SelectionChanged">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="Height" Value="18" />
+                    </Style>
+                </ListView.ItemContainerStyle>
                 <ListView.View>
                     <GridView>
+                        <GridViewColumn Header="Status" DisplayMemberBinding="{Binding matchStatus}"/>
                         <GridViewColumn Header="Unique Name" DisplayMemberBinding="{Binding uniqName}"/>
-                        <GridViewColumn Header="Match Ok" DisplayMemberBinding="{Binding typeMatchOk}"/>
                         <GridViewColumn Header="Filed Type" DisplayMemberBinding="{Binding docTypeFiled}"/>
                     </GridView>
                 </ListView.View>
             </ListView>
             <ProgressBar x:Name="progressDocMatch" HorizontalAlignment="Left" Height="23" Margin="10,267,0,0" VerticalAlignment="Top" Width="90"/>
-            <Label x:Name="lblMatchStatus" Content="" HorizontalAlignment="Left" Height="29" Margin="10,298,0,0" VerticalAlignment="Top" Width="90"/>
-            <TextBox x:Name="txtDebug" HorizontalAlignment="Left" Height="47" Margin="25,168,0,0" TextWrapping="Wrap" Text="TextBox" VerticalAlignment="Top" Width="474"/>
-            <Button x:Name="btnSaveTypeChanges" Content="Save" HorizontalAlignment="Left" Height="21" Margin="319,124,0,0" VerticalAlignment="Top" Width="92" Click="btnSaveTypeChanges_Click" IsEnabled="False"/>
-            <Button x:Name="btnCancelTypeChanges" Content="Cancel" HorizontalAlignment="Left" Height="21" Margin="416,124,0,0" VerticalAlignment="Top" Width="92" Click="btnCancelTypeChanges_Click" IsEnabled="False"/>
+            <RichTextBox x:Name="rtbDocMatchStatus" HorizontalAlignment="Left" Height="78" Margin="10,298,0,0" VerticalAlignment="Top" Width="90" BorderThickness="0"/>
+
+            <Button x:Name="btnSaveTypeChanges" Content="Save" Height="21" Margin="0,166,107,0" VerticalAlignment="Top" Click="btnSaveTypeChanges_Click" IsEnabled="False" HorizontalAlignment="Right" Width="92"/>
+            <Button x:Name="btnCancelTypeChanges" Content="Cancel" Height="21" Margin="0,166,10,0" VerticalAlignment="Top" Click="btnCancelTypeChanges_Click" IsEnabled="False" HorizontalAlignment="Right" Width="92"/>
+            <CheckBox x:Name="chkEnabledDocType" Content="Enabled" HorizontalAlignment="Left" Height="26" Margin="10,104,0,0" VerticalAlignment="Top" Width="90" RenderTransformOrigin="0.511,0.654" Checked="chkEnabledDocType_Changed" Unchecked="chkEnabledDocType_Changed" IsEnabled="False"/>
+            <Button x:Name="btnEditDocType" Content="Edit" HorizontalAlignment="Left" Height="21" Margin="10,0,0,0" VerticalAlignment="Top" Width="90" Click="btnEditDocType_Click" IsEnabled="False"/>
+            <Button x:Name="btnRenameDocType" Content="Rename" HorizontalAlignment="Left" Height="21" Margin="119,0,0,0" VerticalAlignment="Top" Width="90" Click="btnRenameDocType_Click" IsEnabled="False"/>
+            <Button x:Name="btnNewDocType" Content="New" HorizontalAlignment="Left" Height="21" Margin="227,0,0,0" VerticalAlignment="Top" Width="90" Click="btnNewDocType_Click"/>
         </Grid>
+        <Button x:Name="btnBackPage" Content="Back" Grid.Column="1" Margin="10,0,0,0" Grid.Row="2" VerticalAlignment="Top" Click="btnBackPage_Click" HorizontalAlignment="Left" Width="75" Height="27"/>
+        <Button x:Name="btnNextPage" Content="Next" Grid.Column="1" Margin="90,0,0,-2" Grid.Row="2" VerticalAlignment="Top" Click="btnNextPage_Click" Height="27" HorizontalAlignment="Left" Width="75"/>
+        <TextBox x:Name="txtCheckResult" Grid.Column="1" Grid.Row="2" TextWrapping="Wrap" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Right" Width="114" BorderThickness="0"/>
     </Grid>
 </Window>
