@@ -10,17 +10,40 @@ namespace ScanMonitorApp
 {
     public class DocType
     {
+        public DocType()
+        {
+            docTypeName = "";
+            matchExpression = "";
+            thumbnailForDocType = "";
+            isEnabled = false;
+            previousName = "";
+            renamedTo = "";
+        }
+        public void CloneForRenaming(string newName, DocType prevDocType)
+        {
+            docTypeName = newName;
+            matchExpression = prevDocType.matchExpression;
+            thumbnailForDocType = prevDocType.thumbnailForDocType;
+            isEnabled = false;
+            previousName = prevDocType.docTypeName;
+            renamedTo = "";
+        }
         public ObjectId Id;
         public string docTypeName { get; set; }
         public string matchExpression { get; set; }
         public string thumbnailForDocType { get; set; }
+        public bool isEnabled { get; set; }
+        public string previousName { get; set; }
+        public string renamedTo { get; set; }
     }
 
     public class DocTypeMatchResult
     {
+        public enum MatchResultCodes { NOT_FOUND, FOUND_MATCH, NO_EXPR, DISABLED };
         public string docTypeName = "";
         public DateTime docDate = DateTime.MinValue;
         public int matchCertaintyPercent = 0;
+        public MatchResultCodes matchResultCode = MatchResultCodes.NOT_FOUND;
     }
 
     public class DocMatchAction
@@ -33,38 +56,38 @@ namespace ScanMonitorApp
     {
         public DocRectangle(int x, int y, int wid, int hig)
         {
-            topLeftXPercent = x;
-            topLeftYPercent = y;
-            widthPercent = wid;
-            heightPercent = hig;
+            X = x;
+            Y = y;
+            Width = wid;
+            Height = hig;
         }
         public DocRectangle(double x, double y, double wid, double hig)
         {
-            topLeftXPercent = x;
-            topLeftYPercent = y;
-            widthPercent = wid;
-            heightPercent = hig;
+            X = x;
+            Y = y;
+            Width = wid;
+            Height = hig;
         }
-        public double bottomRightXPercent { get { return topLeftXPercent + widthPercent; } }
-        public double bottomRightYPercent { get { return topLeftYPercent + heightPercent; } }
+        public double BottomRightX { get { return X + Width; } }
+        public double BottomRightY { get { return Y + Height; } }
 
         public DocRectangle(string rectCoordStr)
         {
-            topLeftXPercent = 0;
-            topLeftYPercent = 0;
-            widthPercent = 100;
-            heightPercent = 100;
+            X = 0;
+            Y = 0;
+            Width = 100;
+            Height = 100;
             try
             {
                 string[] splitStr = rectCoordStr.Split(',');
                 if (splitStr.Length > 0)
-                    topLeftXPercent = Convert.ToDouble(splitStr[0]);
+                    X = Convert.ToDouble(splitStr[0]);
                 if (splitStr.Length > 1)
-                    topLeftYPercent = Convert.ToDouble(splitStr[1]);
+                    Y = Convert.ToDouble(splitStr[1]);
                 if (splitStr.Length > 2)
-                    widthPercent = Convert.ToDouble(splitStr[2]);
+                    Width = Convert.ToDouble(splitStr[2]);
                 if (splitStr.Length > 3)
-                    heightPercent = Convert.ToDouble(splitStr[3]);
+                    Height = Convert.ToDouble(splitStr[3]);
             }
             catch
             { }
@@ -74,35 +97,35 @@ namespace ScanMonitorApp
         {
             switch(valIdx)
             {
-                case 0: { topLeftXPercent = Convert.ToInt32(val); break; }
-                case 1: { topLeftYPercent = Convert.ToInt32(val); break; }
-                case 2: { widthPercent = Convert.ToInt32(val); break; }
-                case 3: { heightPercent = Convert.ToInt32(val); break; }                
+                case 0: { X = Convert.ToInt32(val); break; }
+                case 1: { Y = Convert.ToInt32(val); break; }
+                case 2: { Width = Convert.ToInt32(val); break; }
+                case 3: { Height = Convert.ToInt32(val); break; }                
             }
         }
 
-        public double topLeftXPercent;
-        public double topLeftYPercent;
-        public double widthPercent;
-        public double heightPercent;
+        public double X;
+        public double Y;
+        public double Width;
+        public double Height;
 
         public bool Contains(DocRectangle rect)
         {
-            return (this.topLeftXPercent <= rect.topLeftXPercent) &&
-                            ((rect.topLeftXPercent + rect.widthPercent) <= (this.topLeftXPercent + this.widthPercent)) &&
-                            (this.topLeftYPercent <= rect.topLeftYPercent) &&
-                            ((rect.topLeftYPercent + rect.heightPercent) <= (this.topLeftYPercent + this.heightPercent));
+            return (this.X <= rect.X) &&
+                            ((rect.X + rect.Width) <= (this.X + this.Width)) &&
+                            (this.Y <= rect.Y) &&
+                            ((rect.Y + rect.Height) <= (this.Y + this.Height));
         }
 
         public bool Intersects(DocRectangle rect)
         {
-            if (topLeftXPercent > rect.bottomRightXPercent)
+            if (X > rect.BottomRightX)
                 return false;
-            if (bottomRightXPercent < rect.topLeftXPercent)
+            if (BottomRightX < rect.X)
                 return false;
-            if (topLeftYPercent > rect.bottomRightYPercent)
+            if (Y > rect.BottomRightY)
                 return false;
-            if (bottomRightYPercent < rect.topLeftYPercent)
+            if (BottomRightY < rect.Y)
                 return false;
             return true;
         }
