@@ -1,5 +1,6 @@
 ﻿using iTextSharp.text.pdf;
 using iTextSharp.text.pdf.parser;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,6 +15,7 @@ namespace ScanMonitorApp
     /// </summary>
     class LocationTextExtractionStrategyEx : LocationTextExtractionStrategy
     {
+        private static Logger logger = LogManager.GetCurrentClassLogger();
         private List<TextChunkEx> m_locationResult = new List<TextChunkEx>();
         private List<TextInfo> m_TextLocationInfo = new List<TextInfo>();
         public List<TextChunkEx> LocationResult
@@ -249,6 +251,7 @@ namespace ScanMonitorApp
 
         public class TextInfo
         {
+            private static Logger logger = LogManager.GetCurrentClassLogger();
             public iTextSharp.text.pdf.parser.Vector TopLeft;
             public iTextSharp.text.pdf.parser.Vector BottomRight;
             private string m_Text;
@@ -294,6 +297,8 @@ namespace ScanMonitorApp
 
     class PdfTextAndLocExtractor
     {
+        private static Logger logger = LogManager.GetCurrentClassLogger();
+
         private DocRectangle ConvertToDocRect(iTextSharp.text.pdf.parser.Vector topLeftCoord, iTextSharp.text.pdf.parser.Vector bottomRightCoord,
                             iTextSharp.text.Rectangle pageRect)
         {
@@ -319,10 +324,17 @@ namespace ScanMonitorApp
                 for (int pageNum = 1; pageNum <= numPagesToUse; pageNum++)
                 {
                     LocationTextExtractionStrategyEx locationStrategy = new LocationTextExtractionStrategyEx();
-                    string text = PdfTextExtractor.GetTextFromPage(pdfReader, pageNum, locationStrategy);
-                    if (text != "")
-                        numPagesWithText++;
-                    extractedTextAndLoc.Add(locationStrategy.TextLocationInfo);
+                    try
+                    {
+                        string text = PdfTextExtractor.GetTextFromPage(pdfReader, pageNum, locationStrategy);
+                        if (text != "")
+                            numPagesWithText++;
+                        extractedTextAndLoc.Add(locationStrategy.TextLocationInfo);
+                    }
+                    catch (Exception excp)
+                    {
+                        logger.Error("Failed to extract from pdf {0}, page {1} excp {2}", fileName, pageNum, excp.Message);
+                    }
                 }
 
                 // Create new structures for the information

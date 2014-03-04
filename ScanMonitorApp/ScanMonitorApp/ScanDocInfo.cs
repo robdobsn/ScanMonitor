@@ -113,7 +113,7 @@ namespace ScanMonitorApp
         public string pathFiledTo { get; set; }
         public string filingResult { get; set; }
         public string filingErrorMsg { get; set;}
-        public bool docSuitableForCrossCheckingDoctypes { get; set; }
+        public bool includeInXCheck { get; set; }
     }
 
     public class ScanPages

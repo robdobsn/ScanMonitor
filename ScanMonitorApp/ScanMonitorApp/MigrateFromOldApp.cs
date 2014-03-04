@@ -68,7 +68,8 @@ namespace ScanMonitorApp
                     newDocType.thumbnailForDocType = oldDocType.thumbFileNames[0].Replace('\\', '/');
                 else
                     newDocType.thumbnailForDocType = "";
-                docTypesMatcher.AddOrUpdateDocTypeRecInDb(newDocType);
+                if (!docTypesMatcher.AddOrUpdateDocTypeRecInDb(newDocType))
+                    logger.Info("Failed to add doc type record {0}", newDocType.docTypeName);
             }
 
             logger.Info("Finished loading legacy doc types");
@@ -77,7 +78,10 @@ namespace ScanMonitorApp
 
         public static void LoadAuditFileToDb(string fileName, ScanDocHandler scanDocHandler)
         {
-            bool TEST_ON_LOCAL_DATA = true;
+            bool TEST_ON_LOCAL_DATA = false;
+            bool PROCESS_PDF_FILE = true;
+            bool CREATE_RECORD_IN_DB = true;
+            Dictionary<string, bool> uniqNamesTest = new Dictionary<string, bool>();
 
             // Read file
             using (StreamReader sr = new StreamReader(fileName))
@@ -89,12 +93,20 @@ namespace ScanMonitorApp
                     if ((fields[6] != "OK") || ((fields[5] == "TEST") || (fields[5] == "DELETED")))
                         continue;
                     AuditData ad = new AuditData();
+                    string uniqName = ScanDocInfo.GetUniqNameForFile(fields[4], fields[0]);
+                    if (uniqNamesTest.ContainsKey(uniqName))
+                    {
+                        Console.WriteLine("File {0} UNIQNAME IS NOT UNIQUE", uniqName);
+                        continue;
+                    }
+                    uniqNamesTest.Add(uniqName, true);
                     ad.ProcDateAndTime = fields[0];
                     ad.DocType = fields[1];
                     if (ad.DocType == "")
-                        continue;
+                    {
+                        Console.WriteLine("File {0} BLANK DOC TYPE", uniqName);
+                    }
                     ad.OrigFileName = fields[2];
-                    string uniqName = ScanDocInfo.GetUniqNameForFile(fields[4], fields[0]);
                     ad.UniqName = uniqName;
                     ad.DestFile = DoTextSubst(fields[3]);
                     ad.ArchiveFile = fields[4];
@@ -102,29 +114,35 @@ namespace ScanMonitorApp
                         ad.ArchiveFile = ad.ArchiveFile.Replace(@"\\N7700PRO\Archive\ScanAdmin\ScanBackups\", @"C:\Users\Rob\Dropbox\20140227 Train\ScanBackups\");
                     ad.ProcMessage = fields[5];
                     ad.ProcStatus = fields[6];
-                    ad.DestOk = "?"; // File.Exists(ad.DestFile) ? "" : "NO";
+                    ad.DestOk = File.Exists(ad.DestFile) ? "" : "NO";
                     bool arcvExists = File.Exists(ad.ArchiveFile);
                     if (!arcvExists)
                     {
-//                        Console.WriteLine("File missing " + ad.ArchiveFile);
+                        Console.WriteLine("File {0} ARCHIVE FILE missing {1}", uniqName, ad.ArchiveFile);
                         continue;
                     }
                     ad.ArcvOk = arcvExists ? "" : "NO";
 
                     // Process file
-                    scanDocHandler.ProcessPdfFile(ad.ArchiveFile, uniqName, true, true, true, false, true, true);
+                    if (PROCESS_PDF_FILE)
+                    {
+                        scanDocHandler.ProcessPdfFile(ad.ArchiveFile, uniqName, true, true, true, false, true, true);
 
-                    // Create filed info record
-                    FiledDocInfo fdi = new FiledDocInfo();
-                    fdi.docDateFiled = DateTime.ParseExact(ad.ProcDateAndTime, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-                    fdi.docSuitableForCrossCheckingDoctypes = true;
-                    fdi.docTypeFiled = ad.DocType;
-                    fdi.filingErrorMsg = ad.ProcMessage;
-                    fdi.filingResult = ad.ProcStatus;
-                    fdi.pathFiledTo = ad.DestFile.Replace('\\', '/');
-                    fdi.uniqName = ad.UniqName;
-                    scanDocHandler.AddFiledDocRecToMongo(fdi);
+                        // Create filed info record
+                        if (CREATE_RECORD_IN_DB)
+                        {
+                            FiledDocInfo fdi = new FiledDocInfo();
+                            fdi.docDateFiled = DateTime.ParseExact(ad.ProcDateAndTime, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                            fdi.includeInXCheck = true;
+                            fdi.docTypeFiled = ad.DocType;
+                            fdi.filingErrorMsg = ad.ProcMessage;
+                            fdi.filingResult = ad.ProcStatus;
+                            fdi.pathFiledTo = ad.DestFile.Replace('\\', '/');
+                            fdi.uniqName = ad.UniqName;
+                            scanDocHandler.AddFiledDocRecToMongo(fdi);
+                        }
 
+                    }
                 }
             }
 

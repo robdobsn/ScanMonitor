@@ -155,6 +155,7 @@ namespace ScanMonitorApp
 
             // Document matcher
             _docTypesMatcher = new DocTypesMatcher(_dbNameForDocTypes, _dbCollectionForDocTypes);
+            _docTypesMatcher.Setup();
 
             // Scanned document handler
             _scanDocHandler = new ScanDocHandler(AddToStatusText, _docTypesMatcher, _scanDocHandlerConfig);
@@ -214,7 +215,7 @@ namespace ScanMonitorApp
         private void butViewDocTypes_Click(object sender, RoutedEventArgs e)
         {
             DocTypeView dtv = new DocTypeView(_scanDocHandler, _docTypesMatcher);
-            dtv.ShowDocTypeList();
+            dtv.ShowDocTypeList("");
             dtv.ShowDialog();
         }
 
