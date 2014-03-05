@@ -91,6 +91,7 @@
     <Compile Include="DocTypeView.xaml.cs">
       <DependentUpon>DocTypeView.xaml</DependentUpon>
     </Compile>
+    <Compile Include="LocationRectangleHandler.cs" />
     <Compile Include="MigrateFromOldApp.cs" />
     <Compile Include="OldXmlRulesManager.cs" />
     <Compile Include="PdfRasterizer.cs" />
