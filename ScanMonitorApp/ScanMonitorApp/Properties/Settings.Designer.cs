@@ -12,7 +12,7 @@ namespace ScanMonitorApp.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "11.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "12.0.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -32,18 +32,6 @@ namespace ScanMonitorApp.Properties {
             }
             set {
                 this["FolderToMonitor"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Main\\PendingFiling\\Scans")]
-        public string PendingDocFolder {
-            get {
-                return ((string)(this["PendingDocFolder"]));
-            }
-            set {
-                this["PendingDocFolder"] = value;
             }
         }
         
@@ -118,42 +106,6 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string TestFolderToMonitor {
-            get {
-                return ((string)(this["TestFolderToMonitor"]));
-            }
-            set {
-                this["TestFolderToMonitor"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("C:\\Users\\Rob\\Documents\\20140209 Train\\Scanning\\Pending")]
-        public string TestPendingDocFolder {
-            get {
-                return ((string)(this["TestPendingDocFolder"]));
-            }
-            set {
-                this["TestPendingDocFolder"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("C:\\Users\\Rob\\Documents\\20140209 Train\\Scanning\\PendingImgs")]
-        public string TestDocAdminImgFolderBase {
-            get {
-                return ((string)(this["TestDocAdminImgFolderBase"]));
-            }
-            set {
-                this["TestDocAdminImgFolderBase"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("ScanDocPages")]
         public string DbCollectionForDocPages {
             get {
@@ -173,18 +125,6 @@ namespace ScanMonitorApp.Properties {
             }
             set {
                 this["DbCollectionForFiledDocs"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("DocTypesMacros")]
-        public string DbCollectionForMacroSubst {
-            get {
-                return ((string)(this["DbCollectionForMacroSubst"]));
-            }
-            set {
-                this["DbCollectionForMacroSubst"] = value;
             }
         }
     }

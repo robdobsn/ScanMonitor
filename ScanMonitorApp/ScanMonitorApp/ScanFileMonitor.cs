@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using NLog;
 using System.Threading;
+using System.ComponentModel;
 
 namespace ScanMonitorApp
 {
@@ -17,21 +18,36 @@ namespace ScanMonitorApp
         private List<string> _foldersToMonitor = new List<string>();
         public delegate void ReportStatus(string str);
         private ReportStatus _reportStatusFn;
-        private bool _monitorRunning = false;
-        private string _pendingDocFolder;
+        private bool _monitorRunning = true;
         private ScanDocHandler _scanDocHandler;
         private bool _testMode = false;
-        private bool bEnabled = false;
+        private static readonly object _lockForDocProcessing = new object();
+        private static bool _requestDocProcessingForNewFile = false;
+        BackgroundWorker _bwFileMonitorThread;
 
         public ScanFileMonitor(ReportStatus reportStatusFn, ScanDocHandler scanDocHandler)
         {
             _reportStatusFn = reportStatusFn;
             _scanDocHandler = scanDocHandler;
+
+            // Monitor thread
+            _bwFileMonitorThread = new BackgroundWorker();
+            _bwFileMonitorThread.WorkerSupportsCancellation = true;
+            _bwFileMonitorThread.WorkerReportsProgress = true;
+            _bwFileMonitorThread.DoWork += new DoWorkEventHandler(FileMonitorThread_DoWork);
+            _bwFileMonitorThread.RunWorkerAsync();
         }
 
-        public void Start(List<string> foldersToMonitor, string pendingDocFolder, bool testMode)
+        ~ScanFileMonitor()
         {
-            _pendingDocFolder = pendingDocFolder;
+            if (_bwFileMonitorThread != null)
+                if (_bwFileMonitorThread.WorkerSupportsCancellation)
+                    _bwFileMonitorThread.CancelAsync();
+            _monitorRunning = false;
+        }
+
+        public void Start(List<string> foldersToMonitor, bool testMode)
+        {
             MonitorFolders(foldersToMonitor);
             _monitorRunning = true;
             _testMode = testMode;
@@ -63,12 +79,12 @@ namespace ScanMonitorApp
         public void WatchFolderChanged(string fileName, WatcherChangeTypes changeInfo)
         {
             if (!_testMode)
-                MoveAndProcessPdfFile(fileName);
+                HandleNewPdfFile(fileName);
             else
                 logger.Info("Doc changed but ignored as TEST_MODE {0}", fileName);
         }
 
-        private bool CheckFileReadyToMove(string fileName)
+        private bool CheckFileReadyToBeAccessed(string fileName)
         {
             // Check the file is writeable
             bool checkOk = false;
@@ -89,23 +105,23 @@ namespace ScanMonitorApp
             return checkOk;
         }
 
-        public bool WaitForFileToBeMoveable(string fileName)
+        public bool WaitForFileToBeAccessible(string fileName)
         {
             bool fileCheckOk = false;
             // Verify that the file contains text - wait until it does
-            for (int checkIdx = 0; checkIdx < 20; checkIdx++)
+            for (int checkIdx = 0; checkIdx < 60; checkIdx++)
             {
-                // Check file is ready to be moved
-                fileCheckOk = CheckFileReadyToMove(fileName);
+                // Check file is ready to be accessed
+                fileCheckOk = CheckFileReadyToBeAccessed(fileName);
                 if (fileCheckOk)
                     break;
 
-                // Sleep to allow the remote computer to finish processing
+                // Sleep to allow the remote computer to finish processing - it may be doing OCR etc
                 Thread.Sleep(1000);
             }
             if (!fileCheckOk)
             {
-                logger.Info("File {0} detected but cannot be moved", fileName);
+                logger.Info("File {0} detected but cannot be accessed", fileName);
                 return false;
             }
             return true;
@@ -126,86 +142,122 @@ namespace ScanMonitorApp
             return bResult;
         }
 
-        private string MoveFileToPendingFolder(string fileName)
+        private void HandleNewPdfFile(string fileName)
         {
-            // Move the file
-            string statusStr = "";
-            string destFileName = Path.Combine(_pendingDocFolder, Path.GetFileName(fileName));
+            // Set flag to request that any regular processing of files stops while the new file is processed
+            _requestDocProcessingForNewFile = true;
 
-            // Check if destination exists
-            bool bMoveFile = true;
-            try
+            // Try to obtain a lock on the lock object but with a timeout to ensure we don't wait here for a long time
+            if(Monitor.TryEnter(_lockForDocProcessing, new TimeSpan(0, 0, 10)))
             {
-                if (File.Exists(destFileName))
+                try 
                 {
-                    bMoveFile = false;
-                    FileInfo fi1 = new FileInfo(fileName);
-                    FileInfo fi2 = new FileInfo(destFileName);
-                    if (fi1.Length == fi2.Length)
-                    {
-                        // Assume identical so delete
-                        File.Delete(fileName);
-                        logger.Info("A suspected duplicate file found {0} - deleted", fileName);
-                    }
-                    else
-                    {
-                        bMoveFile = true;
-                        // Try to make the name unique
-                        destFileName = Path.Combine(_pendingDocFolder, Path.GetFileNameWithoutExtension(fileName) + "_A", Path.GetExtension(fileName));
-                        if (File.Exists(destFileName))
-                        {
-                            logger.Info("File {0} name conflicts with {1} cannot copy", fileName, destFileName);
-                            bMoveFile = false;
-                        }
-                    }
+                    HandleASinglePdfFile(fileName);
+                }
+                finally 
+                {
+                    Monitor.Exit(_lockForDocProcessing);
                 }
             }
-            catch (Exception excp)
-            {
-                logger.Error("Error in testing file (0) duplicate {1}", fileName, excp.Message);
-            }
 
-            // Check if file to be moved
-            if (bMoveFile)
-            {
-                bool bOk = MoveFile(fileName, destFileName, ref statusStr);
-                if (!bOk)
-                {
-                    logger.Info("File {0} failed to move to pending, excp {1}", fileName, statusStr);
-                    return "";
-                }
-                logger.Info("File {0} moved to pending ok", fileName);
-            }
-            return destFileName;
+            // Clear flag indicating request to stop
+            _requestDocProcessingForNewFile = false;
         }
 
-        public void MoveAndProcessPdfFile(string fileName)
+        private void HandleASinglePdfFile(string fileName)
         {
-            if (!bEnabled)
-                return;
-
             // Wait until file is moveable - or time-out
-            if (!WaitForFileToBeMoveable(fileName))
-                return;
-
-            // Move file to pending folder
-            string destFileName = MoveFileToPendingFolder(fileName);
-            if (destFileName == "")
+            if (!WaitForFileToBeAccessible(fileName))
                 return;
 
             // Process Pdf file
-            DateTime fileDateTime = File.GetCreationTime(destFileName);
+            DateTime fileDateTime = File.GetCreationTime(fileName);
             string uniqName = ScanDocInfo.GetUniqNameForFile(fileName, fileDateTime);
-            // _scanDocHandler.ProcessPdfFile(destFileName, uniqName);
+            _scanDocHandler.ProcessPdfFile(fileName, uniqName, true, true, true, true, true, true);
         }
 
-        public void FileMonitorThread()
+        private List<FileSystemInfo> GetListOfFilesInWatchedFolder(string folderName)
         {
+            try
+            {
+                DirectoryInfo di = new DirectoryInfo(folderName);
+                FileSystemInfo[] fps = di.GetFileSystemInfos("*.pdf");
+                IEnumerable<FileSystemInfo> rslt = fps.OrderBy(f => f.FullName);
+                return rslt.ToList<FileSystemInfo>();
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Failed to get file list from {0} excp {1}", folderName, excp.Message);
+            }
+            return new List<FileSystemInfo>();
+        }
+
+        public void FileMonitorThread_DoWork(object sender, DoWorkEventArgs e)
+        {
+            BackgroundWorker worker = sender as BackgroundWorker;
             while (_monitorRunning)
             {
-                Thread.Sleep(5000);
-            }
+                // Check for cancellation
+                if ((worker.CancellationPending == true))
+                {
+                    e.Cancel = true;
+                    break;
+                }
 
+                // Obtain lock to allow processing
+                lock (_lockForDocProcessing)
+                {
+                    // Check for new files
+                    for (int folderIdx = 0; folderIdx < _foldersToMonitor.Count; folderIdx++)
+                    {
+                        List<FileSystemInfo> fsInfos = GetListOfFilesInWatchedFolder(_foldersToMonitor[folderIdx]);
+
+                        // Check if each file in the folder is already in the database
+                        foreach (FileSystemInfo fsi in fsInfos)
+                        {
+                            // Check for cancellation
+                            if ((worker.CancellationPending == true))
+                            {
+                                e.Cancel = true;
+                                break;
+                            }
+
+                            DateTime fileDateTime = File.GetCreationTime(fsi.FullName);
+                            string uniqName = ScanDocInfo.GetUniqNameForFile(fsi.FullName, fileDateTime);
+
+                            // Check if doc not already in database
+                            ScanDocInfo sdi = _scanDocHandler.GetScanDocInfo(uniqName);
+                            if (sdi == null)
+                            {
+                                // Process the doc
+                                HandleASinglePdfFile(fsi.FullName);
+                            }
+
+                            // Check if we should terminate to allow a new file to be processed
+                            if (_requestDocProcessingForNewFile)
+                                break;
+                        }
+                        // Check if we should terminate to allow a new file to be processed
+                        if (_requestDocProcessingForNewFile)
+                            break;
+                    }
+                }
+                
+                // Clear any request
+                _requestDocProcessingForNewFile = false;
+
+                // Wait a while to avoid thrashing constantly
+                for (int i = 0; i < 600; i++ )
+                {
+                    // Check for cancellation
+                    if ((worker.CancellationPending == true))
+                    {
+                        e.Cancel = true;
+                        break;
+                    }
+                    Thread.Sleep(1000);
+                }
+            }
         }
     }
 }

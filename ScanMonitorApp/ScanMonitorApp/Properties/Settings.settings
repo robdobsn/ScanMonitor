@@ -5,9 +5,6 @@
     <Setting Name="FolderToMonitor" Type="System.String" Scope="User">
       <Value Profile="(Default)">\\SCAN1\Users\Rob\Documents\ScanSnap</Value>
     </Setting>
-    <Setting Name="PendingDocFolder" Type="System.String" Scope="User">
-      <Value Profile="(Default)">\\MACALLAN\Main\PendingFiling\Scans</Value>
-    </Setting>
     <Setting Name="DocAdminImgFolderBase" Type="System.String" Scope="User">
       <Value Profile="(Default)">\\MACALLAN\Admin\ScanAdmin\ScannedDocImgs</Value>
     </Setting>
@@ -26,23 +23,11 @@
     <Setting Name="DbCollectionForDocTypes" Type="System.String" Scope="User">
       <Value Profile="(Default)">DocTypes</Value>
     </Setting>
-    <Setting Name="TestFolderToMonitor" Type="System.String" Scope="User">
-      <Value Profile="(Default)" />
-    </Setting>
-    <Setting Name="TestPendingDocFolder" Type="System.String" Scope="User">
-      <Value Profile="(Default)">C:\Users\Rob\Documents\20140209 Train\Scanning\Pending</Value>
-    </Setting>
-    <Setting Name="TestDocAdminImgFolderBase" Type="System.String" Scope="User">
-      <Value Profile="(Default)">C:\Users\Rob\Documents\20140209 Train\Scanning\PendingImgs</Value>
-    </Setting>
     <Setting Name="DbCollectionForDocPages" Type="System.String" Scope="User">
       <Value Profile="(Default)">ScanDocPages</Value>
     </Setting>
     <Setting Name="DbCollectionForFiledDocs" Type="System.String" Scope="User">
       <Value Profile="(Default)">FiledDocInfo</Value>
-    </Setting>
-    <Setting Name="DbCollectionForMacroSubst" Type="System.String" Scope="User">
-      <Value Profile="(Default)">DocTypesMacros</Value>
     </Setting>
   </Settings>
 </SettingsFile>

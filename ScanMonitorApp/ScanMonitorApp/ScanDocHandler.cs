@@ -8,6 +8,7 @@ using MongoDB.Driver;
 using System.IO;
 using MongoDB.Driver.Builders;
 using Newtonsoft.Json;
+using System.Diagnostics;
 
 namespace ScanMonitorApp
 {
@@ -243,12 +244,25 @@ namespace ScanMonitorApp
             return collection_fdinfo.FindAll().ToList();
         }
 
+        public FiledDocInfo GetFiledDocInfo(string uniqName)
+        {
+            MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
+            FiledDocInfo fdi = collection_fdinfo.FindOne(Query.EQ("uniqName", uniqName));
+            return fdi;
+        }
+
         public string GetScanDocJson(string uniqName)
+        {
+            ScanDocInfo scanDoc = GetScanDocInfo(uniqName);
+            return JsonConvert.SerializeObject(scanDoc);
+        }
+
+        public ScanDocInfo GetScanDocInfo(string uniqName)
         {
             // Get first matching documents
             MongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
             ScanDocInfo scanDoc = collection_sdinfo.FindOne(Query.EQ("uniqName", uniqName));
-            return JsonConvert.SerializeObject(scanDoc);
+            return scanDoc;
         }
 
         public ScanPages GetScanPages(string uniqName)
@@ -268,6 +282,50 @@ namespace ScanMonitorApp
             FiledDocInfo filedDocInfo = collection_filedinfo.FindOne(Query.EQ("uniqName", uniqName));
             return new ScanDocAllInfo(scanDoc, scanPages, filedDocInfo);
         }
+
+        public List<string> GetListOfUnfiledDocUniqNames()
+        {
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
+            // Get doc uniq names for scanned docs
+            MongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
+            MongoCursor<ScanDocInfo> scannedDocs = collection_sdinfo.FindAll();
+            List<string> scannedDocUniqNames = new List<string>();
+            foreach (ScanDocInfo sdi in scannedDocs)
+                scannedDocUniqNames.Add(sdi.uniqName);
+
+            // Get doc uniq names for filed docs
+            MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
+            MongoCursor<FiledDocInfo> filedDocs = collection_fdinfo.FindAll();
+            List<string> filedDocUniqNames = new List<string>();
+            foreach (FiledDocInfo fdi in filedDocs)
+                filedDocUniqNames.Add(fdi.uniqName);
+
+            // Create list of unfiled doc uniq names
+            List<string> unfiledDocs = scannedDocUniqNames.Except(filedDocUniqNames).ToList();
+
+            stopWatch.Stop();
+            Console.WriteLine("GetList Elapsed : {0}ms, recs {1}", stopWatch.ElapsedMilliseconds, unfiledDocs.Count);
+            return unfiledDocs;
+        }
+
+        public int GetCountOfUnfiledDocs()
+        {
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
+            MongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
+            long scannedCount = collection_sdinfo.Count();
+            MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
+            long filedCount = collection_fdinfo.Count();
+
+            stopWatch.Stop();
+            Console.WriteLine("GetCount Elapsed : {0}ms, recs {1}", stopWatch.ElapsedMilliseconds, scannedCount - filedCount);
+
+            return (int) (scannedCount - filedCount);
+        }
+
     }
 
     public class ScanDocHandlerConfig

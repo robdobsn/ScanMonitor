@@ -29,10 +29,18 @@ namespace ScanMonitorApp
 
         public bool Setup()
         {
-            var collection_doctypes = GetDocTypesCollection();
-            collection_doctypes.EnsureIndex(new IndexKeysBuilder()
-                        .Ascending("docTypeName"), IndexOptions.SetUnique(true));
-            return true;
+            try
+            {
+                var collection_doctypes = GetDocTypesCollection();
+                collection_doctypes.EnsureIndex(new IndexKeysBuilder()
+                            .Ascending("docTypeName"), IndexOptions.SetUnique(true));
+                return true;
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Failed to add index DB may not be started, excp {0}", excp.Message);
+            }
+            return false;
         }
 
         private MongoCollection<DocType> GetDocTypesCollection()

@@ -82,6 +82,8 @@ namespace ScanMonitorApp
             // Assuming the uniq name is the date in YYYYMMDD format the subfolder will be YYYYMM
             string subFolderName = uniqName;
             subFolderName = subFolderName.Replace("_", "");
+            if (uniqName.Trim().Length == 0)
+                return "";
             subFolderName = subFolderName.Substring(0, 6);
             string imgFolder = Path.Combine(baseFolderForImages, subFolderName).Replace('\\', '/');
 

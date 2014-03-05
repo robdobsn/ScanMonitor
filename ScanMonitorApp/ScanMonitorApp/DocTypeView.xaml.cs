@@ -47,7 +47,10 @@ namespace ScanMonitorApp
         enum DRAG_FROM {  NONE, CENTRE, TOPLEFT, BOTTOMRIGHT, NEW }
         private string _curDocDisplay_uniqName = "";
         private int _curDocDisplay_pageNum = 1;
-        private DocCompareRslt _curDocDisplay_docCompareResult;
+        private ScanPages _curDocDisplay_scanPages;
+        private ScanDocAllInfo _curUnfiledScanDocAllInfo = null;
+        private string _curDocTypeThumbnail = "";
+        private bool bInSetupDocTypeForm = false;
 
         public DocTypeView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher)
         {
@@ -75,8 +78,9 @@ namespace ScanMonitorApp
             get { return _docTypeColl; }
         }
 
-        public void ShowDocTypeList(string selDocTypeName)
+        public void ShowDocTypeList(string selDocTypeName, ScanDocAllInfo unfiledScanDocAllInfo)
         {
+            _curUnfiledScanDocAllInfo = unfiledScanDocAllInfo;
             DocType selDocType = null;
             List<DocType> docTypes = _docTypesMatcher.ListDocTypes();
             var docTypesSorted = from docType in docTypes
@@ -92,6 +96,17 @@ namespace ScanMonitorApp
             docTypeListView.ItemsSource = _docTypeColl;
             if (selDocType != null)
                 docTypeListView.SelectedItem = selDocType;
+
+            // Display example doc
+            if ((_curUnfiledScanDocAllInfo != null) && (_curUnfiledScanDocAllInfo.scanDocInfo != null))
+            {
+                DisplayExampleDoc(_curUnfiledScanDocAllInfo.scanDocInfo.uniqName, 1, _curUnfiledScanDocAllInfo.scanPages);
+                btnShowDocToBeFiled.IsEnabled = true;
+            }
+            else
+            {
+                btnShowDocToBeFiled.IsEnabled = false;
+            }
         }
 
         private void docTypeListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -221,9 +236,9 @@ namespace ScanMonitorApp
             MatchDocsResult mdResult = new MatchDocsResult();
             e.Result = mdResult;
             BackgroundWorker worker = sender as BackgroundWorker;
-            List<FiledDocInfo> fdiList = _scanDocHandler.GetListOfFiledDocs();
+            List<ScanDocInfo> sdiList = _scanDocHandler.GetListOfScanDocs();
             int docIdx = 0;
-            foreach (FiledDocInfo fdi in fdiList)
+            foreach (ScanDocInfo sdi in sdiList)
             {
                 if ((worker.CancellationPending == true))
                 {
@@ -232,7 +247,7 @@ namespace ScanMonitorApp
                 }
 
                 DocType docTypeToMatch = (DocType)e.Argument;
-                DocCompareRslt rslt = CheckIfDocMatches(fdi, docTypeToMatch);
+                DocCompareRslt rslt = CheckIfDocMatches(sdi, docTypeToMatch);
                 if (rslt.bMatches)
                     mdResult.totalMatchesFound++;
                 if (rslt.bDoesntMatchButShould)
@@ -249,8 +264,8 @@ namespace ScanMonitorApp
                 }
 
                 docIdx++;
-                worker.ReportProgress((int)(docIdx * 100 / fdiList.Count));
-                if (((docIdx % 10) == 0) || (docIdx == fdiList.Count - 1))
+                worker.ReportProgress((int)(docIdx * 100 / sdiList.Count));
+                if (((docIdx % 10) == 0) || (docIdx == sdiList.Count - 1))
                 {
                     string rsltStr = DocMatchFormatResultStr(mdResult);
                     this.Dispatcher.BeginInvoke((Action)delegate()
@@ -262,27 +277,31 @@ namespace ScanMonitorApp
             e.Result = mdResult;
         }
 
-        private DocCompareRslt CheckIfDocMatches(FiledDocInfo fdi, DocType docTypeToMatch)
+        private DocCompareRslt CheckIfDocMatches(ScanDocInfo sdi, DocType docTypeToMatch)
         {
             DocCompareRslt compRslt = new DocCompareRslt();
-            ScanPages scanPages = _scanDocHandler.GetScanPages(fdi.uniqName);
+            ScanPages scanPages = _scanDocHandler.GetScanPages(sdi.uniqName);
+            // See if doc has been filed - result maybe null
+            FiledDocInfo fdi = _scanDocHandler.GetFiledDocInfo(sdi.uniqName);
+
+            // Check for a match
             DocTypeMatchResult matchResult = _docTypesMatcher.CheckIfDocMatches(scanPages, docTypeToMatch);
             if (matchResult.matchCertaintyPercent == 100)
             {
                 compRslt.bMatches = true;
-                compRslt.bMatchesButShouldnt = (fdi.docTypeFiled != docTypeToMatch.docTypeName);
-                compRslt.uniqName = fdi.uniqName;
-                compRslt.docTypeFiled = fdi.docTypeFiled;
-                compRslt.matchStatus = compRslt.bMatchesButShouldnt ? "MATCH-BUT-SHOULDN'T" : "OK";
+                compRslt.bMatchesButShouldnt = (fdi != null) && (fdi.docTypeFiled != docTypeToMatch.docTypeName);
+                compRslt.uniqName = sdi.uniqName;
+                compRslt.docTypeFiled = (fdi == null) ? "" : fdi.docTypeFiled;
+                compRslt.matchStatus = (fdi == null) ? "NOT-FILED" : (compRslt.bMatchesButShouldnt ? "MATCH-BUT-SHOULDN'T" : "OK");
                 compRslt.scanPages = scanPages;
             }
             else
             {
-                compRslt.bDoesntMatchButShould = (fdi.docTypeFiled == docTypeToMatch.docTypeName);
+                compRslt.bDoesntMatchButShould = (fdi != null) && (fdi.docTypeFiled == docTypeToMatch.docTypeName);
                 if (compRslt.bDoesntMatchButShould)
                 {
-                    compRslt.uniqName = fdi.uniqName;
-                    compRslt.docTypeFiled = fdi.docTypeFiled;
+                    compRslt.uniqName = sdi.uniqName;
+                    compRslt.docTypeFiled = (fdi == null) ? "" : fdi.docTypeFiled;
                     compRslt.matchStatus = "SHOULD-BUT-DOESN'T";
                     compRslt.scanPages = scanPages;
                 }
@@ -293,10 +312,10 @@ namespace ScanMonitorApp
 
         private void CheckDisplayedDocForMatchAndShowResult()
         {
-            if (_curDocDisplay_docCompareResult == null)
+            if (_curDocDisplay_scanPages == null)
                 return;
             DocType chkDocType = GetDocTypeFromForm();
-            DocTypeMatchResult matchRslt = _docTypesMatcher.CheckIfDocMatches(_curDocDisplay_docCompareResult.scanPages, chkDocType);
+            DocTypeMatchResult matchRslt = _docTypesMatcher.CheckIfDocMatches(_curDocDisplay_scanPages, chkDocType);
             DisplayMatchResultForDoc(matchRslt);
         }
 
@@ -358,16 +377,16 @@ namespace ScanMonitorApp
                 DocCompareRslt docCompRslt = e.AddedItems[0] as DocCompareRslt;
                 if (docCompRslt != null)
                 {
-                    _curDocDisplay_docCompareResult = docCompRslt;
-                    DisplayFiledDoc(docCompRslt.uniqName, 1);
+                    DisplayExampleDoc(docCompRslt.uniqName, 1, docCompRslt.scanPages);
                     // Re-check the document and display result - the expression could have changed since table was populated
                     CheckDisplayedDocForMatchAndShowResult();
                 }
             }
         }
 
-        private void DisplayFiledDoc(string uniqName, int pageNum)
+        private void DisplayExampleDoc(string uniqName, int pageNum, ScanPages scanPages)
         {
+            _curDocDisplay_scanPages = scanPages;
             string imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, uniqName, pageNum, false);
             if (!File.Exists(imgFileName))
                 return;
@@ -387,12 +406,12 @@ namespace ScanMonitorApp
 
         private void DisplayFiledDoc_NextPage()
         {
-            DisplayFiledDoc(_curDocDisplay_uniqName, _curDocDisplay_pageNum + 1);
+            DisplayExampleDoc(_curDocDisplay_uniqName, _curDocDisplay_pageNum + 1, _curDocDisplay_scanPages);
         }
 
         private void DisplayFiledDoc_PrevPage()
         {
-            DisplayFiledDoc(_curDocDisplay_uniqName, _curDocDisplay_pageNum - 1);
+            DisplayExampleDoc(_curDocDisplay_uniqName, _curDocDisplay_pageNum - 1, _curDocDisplay_scanPages);
         }
 
         #endregion
@@ -680,8 +699,8 @@ namespace ScanMonitorApp
             else
             {
                 bool bToolTipSet = false;
-                if (_curDocDisplay_docCompareResult != null)
-                    if ((_curDocDisplay_pageNum > 0) && (_curDocDisplay_pageNum <= _curDocDisplay_docCompareResult.scanPages.scanPagesText.Count))
+                if (_curDocDisplay_scanPages != null)
+                    if ((_curDocDisplay_pageNum > 0) && (_curDocDisplay_pageNum <= _curDocDisplay_scanPages.scanPagesText.Count))
                     {
                         Point curMousePoint = e.GetPosition(docOverlayCanvas);
                         if (!exampleFileImageToolTip.IsOpen)
@@ -689,7 +708,7 @@ namespace ScanMonitorApp
                         exampleFileImageToolTip.HorizontalOffset = curMousePoint.X - 100;
                         exampleFileImageToolTip.VerticalOffset = curMousePoint.Y;
                         DocRectangle docCoords = ConvertCanvasRectToDocPercent(new DocRectangle(curMousePoint.X, curMousePoint.Y, 0, 0));
-                        List<ScanTextElem> scanTextElems = _curDocDisplay_docCompareResult.scanPages.scanPagesText[_curDocDisplay_pageNum-1];
+                        List<ScanTextElem> scanTextElems = _curDocDisplay_scanPages.scanPagesText[_curDocDisplay_pageNum-1];
                         foreach (ScanTextElem el in scanTextElems)
                             if (el.bounds.Intersects(docCoords))
                             {
@@ -902,6 +921,8 @@ namespace ScanMonitorApp
             chkEnabledDocType.IsEnabled = true;
             txtMatchExpression.IsEnabled = true;
             btnCancelTypeChanges.IsEnabled = true;
+            btnUseCurrentDocImageAsThumbnail.IsEnabled = true;
+            btnClearThumbail.IsEnabled = true;
         }
 
         private void btnRenameDocType_Click(object sender, RoutedEventArgs e)
@@ -913,6 +934,8 @@ namespace ScanMonitorApp
             chkEnabledDocType.IsEnabled = true;
             txtMatchExpression.IsEnabled = true;
             btnCancelTypeChanges.IsEnabled = true;
+            btnUseCurrentDocImageAsThumbnail.IsEnabled = true;
+            btnClearThumbail.IsEnabled = true;
         }
 
         private void btnNewDocType_Click(object sender, RoutedEventArgs e)
@@ -929,6 +952,9 @@ namespace ScanMonitorApp
             chkEnabledDocType.IsChecked = true;
             SetTxtMatchExprBoxText("");
             btnCancelTypeChanges.IsEnabled = true;
+            ShowDocTypeThumbnail("");
+            btnUseCurrentDocImageAsThumbnail.IsEnabled = true;
+            btnClearThumbail.IsEnabled = true;
         }
 
         private void btnSaveTypeChanges_Click(object sender, RoutedEventArgs e)
@@ -969,6 +995,7 @@ namespace ScanMonitorApp
                 newDocType.CloneForRenaming(txtDocTypeName.Text, _selectedDocType);
                 newDocType.matchExpression = GetMatchExprFromEditBox();
                 newDocType.isEnabled = (bool)chkEnabledDocType.IsChecked;
+                newDocType.thumbnailForDocType = _curDocTypeThumbnail;
 
                 // Create the new record
                 _docTypesMatcher.AddOrUpdateDocTypeRecInDb(newDocType);
@@ -990,6 +1017,7 @@ namespace ScanMonitorApp
                 newDocType.docTypeName = txtDocTypeName.Text;
                 newDocType.matchExpression = GetMatchExprFromEditBox();
                 newDocType.isEnabled = (bool)chkEnabledDocType.IsChecked;
+                newDocType.thumbnailForDocType = _curDocTypeThumbnail;
 
                 // Create the new record
                 _docTypesMatcher.AddOrUpdateDocTypeRecInDb(newDocType);
@@ -999,6 +1027,7 @@ namespace ScanMonitorApp
                 // Make changes to record
                 _selectedDocType.matchExpression = GetMatchExprFromEditBox();
                 _selectedDocType.isEnabled = (bool)chkEnabledDocType.IsChecked;
+                _selectedDocType.thumbnailForDocType = _curDocTypeThumbnail;
 
                 // Update the record
                 _docTypesMatcher.AddOrUpdateDocTypeRecInDb(_selectedDocType);
@@ -1009,7 +1038,7 @@ namespace ScanMonitorApp
             btnSaveTypeChanges.IsEnabled = false;
 
             // Reload the form (selecting appropriate item)
-            ShowDocTypeList(curDocTypeName);
+            ShowDocTypeList(curDocTypeName, null);
         }
 
         private void btnCancelTypeChanges_Click(object sender, RoutedEventArgs e)
@@ -1047,17 +1076,56 @@ namespace ScanMonitorApp
             chkEnabledDocType.IsEnabled = false;
             txtMatchExpression.IsEnabled = false;
             txtDocTypeName.IsEnabled = false;
+            btnClearThumbail.IsEnabled = false;
+            btnUseCurrentDocImageAsThumbnail.IsEnabled = false;
+            bInSetupDocTypeForm = true;
             if (docType == null)
             {
                 txtDocTypeName.Text = "";
                 chkEnabledDocType.IsChecked = false;
                 SetTxtMatchExprBoxText("");
+                ShowDocTypeThumbnail("");
             }
             else
             {
                 txtDocTypeName.Text = docType.docTypeName;
                 chkEnabledDocType.IsChecked = docType.isEnabled;
                 SetTxtMatchExprBoxText(docType.matchExpression);
+                ShowDocTypeThumbnail(docType.thumbnailForDocType);
+            }
+            bInSetupDocTypeForm = false;
+            UpdateUIForDocTypeChanges();
+        }
+
+        private void ShowDocTypeThumbnail(string uniqName)
+        {
+            _curDocTypeThumbnail = uniqName;
+            if (uniqName == "")
+            {
+                imgDocThumbnail.Source = null;
+                return;
+            }
+            string[] splitNameAndPageNum = uniqName.Split('~');
+            string uniqNameOnly = (splitNameAndPageNum.Length > 0) ? splitNameAndPageNum[0] : "";
+            string pageNumStr = (splitNameAndPageNum.Length > 1) ? splitNameAndPageNum[1] : "";
+            int pageNum = 1;
+            if (pageNumStr.Trim().Length > 0)
+            {
+                try { pageNum = Convert.ToInt32(pageNumStr); }
+                catch { pageNum = 1; }
+            }
+            string imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, uniqNameOnly, pageNum, false);
+            if (!File.Exists(imgFileName))
+            {
+                logger.Info("Thumbnail file doesn't exist for {0}", uniqNameOnly);
+            }
+            try
+            {
+                imgDocThumbnail.Source = new BitmapImage(new Uri("File:" + imgFileName));
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Loading thumbnail file {0} excp {1}", imgFileName, excp.Message);
             }
         }
 
@@ -1068,6 +1136,8 @@ namespace ScanMonitorApp
 
         private void UpdateUIForDocTypeChanges()
         {
+            if (bInSetupDocTypeForm)
+                return;
             bool somethingChanged = false;
             if (_selectedDocType != null)
             {
@@ -1078,7 +1148,8 @@ namespace ScanMonitorApp
                 bool matchExprChanged = (compareStr.Trim() != txtExpr.Trim());
                 bool docTypeEnabledChanged = (_selectedDocType.isEnabled != chkEnabledDocType.IsChecked);
                 bool docTypeRenamed = (_selectedDocType.docTypeName != txtDocTypeName.Text) && (txtDocTypeName.Text.Trim() != "");
-                somethingChanged = (matchExprChanged || docTypeEnabledChanged || docTypeRenamed);
+                bool thumbnailChanged = (_selectedDocType.thumbnailForDocType != _curDocTypeThumbnail);
+                somethingChanged = (matchExprChanged || docTypeEnabledChanged || docTypeRenamed || thumbnailChanged);
             }
             else
             {
@@ -1096,7 +1167,31 @@ namespace ScanMonitorApp
             }
         }
 
+        private void Window_Closing(object sender, CancelEventArgs e)
+        {
+            if (_bwThread.WorkerSupportsCancellation)
+                _bwThread.CancelAsync();
+        }
+
         #endregion
+
+        private void btnShowDocToBeFiled_Click(object sender, RoutedEventArgs e)
+        {
+            if ((_curUnfiledScanDocAllInfo != null) && (_curUnfiledScanDocAllInfo.scanDocInfo != null))
+                DisplayExampleDoc(_curUnfiledScanDocAllInfo.scanDocInfo.uniqName, 1, _curDocDisplay_scanPages);
+        }
+
+        private void btnUseCurrentDocImageAsThumbnail_Click(object sender, RoutedEventArgs e)
+        {
+            ShowDocTypeThumbnail(_curDocDisplay_uniqName + "~" + _curDocDisplay_pageNum.ToString());
+            UpdateUIForDocTypeChanges();
+        }
+
+        private void btnClearThumbail_Click(object sender, RoutedEventArgs e)
+        {
+            ShowDocTypeThumbnail("");
+            UpdateUIForDocTypeChanges();
+        }
 
     }
 

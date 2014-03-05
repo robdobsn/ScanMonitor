@@ -32,15 +32,12 @@ namespace ScanMonitorApp
     public partial class MainWindow : MetroWindow
     {
         private const bool TEST_MODE = true;
-        private const bool TEST_ON_MACAIR = false;
 
         private List<string> foldersToMonitor = new List<string> { Properties.Settings.Default.FolderToMonitor };
-        private string pendingDocFolder = TEST_ON_MACAIR ? Properties.Settings.Default.TestPendingDocFolder : Properties.Settings.Default.PendingDocFolder;
 
         private string _dbNameForDocTypes = Properties.Settings.Default.DbNameForDocs;
         private string _dbCollectionForDocTypes = Properties.Settings.Default.DbCollectionForDocTypes;
-        private ScanDocHandlerConfig _scanDocHandlerConfig = new ScanDocHandlerConfig(
-            TEST_ON_MACAIR ? Properties.Settings.Default.TestDocAdminImgFolderBase : Properties.Settings.Default.DocAdminImgFolderBase,
+        private ScanDocHandlerConfig _scanDocHandlerConfig = new ScanDocHandlerConfig(Properties.Settings.Default.DocAdminImgFolderBase,
             Properties.Settings.Default.MaxPagesForImages,
             Properties.Settings.Default.MaxPagesForText,
             Properties.Settings.Default.DbNameForDocs,
@@ -155,14 +152,21 @@ namespace ScanMonitorApp
 
             // Document matcher
             _docTypesMatcher = new DocTypesMatcher(_dbNameForDocTypes, _dbCollectionForDocTypes);
-            _docTypesMatcher.Setup();
+            if (!_docTypesMatcher.Setup())
+            {
+                MessageBoxButton btnMessageBox = MessageBoxButton.OK;
+                MessageBoxImage icnMessageBox = MessageBoxImage.Error;
+                MessageBoxResult rsltMessageBox = System.Windows.MessageBox.Show("Database may not be started - cannot continue", "Database problem", btnMessageBox, icnMessageBox);
+                System.Windows.Application.Current.Shutdown();
+                return;
+            }
 
             // Scanned document handler
             _scanDocHandler = new ScanDocHandler(AddToStatusText, _docTypesMatcher, _scanDocHandlerConfig);
 
             // Scan folder watcher
             _scanFileMonitor = new ScanFileMonitor(AddToStatusText, _scanDocHandler);
-            _scanFileMonitor.Start(foldersToMonitor, pendingDocFolder, TEST_MODE);
+            _scanFileMonitor.Start(foldersToMonitor, TEST_MODE);
 
             // Start the web server
             WebServer ws = new WebServer("http://localhost:8080");
@@ -215,7 +219,7 @@ namespace ScanMonitorApp
         private void butViewDocTypes_Click(object sender, RoutedEventArgs e)
         {
             DocTypeView dtv = new DocTypeView(_scanDocHandler, _docTypesMatcher);
-            dtv.ShowDocTypeList("");
+            dtv.ShowDocTypeList("", null);
             dtv.ShowDialog();
         }
 
@@ -237,6 +241,17 @@ namespace ScanMonitorApp
                 string filename = dlg.FileName;
                 MigrateFromOldApp.LoadAuditFileToDb(filename, _scanDocHandler);
             }
+        }
+
+        private void butViewScanFiling_Click(object sender, RoutedEventArgs e)
+        {
+            DocFilingView dfv = new DocFilingView(_scanDocHandler, _docTypesMatcher);
+            dfv.ShowDialog();
+        }
+
+        private void btnMigrate1_Click(object sender, RoutedEventArgs e)
+        {
+            MigrateFromOldApp.ReplaceDocTypeThumbnailStrs(_docTypesMatcher);
         }
     }
 }

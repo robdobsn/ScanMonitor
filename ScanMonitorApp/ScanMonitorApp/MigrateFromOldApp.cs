@@ -65,15 +65,37 @@ namespace ScanMonitorApp
 
                 // Handle thumbnail
                 if (oldDocType.thumbFileNames.Count > 0)
-                    newDocType.thumbnailForDocType = oldDocType.thumbFileNames[0].Replace('\\', '/');
+                {
+                    string thumbFile = oldDocType.thumbFileNames[0].Replace('\\', '/');
+                    DateTime fileDateTime = File.GetCreationTime(thumbFile);
+                    string uniqName = ScanDocInfo.GetUniqNameForFile(thumbFile, fileDateTime);
+                    newDocType.thumbnailForDocType = uniqName;
+                }
                 else
+                {
                     newDocType.thumbnailForDocType = "";
+                }
                 if (!docTypesMatcher.AddOrUpdateDocTypeRecInDb(newDocType))
                     logger.Info("Failed to add doc type record {0}", newDocType.docTypeName);
             }
 
             logger.Info("Finished loading legacy doc types");
 
+        }
+
+        public static void ReplaceDocTypeThumbnailStrs(DocTypesMatcher docTypesMatcher)
+        {
+            foreach (DocType dt in docTypesMatcher.ListDocTypes())
+            {
+                if (dt.thumbnailForDocType != "")
+                {
+                    DateTime fileDateTime = File.GetCreationTime(dt.thumbnailForDocType);
+                    string uniqName = ScanDocInfo.GetUniqNameForFile(dt.thumbnailForDocType, fileDateTime);
+                    dt.thumbnailForDocType = uniqName;
+                    if (!docTypesMatcher.AddOrUpdateDocTypeRecInDb(dt))
+                        logger.Info("Failed to update doc type record {0}", dt.docTypeName);
+                }
+            }
         }
 
         public static void LoadAuditFileToDb(string fileName, ScanDocHandler scanDocHandler)

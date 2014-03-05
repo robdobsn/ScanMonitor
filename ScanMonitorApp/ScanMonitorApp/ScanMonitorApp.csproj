@@ -83,6 +83,9 @@
     <Compile Include="AuditView.xaml.cs">
       <DependentUpon>AuditView.xaml</DependentUpon>
     </Compile>
+    <Compile Include="DocFilingView.xaml.cs">
+      <DependentUpon>DocFilingView.xaml</DependentUpon>
+    </Compile>
     <Compile Include="DocType.cs" />
     <Compile Include="DocTypesMatcher.cs" />
     <Compile Include="DocTypeView.xaml.cs">
@@ -101,6 +104,10 @@
     <Compile Include="WebServer\WebEndPoint.cs" />
     <Compile Include="WebServer\WebServer.cs" />
     <Page Include="AuditView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="DocFilingView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
