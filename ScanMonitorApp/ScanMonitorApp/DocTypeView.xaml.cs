@@ -33,7 +33,7 @@ namespace ScanMonitorApp
         ObservableCollection<DocType> _docTypeColl = new ObservableCollection<DocType>();
         ObservableCollection<DocCompareRslt> _docCompareRslts = new ObservableCollection<DocCompareRslt>();
         private bool bInTextChangedHandler = false;
-        List<VisRect> _visMatchRectangles = new List<VisRect>();
+//        List<VisRect> _visMatchRectangles = new List<VisRect>();
         private string _curDocDisplay_uniqName = "";
         private int _curDocDisplay_pageNum = 1;
         private ScanPages _curDocDisplay_scanPages;
@@ -502,7 +502,7 @@ namespace ScanMonitorApp
             int curCaretPos = GetCaretPos(txtMatchExpression);
 
             // Clear visual rectangles
-            ClearVisRectangles();
+            locRectHandler.ClearVisRectangles();
 
             // Generate the rich text to highlight string elements
             Paragraph para = new Paragraph();
@@ -514,7 +514,7 @@ namespace ScanMonitorApp
                 // Check for location rectangle
                 if (parseTerm.termType == ExprParseTerm.ExprParseTermType.exprTerm_Location)
                 {
-                    AddVisRectangle(txtExpr.Substring(parseTerm.stPos, parseTerm.termLen), parseTerm);
+                    locRectHandler.AddVisRectangle(txtExpr.Substring(parseTerm.stPos, parseTerm.termLen), parseTerm);
                 }
             }
 
@@ -526,14 +526,16 @@ namespace ScanMonitorApp
             bInTextChangedHandler = false;
 
             // Draw the location rectangles
-            DrawVisRectangles();
+            locRectHandler.DrawVisRectangles();
 
             // Redisplay the check status for the currently displayed document
             CheckDisplayedDocForMatchAndShowResult();
         }
 
-        private void UpdateExprBasedOnRectangleChange(string docRectName)
+/*
+ * private void UpdateExprBasedOnRectangleChange(string docRectName)
         {
+
             // Find the rectangle that has changed/been-created
             foreach (UIElement child in docOverlayCanvas.Children)
             {
@@ -549,7 +551,7 @@ namespace ScanMonitorApp
                         double height = rect.Height;
 
                         // Convert coords to image
-                        DocRectangle docRectPercent = ConvertCanvasRectToDocPercent(new DocRectangle(topLeftX, topLeftY, width, height));
+                        DocRectangle docRectPercent = locRectHandler.ConvertCanvasRectToDocPercent(new DocRectangle(topLeftX, topLeftY, width, height));
                         Console.WriteLine("DocRectPerc " + docRectPercent.X + " " +
                                     docRectPercent.Y + " " +
                                     docRectPercent.BottomRightX + " " +
@@ -616,6 +618,7 @@ namespace ScanMonitorApp
                 }
             }
         }
+ * */
 
         private string FormatLocationStr(DocRectangle docRect)
         {
@@ -650,21 +653,19 @@ namespace ScanMonitorApp
             locRectHandler.HandleMouseUp(sender, e);
         }
 
-        private void tooltipCallback_MouseMove(Point ptOnImage)
+        private void tooltipCallback_MouseMove(Point ptOnImage, DocRectangle ptInDocPercent)
         {
             bool bToolTipSet = false;
             if (_curDocDisplay_scanPages != null)
                 if ((_curDocDisplay_pageNum > 0) && (_curDocDisplay_pageNum <= _curDocDisplay_scanPages.scanPagesText.Count))
                 {
-                    Point ptOnCanvas = exampleFileImage.TranslatePoint(ptOnImage, docOverlayCanvas);
                     if (!exampleFileImageToolTip.IsOpen)
                         exampleFileImageToolTip.IsOpen = true;
-                    exampleFileImageToolTip.HorizontalOffset = ptOnCanvas.X - 100;
-                    exampleFileImageToolTip.VerticalOffset = ptOnCanvas.Y;
-                    DocRectangle docCoords = ConvertCanvasRectToDocPercent(new DocRectangle(ptOnCanvas.X, ptOnCanvas.Y, 0, 0));
+                    exampleFileImageToolTip.HorizontalOffset = ptOnImage.X - 100;
+                    exampleFileImageToolTip.VerticalOffset = ptOnImage.Y;
                     List<ScanTextElem> scanTextElems = _curDocDisplay_scanPages.scanPagesText[_curDocDisplay_pageNum - 1];
                     foreach (ScanTextElem el in scanTextElems)
-                        if (el.bounds.Intersects(docCoords))
+                        if (el.bounds.Intersects(ptInDocPercent))
                         {
                             exampleFileImageToolText.Text = el.text;
                             bToolTipSet = true;
@@ -686,218 +687,63 @@ namespace ScanMonitorApp
                 exampleFileImageToolTip.IsOpen = false;
         }   
 
-        private void docRectChangesComplete(string docRectName)
+        private void docRectChangesComplete(int docRectIdx, DocRectangle rectInDocPercent)
         {
-            UpdateExprBasedOnRectangleChange(docRectName);
+            // Extract string
+            string txtExpr = GetMatchExprFromEditBox();
+
+            // Parse using our grammar
+            List<ExprParseTerm> exprParseTermList = _docTypesMatcher.ParseDocMatchExpression(txtExpr, 0);
+
+            // Get current caret position
+            int curCaretPos = GetCaretPos(txtMatchExpression);
+
+            // Find where to change/insert the location
+            bool bInserted = false;
+            int bestNewRectPos = txtExpr.Length;
+            string newTextExpr = txtExpr;
+            foreach (ExprParseTerm parseTerm in exprParseTermList)
+            {
+                Run txtRun = new Run(txtExpr.Substring(parseTerm.stPos, parseTerm.termLen));
+                // Check for location rectangle
+                if (parseTerm.termType == ExprParseTerm.ExprParseTermType.exprTerm_Location)
+                {
+                    if (parseTerm.locationBracketIdx == docRectIdx)
+                    {
+                        newTextExpr = txtExpr.Substring(0, parseTerm.stPos) + FormatLocationStr(rectInDocPercent) + txtExpr.Substring(parseTerm.stPos + parseTerm.termLen);
+                        bInserted = true;
+                        break;
+                    }
+                }
+                else if (parseTerm.termType == ExprParseTerm.ExprParseTermType.exprTerm_Text)
+                    if (curCaretPos >= parseTerm.stPos)
+                        bestNewRectPos = parseTerm.stPos + parseTerm.termLen;
+            }
+            if (!bInserted)
+            {
+                newTextExpr = txtExpr.Substring(0, bestNewRectPos) + "{" + FormatLocationStr(rectInDocPercent) + "}";
+                string endOfStr = txtExpr.Substring(bestNewRectPos);
+                if (endOfStr.Trim().Length > 0)
+                {
+                    if (endOfStr.Trim().Substring(0, 1) == "{")
+                    {
+                        int closePos = endOfStr.IndexOf('}');
+                        if (closePos > 0)
+                            endOfStr = endOfStr.Substring(closePos + 1);
+                    }
+                }
+                newTextExpr += endOfStr;
+                SetTxtMatchExprBoxText(newTextExpr);
+            }
+
+            // All rectangles will get redrawn as text expression is changed and causes trigger to refresh
+            SetTxtMatchExprBoxText(newTextExpr);
+
         }
 
-
-        /*
-                private void exampleFileImage_MouseDown(object sender, MouseButtonEventArgs e)
-                {
-                    // Only start if document editing is enabled
-                    if (!txtMatchExpression.IsEnabled)
-                        return;
-
-                    if (e.ChangedButton == MouseButton.Left)
-                    {
-                        _dragSelectActive = true;
-
-                        // Handle different kinds of moving/changing/creating new rectangles depending on where user clicked
-                        _dragSelectFromPoint = e.GetPosition(exampleFileImage);
-                        if (sender.GetType() == typeof(Rectangle))
-                        {
-                            if (e.GetPosition((Rectangle)sender).X < 20 && e.GetPosition((Rectangle)sender).Y < 20)
-                            {
-                                _dragFrom = DRAG_FROM.TOPLEFT;
-                            }
-                            else if ((e.GetPosition((Rectangle)sender).X > ((Rectangle)sender).Width - 20) &&
-                                        (e.GetPosition((Rectangle)sender).Y > ((Rectangle)sender).Height - 20))
-                            {
-                                _dragFrom = DRAG_FROM.BOTTOMRIGHT;
-                            }
-                            else
-                            {
-                                _dragFrom = DRAG_FROM.CENTRE;
-                            }
-                            _dragSelectionRectName = ((Rectangle)sender).Name;
-                        }
-                        else
-                        {
-                            _dragFrom = DRAG_FROM.NEW;
-                            _dragSelectionRectName = "";
-                        }
-
-                        // Capture mouse
-                        exampleFileImage.CaptureMouse();
-                        e.Handled = true;
-                    }
-                }
-
-                private void exampleFileImage_MouseMove(object sender, MouseEventArgs e)
-                {
-                    if (_dragSelectOverThreshold)
-                    {
-                        Point curMouseDownPoint = e.GetPosition(exampleFileImage);
-                        RubberbandRect(_dragSelectFromPoint, curMouseDownPoint, _dragSelectionRectName, false);
-                        e.Handled = true;
-                    }
-                    else if (_dragSelectActive)
-                    {
-                        Point curMouseDownPoint = e.GetPosition(exampleFileImage);
-                        var dragDelta = curMouseDownPoint - _dragSelectFromPoint;
-                        double dragDistance = Math.Abs(dragDelta.Length);
-                        if (dragDistance > DragThreshold)
-                        {
-                            //
-                            // When the mouse has been dragged more than the threshold value commence drag selection.
-                            //
-                            _dragSelectOverThreshold = true;
-                            RubberbandRect(_dragSelectFromPoint, curMouseDownPoint, _dragSelectionRectName, true);
-                        }
-                        e.Handled = true;
-                    }
-                    else
-                    {
-                        bool bToolTipSet = false;
-                        if (_curDocDisplay_scanPages != null)
-                            if ((_curDocDisplay_pageNum > 0) && (_curDocDisplay_pageNum <= _curDocDisplay_scanPages.scanPagesText.Count))
-                            {
-                                Point curMousePoint = e.GetPosition(docOverlayCanvas);
-                                if (!exampleFileImageToolTip.IsOpen)
-                                    exampleFileImageToolTip.IsOpen = true;
-                                exampleFileImageToolTip.HorizontalOffset = curMousePoint.X - 100;
-                                exampleFileImageToolTip.VerticalOffset = curMousePoint.Y;
-                                DocRectangle docCoords = ConvertCanvasRectToDocPercent(new DocRectangle(curMousePoint.X, curMousePoint.Y, 0, 0));
-                                List<ScanTextElem> scanTextElems = _curDocDisplay_scanPages.scanPagesText[_curDocDisplay_pageNum-1];
-                                foreach (ScanTextElem el in scanTextElems)
-                                    if (el.bounds.Intersects(docCoords))
-                                    {
-                                        exampleFileImageToolText.Text = el.text;
-                                        bToolTipSet = true;
-                                        break;
-                                    }
-                            }
-                        if (!bToolTipSet)
-                        {
-                            exampleFileImageToolText.Text = "";
-                            exampleFileImageToolTip.IsOpen = false;
-                        }
-                        e.Handled = true;
-                    }
-                }
-
-                private void exampleFileImage_MouseLeave(object sender, MouseEventArgs e)
-                {
-                    Point curMouseDownPoint = e.GetPosition(exampleFileImage);
-                    if (curMouseDownPoint.X < 0 || curMouseDownPoint.X > exampleFileImage.ActualWidth)
-                        exampleFileImageToolTip.IsOpen = false;
-                    else if (curMouseDownPoint.Y < 0 || curMouseDownPoint.Y > exampleFileImage.ActualHeight)
-                        exampleFileImageToolTip.IsOpen = false;
-                    e.Handled = true;
-                }
-
-                private void exampleFileImage_MouseUp(object sender, MouseButtonEventArgs e)
-                {
-                    if (e.ChangedButton == MouseButton.Left)
-                    {
-                        if (_dragSelectOverThreshold)
-                        {
-                            //
-                            // Drag selection has ended, apply the 'selection rectangle'.
-                            //
-                            _dragSelectOverThreshold = false;
-                            UpdateExprBasedOnRectangleChange(_dragSelectionRectName);
-                            e.Handled = true;
-                        }
-
-                        if (_dragSelectActive)
-                        {
-                            _dragSelectActive = false;
-                            exampleFileImage.ReleaseMouseCapture();
-                            e.Handled = true;
-                        }
-                    }
-                }
-
-                private void RubberbandRect(Point pt1, Point pt2, string rectName, bool firstTime)
-                {
-                    double topLeftX = 0;
-                    double topLeftY = 0;
-                    double width = 0;
-                    double height = 0;
-
-                    // Bounding checks
-                    if (pt2.X > exampleFileImage.ActualWidth)
-                        pt2.X = exampleFileImage.ActualWidth - 1;
-                    if (pt2.Y > exampleFileImage.ActualHeight)
-                        pt2.Y = exampleFileImage.ActualHeight - 1;
-                    if (pt2.X < 0)
-                        pt2.X = 0;
-                    if (pt2.Y < 0)
-                        pt2.Y = 0;
-
-                    // Convert to canvas coords
-                    Point mousePt = exampleFileImage.TranslatePoint(pt2, docOverlayCanvas);
-                    Point initialPt = exampleFileImage.TranslatePoint(pt1, docOverlayCanvas);
-
-                    // If we're creating a new rectangle
-                    if ((_dragFrom == DRAG_FROM.NEW) && (firstTime))
-                    {
-                        // Rectangle size doesn't matter initially as it will be changed on subsequent mouse moves
-                        DocRectangle canvasRect = new DocRectangle(0, 0, 1, 1);
-                        _dragSelectionRectName = AddVisRectToCanvas(canvasRect, ExprParseTerm.GetBrushForLocationIdx(_dragSelect_nextLocationIdx), _dragSelect_nextLocationIdx);
-                        _dragSelectOppositeCorner = new Point(mousePt.X, mousePt.Y);
-                        return;
-                    }
-
-                    // Move vis rect
-                    foreach (UIElement child in docOverlayCanvas.Children)
-                    {
-                        if (child.GetType() == typeof(Rectangle))
-                        {
-                            Rectangle rect = (Rectangle)child;
-                            if (rect.Name == rectName)
-                            {
-                                if (firstTime)
-                                {
-                                    if (_dragFrom == DRAG_FROM.TOPLEFT)
-                                        _dragSelectOppositeCorner = new Point(((double)(rect.GetValue(Canvas.LeftProperty))) + rect.Width,
-                                                    ((double)(rect.GetValue(Canvas.TopProperty))) + rect.Height);
-                                    else if ((_dragFrom == DRAG_FROM.BOTTOMRIGHT) || (_dragFrom == DRAG_FROM.CENTRE))
-                                        _dragSelectOppositeCorner = new Point((double)rect.GetValue(Canvas.LeftProperty),
-                                                    (double)rect.GetValue(Canvas.TopProperty));
-                                }
-                                else
-                                {
-                                    if ((_dragFrom == DRAG_FROM.TOPLEFT) || (_dragFrom == DRAG_FROM.BOTTOMRIGHT) || (_dragFrom == DRAG_FROM.NEW))
-                                    {
-                                        topLeftX = Math.Min(mousePt.X, _dragSelectOppositeCorner.X);
-                                        topLeftY = Math.Min(mousePt.Y, _dragSelectOppositeCorner.Y);
-                                        width = Math.Abs(mousePt.X - _dragSelectOppositeCorner.X);
-                                        height = Math.Abs(mousePt.Y - _dragSelectOppositeCorner.Y);
-                                        rect.SetValue(Canvas.LeftProperty, topLeftX);
-                                        rect.SetValue(Canvas.TopProperty, topLeftY);
-                                        rect.Width = width;
-                                        rect.Height = height;
-                                    }
-                                    else if (_dragFrom == DRAG_FROM.CENTRE)
-                                    {
-                                        topLeftX = _dragSelectOppositeCorner.X + (mousePt.X - initialPt.X);
-                                        topLeftY = _dragSelectOppositeCorner.Y + (mousePt.Y - initialPt.Y);
-                                        rect.SetValue(Canvas.LeftProperty, topLeftX);
-                                        rect.SetValue(Canvas.TopProperty, topLeftY);
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
-                */
-
         #endregion
-
+        /*
+         * 
         #region Location Rectangle Display
 
         private void ClearVisRectangles()
@@ -969,12 +815,13 @@ namespace ScanMonitorApp
         }
 
         #endregion
+        */
 
         #region Form events and buttons
 
         private void docOverlayCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            DrawVisRectangles();
+            locRectHandler.DrawVisRectangles();
         }
 
         private void btnEditDocType_Click(object sender, RoutedEventArgs e)
@@ -1257,17 +1104,6 @@ namespace ScanMonitorApp
 
         #endregion
 
-    }
-
-    public class VisRect
-    {
-        public ExprParseTerm parseTerm;
-        public DocRectangle docRectPercent;
-        public string rectName;
-        public Point BottomRightPoint()
-        {
-            return new Point(docRectPercent.BottomRightX, docRectPercent.BottomRightY);
-        }
     }
 
     public class DocCompareRslt
