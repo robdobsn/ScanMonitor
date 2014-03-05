@@ -92,5 +92,6 @@
         <Button x:Name="btnBackPage" Content="Back" Grid.Column="1" Margin="10,0,0,0" Grid.Row="3" VerticalAlignment="Top" Click="btnBackPage_Click" HorizontalAlignment="Left" Width="75" Height="27"/>
         <Button x:Name="btnNextPage" Content="Next" Grid.Column="1" Margin="90,0,0,-2" Grid.Row="3" VerticalAlignment="Top" Click="btnNextPage_Click" Height="27" HorizontalAlignment="Left" Width="75"/>
         <TextBox x:Name="txtCheckResult" Grid.Column="1" Grid.Row="3" TextWrapping="Wrap" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Right" Width="114" BorderThickness="0"/>
+        <TextBox x:Name="txtDateResult" Grid.Column="1" Grid.Row="3" TextWrapping="Wrap" RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Right" Width="139" BorderThickness="0" Margin="0,0,128,0"/>
     </Grid>
 </Window>

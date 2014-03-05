@@ -30,5 +30,16 @@
             <Button x:Name="btnFirstDoc" Content="First" VerticalAlignment="Top" HorizontalAlignment="Left" Width="96" Height="60" FontSize="16" Click="btnFirstDoc_Click" Margin="0,5,0,0"/>
             <Button x:Name="btnLastDoc" Content="Last" VerticalAlignment="Top" HorizontalAlignment="Left" Width="96" Height="60" FontSize="16" Margin="376,5,0,0" Click="btnLastDoc_Click"/>
         </Grid>
+        <Grid Grid.Column="1" Grid.Row="1" Margin="10,176,100,113">
+            <Button x:Name="btnDayUp" Content="+" VerticalAlignment="Top" HorizontalAlignment="Left" Width="74" Height="50" Margin="10,10,0,0" Click="btnDayUp_Click" FontSize="30"/>
+            <Button x:Name="btnMonthUp" Content="+" VerticalAlignment="Top" HorizontalAlignment="Left" Width="179" Height="50" Margin="117,10,0,0" Click="btnMonthUp_Click" FontSize="30"/>
+            <Button x:Name="btnYearUp" Content="+" VerticalAlignment="Top" HorizontalAlignment="Left" Width="90" Height="50" Margin="327,10,0,0" Click="btnYearUp_Click" FontSize="30"/>
+            <TextBox x:Name="lblDayVal" TextAlignment="Center" HorizontalAlignment="Left" Height="53" Margin="10,60,0,0" VerticalAlignment="Top" Width="74" FontSize="30" Background="#FFF7F7F7" BorderBrush="#FFCCCCCC" BorderThickness="1,0"/>
+            <TextBox x:Name="lblMonthVal" TextAlignment="Center" HorizontalAlignment="Left" Height="53" Margin="117,60,0,0" VerticalAlignment="Top" Width="179" FontSize="30" Background="#FFF7F7F7" BorderBrush="#FFCCCCCC" BorderThickness="1,0"/>
+            <TextBox x:Name="lblYearVal" TextAlignment="Center" HorizontalAlignment="Left" Height="53" Margin="327,60,0,0" VerticalAlignment="Top" Width="90" FontSize="30" Background="#FFF7F7F7" BorderBrush="#FFCCCCCC" BorderThickness="1,0"/>
+            <Button x:Name="btnDayDown" Content="-" VerticalAlignment="Top" HorizontalAlignment="Left" Width="74" Height="50" Margin="10,113,0,0" Click="btnDayDown_Click" FontSize="30"/>
+            <Button x:Name="btnMonthDown" Content="-" VerticalAlignment="Top" HorizontalAlignment="Left" Width="179" Height="50" Margin="117,113,0,0" Click="btnMonthDown_Click" FontSize="30"/>
+            <Button x:Name="btnYearDown" Content="-" VerticalAlignment="Top" HorizontalAlignment="Left" Width="90" Height="50" Margin="327,113,0,0" Click="btnYearDown_Click" FontSize="30"/>
+        </Grid>
     </Grid>
 </Window>

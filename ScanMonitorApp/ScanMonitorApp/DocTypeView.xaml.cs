@@ -281,7 +281,7 @@ namespace ScanMonitorApp
             FiledDocInfo fdi = _scanDocHandler.GetFiledDocInfo(sdi.uniqName);
 
             // Check for a match
-            DocTypeMatchResult matchResult = _docTypesMatcher.CheckIfDocMatches(scanPages, docTypeToMatch);
+            DocTypeMatchResult matchResult = _docTypesMatcher.CheckIfDocMatches(scanPages, docTypeToMatch, false);
             if (matchResult.matchCertaintyPercent == 100)
             {
                 compRslt.bMatches = true;
@@ -311,12 +311,17 @@ namespace ScanMonitorApp
             if (_curDocDisplay_scanPages == null)
                 return;
             DocType chkDocType = GetDocTypeFromForm();
-            DocTypeMatchResult matchRslt = _docTypesMatcher.CheckIfDocMatches(_curDocDisplay_scanPages, chkDocType);
+            DocTypeMatchResult matchRslt = _docTypesMatcher.CheckIfDocMatches(_curDocDisplay_scanPages, chkDocType, true);
             DisplayMatchResultForDoc(matchRslt);
         }
 
         private void DisplayMatchResultForDoc(DocTypeMatchResult matchRslt)
         {
+            if (matchRslt.docDate != DateTime.MinValue)
+                txtDateResult.Text = matchRslt.docDate.ToLongDateString();
+            else
+                txtDateResult.Text = "";
+
             if (matchRslt.matchCertaintyPercent == 100)
             {
                 txtCheckResult.Text = "MATCHES";

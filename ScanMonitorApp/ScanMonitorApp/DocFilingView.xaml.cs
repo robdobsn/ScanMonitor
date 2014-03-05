@@ -1,6 +1,7 @@
 ﻿using NLog;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -88,6 +89,11 @@ namespace ScanMonitorApp
             // Show doc type
             txtDocTypeName.Text = (_curDocScanDocAllInfo == null) ? "" : _curDocScanDocAllInfo.scanDocInfo.docTypeMatchResult.docTypeName;
 
+            // Set doc date
+            DateTime dateToUse = DateTime.Now;
+            if (_curDocScanDocAllInfo.scanDocInfo.docTypeMatchResult.docDate != DateTime.MinValue)
+                dateToUse = _curDocScanDocAllInfo.scanDocInfo.docTypeMatchResult.docDate;
+            SetDateRollers(dateToUse.Year, dateToUse.Month, dateToUse.Day);
         }
 
         private void DisplayScannedDocImage(ScanDocAllInfo scanDocAllInfo, int pageNum)
@@ -171,6 +177,76 @@ namespace ScanMonitorApp
             dtv.ShowDialog();
             CheckForNewDocs();
             ShowDocToBeFiled(_curDocToBeFiledIdxInList);
+        }
+
+        private DateTime ExtractDateTime()
+        {
+            DateTime dt = DateTime.Now;
+            try
+            {
+                string dateStr = lblYearVal.Text + "-" + lblMonthVal.Text + "-" + lblDayVal.Text;
+                dt = DateTime.ParseExact(dateStr, "yyyy-MMMM-d", CultureInfo.InvariantCulture);
+            }
+            catch
+            {
+            }
+            return dt;
+        }
+
+        private void SetDateRollers(int year, int mon, int day)
+        {
+            if (year > DateTime.MaxValue.Year)
+                year = DateTime.MaxValue.Year;
+            if (year < DateTime.MinValue.Year)
+                year = DateTime.MinValue.Year;
+            if (mon > 12)
+                mon = 12;
+            if (mon < 1)
+                mon = 1;
+            if (day > DateTime.DaysInMonth(year, mon))
+                day = DateTime.DaysInMonth(year, mon);
+            if (day < 1)
+                day = 1;
+            DateTime dt = new DateTime(year, mon, day);
+            lblDayVal.Text = day.ToString();
+            lblMonthVal.Text = dt.ToString("MMMM");
+            lblYearVal.Text = dt.Year.ToString();
+        }
+
+        private void btnDayUp_Click(object sender, RoutedEventArgs e)
+        {
+            DateTime dt = ExtractDateTime();
+            SetDateRollers(dt.Year, dt.Month, dt.Day+1);
+        }
+
+        private void btnMonthUp_Click(object sender, RoutedEventArgs e)
+        {
+            DateTime dt = ExtractDateTime();
+            SetDateRollers(dt.Year, dt.Month+1, dt.Day);
+        }
+
+        private void btnYearUp_Click(object sender, RoutedEventArgs e)
+        {
+            DateTime dt = ExtractDateTime();
+            SetDateRollers(dt.Year+1, dt.Month, dt.Day);
+        }
+
+        private void btnDayDown_Click(object sender, RoutedEventArgs e)
+        {
+            DateTime dt = ExtractDateTime();
+            SetDateRollers(dt.Year, dt.Month, dt.Day - 1);
+        }
+
+        private void btnMonthDown_Click(object sender, RoutedEventArgs e)
+        {
+            DateTime dt = ExtractDateTime();
+            SetDateRollers(dt.Year, dt.Month - 1, dt.Day);
+        }
+
+        private void btnYearDown_Click(object sender, RoutedEventArgs e)
+        {
+            DateTime dt = ExtractDateTime();
+            SetDateRollers(dt.Year - 1, dt.Month, dt.Day);
         }
 
     }

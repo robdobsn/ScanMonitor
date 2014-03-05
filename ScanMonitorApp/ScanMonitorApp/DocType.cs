@@ -47,6 +47,7 @@ namespace ScanMonitorApp
         public DateTime docDate = DateTime.MinValue;
         public int matchCertaintyPercent = 0;
         public MatchResultCodes matchResultCode = MatchResultCodes.NOT_FOUND;
+        public List<ExtractedDate> datesFoundInDoc = new List<ExtractedDate>();
     }
 
     public class DocMatchAction

@@ -18,6 +18,7 @@ namespace ScanMonitorApp
         private MongoClient _dbClient;
         private string _dbNameForDocTypes;
         private string _dbCollectionForDocTypes;
+        private DocTextAndDateExtractor _docTextAndDateExtractor;
 
         public DocTypesMatcher(string dbNameForDocTypes, string dbCollectionForDocTypes)
         {
@@ -25,6 +26,7 @@ namespace ScanMonitorApp
             _dbNameForDocTypes = dbNameForDocTypes;
             var connectionString = "mongodb://localhost";
             _dbClient = new MongoClient(connectionString);
+            _docTextAndDateExtractor = new DocTextAndDateExtractor(this);
         }
 
         public bool Setup()
@@ -54,19 +56,30 @@ namespace ScanMonitorApp
         public DocTypeMatchResult GetMatchingDocType(ScanPages scanPages)
         {
             // Get list of types
+            DocTypeMatchResult matchResult = new DocTypeMatchResult();
             var collection_doctypes = GetDocTypesCollection();
             MongoCursor<DocType> foundSdf = collection_doctypes.FindAll();
             foreach (DocType doctype in foundSdf)
             {
                 // Check if document matches
-                DocTypeMatchResult matchResult = CheckIfDocMatches(scanPages, doctype);
+                matchResult = CheckIfDocMatches(scanPages, doctype, false);
                 if (matchResult.matchCertaintyPercent == 100)
+                {
+                    // Redo match to get date and time info
+                    matchResult = CheckIfDocMatches(scanPages, doctype, true);
                     return matchResult;
+                }
             }
-            return new DocTypeMatchResult();
+
+            // Get date info from entire doc
+            List<ExtractedDate> extractedDates = _docTextAndDateExtractor.ExtractDatesFromDoc(scanPages, "");
+            matchResult.datesFoundInDoc = extractedDates;
+            if (extractedDates.Count > 0)
+                matchResult.docDate = extractedDates[0].dateTime;
+            return matchResult;
         }
 
-        public DocTypeMatchResult CheckIfDocMatches(ScanPages scanPages, DocType docType)
+        public DocTypeMatchResult CheckIfDocMatches(ScanPages scanPages, DocType docType, bool extractDates)
         {
             // Setup check info
             DocTypeMatchResult matchResult = new DocTypeMatchResult();
@@ -91,16 +104,25 @@ namespace ScanMonitorApp
                 matchResult.docTypeName = docType.docTypeName;
             }
 
+            // Extract date
+            if (extractDates)
+            {
+                List<ExtractedDate> extractedDates = _docTextAndDateExtractor.ExtractDatesFromDoc(scanPages, docType.dateExpression);
+                matchResult.datesFoundInDoc = extractedDates;
+                if (extractedDates.Count > 0)
+                    matchResult.docDate = extractedDates[0].dateTime;
+            }
+
             return matchResult;
         }
 
-        public bool MatchAgainstDocText(string matchExpression, ScanPages scanPages)
+        private bool MatchAgainstDocText(string matchExpression, ScanPages scanPages)
         {
             StringTok st = new StringTok(matchExpression);
             return EvalMatch(st, scanPages);
         }
 
-        public bool EvalMatch(StringTok st, ScanPages scanPages)
+        private bool EvalMatch(StringTok st, ScanPages scanPages)
         {
             bool result = false;
             string token = "";
@@ -186,7 +208,7 @@ namespace ScanMonitorApp
             return result;
         }
 
-        public bool MatchString(string str, DocRectangle docRectPercent, ScanPages scanPages)
+        private bool MatchString(string str, DocRectangle docRectPercent, ScanPages scanPages)
         {
             for (int pageIdx = 0; pageIdx < scanPages.scanPagesText.Count; pageIdx++)
             {
@@ -204,7 +226,7 @@ namespace ScanMonitorApp
             return false;
         }
 
-        public class StringTok
+        private class StringTok
         {
             public string[] tokens;
             public int curPos = 0;
