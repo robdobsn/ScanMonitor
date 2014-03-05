@@ -29,5 +29,8 @@
     <Setting Name="DbCollectionForFiledDocs" Type="System.String" Scope="User">
       <Value Profile="(Default)">FiledDocInfo</Value>
     </Setting>
+    <Setting Name="PickThumbHeight" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">150</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

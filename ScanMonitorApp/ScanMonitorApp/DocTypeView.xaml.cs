@@ -36,7 +36,8 @@ namespace ScanMonitorApp
         private string _curDocDisplay_uniqName = "";
         private int _curDocDisplay_pageNum = 1;
         private ScanPages _curDocDisplay_scanPages;
-        private ScanDocAllInfo _curUnfiledScanDocAllInfo = null;
+        private ScanDocInfo _curUnfiledScanDocInfo = null;
+        private ScanPages _curUnfiledScanDocPages = null;
         private string _curDocTypeThumbnail = "";
         private bool bInSetupDocTypeForm = false;
         // Cache last parse result
@@ -74,9 +75,10 @@ namespace ScanMonitorApp
             get { return _docTypeColl; }
         }
 
-        public void ShowDocTypeList(string selDocTypeName, ScanDocAllInfo unfiledScanDocAllInfo)
+        public void ShowDocTypeList(string selDocTypeName, ScanDocInfo unfiledScanDocInfo, ScanPages unfiledScanDocPages)
         {
-            _curUnfiledScanDocAllInfo = unfiledScanDocAllInfo;
+            _curUnfiledScanDocInfo = unfiledScanDocInfo;
+            _curUnfiledScanDocPages = unfiledScanDocPages;
             DocType selDocType = null;
             List<DocType> docTypes = _docTypesMatcher.ListDocTypes();
             var docTypesSorted = from docType in docTypes
@@ -94,9 +96,9 @@ namespace ScanMonitorApp
                 docTypeListView.SelectedItem = selDocType;
 
             // Display example doc
-            if ((_curUnfiledScanDocAllInfo != null) && (_curUnfiledScanDocAllInfo.scanDocInfo != null))
+            if ((_curUnfiledScanDocInfo != null) && (_curUnfiledScanDocPages != null))
             {
-                DisplayExampleDoc(_curUnfiledScanDocAllInfo.scanDocInfo.uniqName, 1, _curUnfiledScanDocAllInfo.scanPages);
+                DisplayExampleDoc(_curUnfiledScanDocInfo.uniqName, 1, _curUnfiledScanDocPages);
                 btnShowDocToBeFiled.IsEnabled = true;
             }
             else
@@ -501,7 +503,7 @@ namespace ScanMonitorApp
                 if (_parseResultCache[cacheKey].parseText == txtExpr)
                     return _parseResultCache[cacheKey].parseTerms;
             ParseResultCacheElem newCacheElem = new ParseResultCacheElem();
-            List<ExprParseTerm> exprParseTermList = _docTypesMatcher.ParseDocMatchExpression(txtExpr, 0);
+            List<ExprParseTerm> exprParseTermList = DocTypesMatcher.ParseDocMatchExpression(txtExpr, 0);
             newCacheElem.parseText = txtExpr;
             newCacheElem.parseTerms = exprParseTermList;
             int bracketCount = 0;
@@ -876,7 +878,7 @@ namespace ScanMonitorApp
             btnSaveTypeChanges.IsEnabled = false;
 
             // Reload the form (selecting appropriate item)
-            ShowDocTypeList(curDocTypeName, null);
+            ShowDocTypeList(curDocTypeName, null, null);
         }
 
         private void btnCancelTypeChanges_Click(object sender, RoutedEventArgs e)
@@ -941,33 +943,10 @@ namespace ScanMonitorApp
         private void ShowDocTypeThumbnail(string uniqName)
         {
             _curDocTypeThumbnail = uniqName;
-            if (uniqName == "")
-            {
-                imgDocThumbnail.Source = null;
-                return;
-            }
-            string[] splitNameAndPageNum = uniqName.Split('~');
-            string uniqNameOnly = (splitNameAndPageNum.Length > 0) ? splitNameAndPageNum[0] : "";
-            string pageNumStr = (splitNameAndPageNum.Length > 1) ? splitNameAndPageNum[1] : "";
-            int pageNum = 1;
-            if (pageNumStr.Trim().Length > 0)
-            {
-                try { pageNum = Convert.ToInt32(pageNumStr); }
-                catch { pageNum = 1; }
-            }
-            string imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, uniqNameOnly, pageNum, false);
-            if (!File.Exists(imgFileName))
-            {
-                logger.Info("Thumbnail file doesn't exist for {0}", uniqNameOnly);
-            }
-            try
-            {
-                imgDocThumbnail.Source = new BitmapImage(new Uri("File:" + imgFileName));
-            }
-            catch (Exception excp)
-            {
-                logger.Error("Loading thumbnail file {0} excp {1}", imgFileName, excp.Message);
-            }
+            int heightOfThumb = 150;
+            if (!double.IsNaN(imgDocThumbnail.Height))
+                heightOfThumb = (int)imgDocThumbnail.Height;
+            DocTypeDisplayHelper.LoadDocThumbnail(imgDocThumbnail, uniqName, heightOfThumb);
         }
 
         private bool AreDocTypeChangesPendingSaveOrCancel()
@@ -1019,8 +998,8 @@ namespace ScanMonitorApp
 
         private void btnShowDocToBeFiled_Click(object sender, RoutedEventArgs e)
         {
-            if ((_curUnfiledScanDocAllInfo != null) && (_curUnfiledScanDocAllInfo.scanDocInfo != null))
-                DisplayExampleDoc(_curUnfiledScanDocAllInfo.scanDocInfo.uniqName, 1, _curDocDisplay_scanPages);
+            if ((_curUnfiledScanDocInfo != null) && (_curUnfiledScanDocPages != null))
+                DisplayExampleDoc(_curUnfiledScanDocInfo.uniqName, 1, _curUnfiledScanDocPages);
         }
 
         private void btnUseCurrentDocImageAsThumbnail_Click(object sender, RoutedEventArgs e)

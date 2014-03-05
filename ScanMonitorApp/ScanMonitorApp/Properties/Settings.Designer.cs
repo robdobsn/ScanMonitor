@@ -127,5 +127,17 @@ namespace ScanMonitorApp.Properties {
                 this["DbCollectionForFiledDocs"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("150")]
+        public int PickThumbHeight {
+            get {
+                return ((int)(this["PickThumbHeight"]));
+            }
+            set {
+                this["PickThumbHeight"] = value;
+            }
+        }
     }
 }

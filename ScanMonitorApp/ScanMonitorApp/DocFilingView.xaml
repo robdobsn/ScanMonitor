@@ -13,7 +13,7 @@
             <RowDefinition Height="53" />
         </Grid.RowDefinitions>
 
-        <Image x:Name="imageDocToFile" Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="1" />
+        <Image x:Name="imageDocToFile" Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="1" MouseMove="imageDocToFile_MouseMove" MouseLeave="imageDocToFile_MouseLeave" MouseDown="imageDocToFile_MouseDown" />
         <Popup x:Name="imageDocToFileToolTip" AllowsTransparency="True" Placement="Relative" PlacementTarget="{Binding ElementName=imageDocToFile}" IsEnabled="False">
             <TextBlock x:Name="imageDocToFileToolText" Background="Azure" FontSize="15" IsEnabled="False">ToolText</TextBlock>
         </Popup>
@@ -21,6 +21,7 @@
             <Label Content="Doc Type" HorizontalAlignment="Left" Height="44" VerticalAlignment="Top" Width="109" RenderTransformOrigin="0.488,0.429" Margin="5,10,0,0" FontSize="20"/>
             <TextBox x:Name="txtDocTypeName" Height="44" Margin="119,10,10,0" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False"  FontSize="20">thing</TextBox>
             <Button x:Name="btnViewDocTypes" Content="Types" HorizontalAlignment="Left" Height="50" Margin="0,59,0,0" VerticalAlignment="Top" Width="96" FontSize="16" Click="btnViewDocTypes_Click"/>
+            <Button x:Name="btnPickDocType" Content="Picker" HorizontalAlignment="Left" Height="50" Margin="119,59,0,0" VerticalAlignment="Top" Width="96" FontSize="16" Click="btnPickDocType_Click"/>
         </Grid>
         <Button x:Name="btnBackPage" Content="Back Page" Grid.Column="0" Margin="10,0,0,0" Grid.Row="2" VerticalAlignment="Top" HorizontalAlignment="Left" Width="108" Height="50" FontSize="16" Click="btnBackPage_Click"/>
         <Button x:Name="btnNextPage" Content="Next Page" Grid.Column="0" Margin="148,0,0,0" Grid.Row="2" VerticalAlignment="Top" Height="50" HorizontalAlignment="Left" Width="108" FontSize="16" Click="btnNextPage_Click"/>

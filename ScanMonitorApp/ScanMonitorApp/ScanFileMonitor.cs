@@ -222,15 +222,22 @@ namespace ScanMonitorApp
                                 break;
                             }
 
-                            DateTime fileDateTime = File.GetCreationTime(fsi.FullName);
-                            string uniqName = ScanDocInfo.GetUniqNameForFile(fsi.FullName, fileDateTime);
-
-                            // Check if doc not already in database
-                            ScanDocInfo sdi = _scanDocHandler.GetScanDocInfo(uniqName);
-                            if (sdi == null)
+                            try
                             {
-                                // Process the doc
-                                HandleASinglePdfFile(fsi.FullName);
+                                DateTime fileDateTime = File.GetCreationTime(fsi.FullName);
+                                string uniqName = ScanDocInfo.GetUniqNameForFile(fsi.FullName, fileDateTime);
+
+                                // Check if doc not already in database
+                                ScanDocInfo sdi = _scanDocHandler.GetScanDocInfo(uniqName);
+                                if (sdi == null)
+                                {
+                                    // Process the doc
+                                    HandleASinglePdfFile(fsi.FullName);
+                                }
+                            }
+                            catch (Exception excp)
+                            {
+                                logger.Error("Failed to process file {0}", excp.Message);
                             }
 
                             // Check if we should terminate to allow a new file to be processed

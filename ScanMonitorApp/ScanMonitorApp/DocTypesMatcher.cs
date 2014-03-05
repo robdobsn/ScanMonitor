@@ -18,7 +18,6 @@ namespace ScanMonitorApp
         private MongoClient _dbClient;
         private string _dbNameForDocTypes;
         private string _dbCollectionForDocTypes;
-        private DocTextAndDateExtractor _docTextAndDateExtractor;
 
         public DocTypesMatcher(string dbNameForDocTypes, string dbCollectionForDocTypes)
         {
@@ -26,7 +25,6 @@ namespace ScanMonitorApp
             _dbNameForDocTypes = dbNameForDocTypes;
             var connectionString = "mongodb://localhost";
             _dbClient = new MongoClient(connectionString);
-            _docTextAndDateExtractor = new DocTextAndDateExtractor(this);
         }
 
         public bool Setup()
@@ -72,7 +70,7 @@ namespace ScanMonitorApp
             }
 
             // Get date info from entire doc
-            List<ExtractedDate> extractedDates = _docTextAndDateExtractor.ExtractDatesFromDoc(scanPages, "");
+            List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(scanPages, "");
             matchResult.datesFoundInDoc = extractedDates;
             if (extractedDates.Count > 0)
                 matchResult.docDate = extractedDates[0].dateTime;
@@ -107,7 +105,7 @@ namespace ScanMonitorApp
             // Extract date
             if (extractDates)
             {
-                List<ExtractedDate> extractedDates = _docTextAndDateExtractor.ExtractDatesFromDoc(scanPages, docType.dateExpression);
+                List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(scanPages, docType.dateExpression);
                 matchResult.datesFoundInDoc = extractedDates;
                 if (extractedDates.Count > 0)
                     matchResult.docDate = extractedDates[0].dateTime;
@@ -310,7 +308,7 @@ namespace ScanMonitorApp
             // 
         }
 
-        public int ParserAddTextToPoint(List<ExprParseTerm> parseTermsList, string matchExpression, int lastTxtStartIdx, int chIdx, int curBracketDepth)
+        private static int ParserAddTextToPoint(List<ExprParseTerm> parseTermsList, string matchExpression, int lastTxtStartIdx, int chIdx, int curBracketDepth)
         {
             string s = matchExpression.Substring(lastTxtStartIdx, chIdx-lastTxtStartIdx);
             if (s.Length > 0)
@@ -318,7 +316,7 @@ namespace ScanMonitorApp
             return chIdx + 1;
         }
 
-        public List<ExprParseTerm> ParseDocMatchExpression(string matchExpression, int cursorPosForBracketMatching)
+        public static List<ExprParseTerm> ParseDocMatchExpression(string matchExpression, int cursorPosForBracketMatching)
         {
             // Go through the matchExpression finding parse terms
             List<ExprParseTerm> parseTermsList = new List<ExprParseTerm>();

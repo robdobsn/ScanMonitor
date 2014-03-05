@@ -11,7 +11,6 @@ namespace ScanMonitorApp
     public class DocTextAndDateExtractor
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
-        private DocTypesMatcher _docTypesMatcher;
 
         const string longDateRegex = @"(((0)[1-9])|((1|2)[0-9])|(3[0-1])|([1-9]))?(\s*?)([a-zA-Z]?[a-zA-Z]?)-?(\s*?)-?(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)[,-]?(\s*?)[,-]?(((19)?[89]\d)|((2\s*?0\s*?)?[012345l]\s*?[\dl]))([^,]|$)";
         const string USlongDateRegex = @"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)(\s*?)(1-\s*)?(((0)[1-9])|((1|2)[0-9])|(3[0-1])|([1-9]))(\s*?)([a-zA-Z]?[a-zA-Z]?),(\s*?)(((19)?[8|9]\d)|((20)?[0|1|2]\d))";
@@ -19,26 +18,21 @@ namespace ScanMonitorApp
         const string shortDateNoLeadingZeroesRegex = @"([1-9]|[12][0-9]|3[01])\s?[-/.]\s?([1-9]|1[012])\s?[-/.]\s?((19|20)?(\d\d))";
         const string shortDateSpacesRegex = @"(0[1-9]|[12][0-9]|3[01])\s?(0[1-9]|1[012])\s?((19|20)(\d\d))";
 
-        Dictionary<string, int> monthDict = new Dictionary<string, int>
+        private static Dictionary<string, int> monthDict = new Dictionary<string, int>
             {
                 { "jan", 1 }, { "feb", 2 }, { "mar", 3 }, { "apr", 4 },
                 { "may", 5 }, { "jun", 6 }, { "jul", 7 }, { "aug", 8 }, 
                 { "sep", 9 }, { "oct", 10 }, { "nov", 11 }, { "dec", 12 }, 
             };
 
-        public DocTextAndDateExtractor(DocTypesMatcher docTypesMatcher)
-        {
-            _docTypesMatcher = docTypesMatcher;
-        }
-
-        public List<ExtractedDate> ExtractDatesFromDoc(ScanPages scanPages, string dateExpr)
+        public static List<ExtractedDate> ExtractDatesFromDoc(ScanPages scanPages, string dateExpr)
         {
             List<ExtractedDate> datesResult = new List<ExtractedDate>();
 
             // Extract location rectangles from doctype
             if (dateExpr == "")
                 dateExpr = "all";
-            List<ExprParseTerm> parseTerms = _docTypesMatcher.ParseDocMatchExpression(dateExpr, 0);
+            List<ExprParseTerm> parseTerms = DocTypesMatcher.ParseDocMatchExpression(dateExpr, 0);
             string lastDateSearchTerm = "";
             DocRectangle lastDateSearchRect = new DocRectangle(0,0,100,100);
             foreach (ExprParseTerm parseTerm in parseTerms)
@@ -62,9 +56,16 @@ namespace ScanMonitorApp
             return datesResult;
         }
 
-        public void SearchForDateItem(ScanPages scanPages, string dateSearchTerm, DocRectangle dateDocRect, List<ExtractedDate> datesResult)
+        public static void SearchForDateItem(ScanPages scanPages, string dateSearchTerm, DocRectangle dateDocRect, List<ExtractedDate> datesResult, int limitToPageNumN = -1)
         {
-            for (int pageIdx = 0; pageIdx < scanPages.scanPagesText.Count; pageIdx++)
+            int firstPageIdx = 0;
+            int lastPageIdxPlusOne = scanPages.scanPagesText.Count;
+            if (limitToPageNumN != -1)
+            {
+                firstPageIdx = limitToPageNumN - 1;
+                lastPageIdxPlusOne = limitToPageNumN;
+            }
+            for (int pageIdx = firstPageIdx; pageIdx < lastPageIdxPlusOne; pageIdx++)
             {
                 List<ScanTextElem> scanPageText = scanPages.scanPagesText[pageIdx];
                 foreach (ScanTextElem textElem in scanPageText)
@@ -97,6 +98,8 @@ namespace ScanMonitorApp
                             bTryLong = true;
                             bTryShort = true;
                             bTryUS = true;
+                            bTryNoZeroes = true;
+                            bTrySpaceSeparated = true;
                         }
 
                         // Try to find dates
@@ -131,7 +134,7 @@ namespace ScanMonitorApp
             }
         }
 
-        private void CoerceMatchesToDates(List<ExtractedDate> datesResult, ScanTextElem textElem, MatchCollection matches, ExtractedDate.DateMatchType matchType, int yearGroupIdx, int monthGroupIdx, int dayGroupIdx)
+        private static void CoerceMatchesToDates(List<ExtractedDate> datesResult, ScanTextElem textElem, MatchCollection matches, ExtractedDate.DateMatchType matchType, int yearGroupIdx, int monthGroupIdx, int dayGroupIdx)
         {
             foreach (Match match in matches)
             {
@@ -152,7 +155,7 @@ namespace ScanMonitorApp
                         fd.yearWas2Digit = true;
                     }
                     int month = 1;
-                    if (Char.IsDigit(match.Groups[monthGroupIdx].Value, 1))
+                    if (Char.IsDigit(match.Groups[monthGroupIdx].Value, 0))
                         month = Convert.ToInt32(match.Groups[2].Value);
                     else
                         month = monthDict[match.Groups[monthGroupIdx].Value.ToLower().Substring(0, 3)];

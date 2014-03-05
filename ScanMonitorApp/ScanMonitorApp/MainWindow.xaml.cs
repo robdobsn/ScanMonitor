@@ -219,7 +219,7 @@ namespace ScanMonitorApp
         private void butViewDocTypes_Click(object sender, RoutedEventArgs e)
         {
             DocTypeView dtv = new DocTypeView(_scanDocHandler, _docTypesMatcher);
-            dtv.ShowDocTypeList("", null);
+            dtv.ShowDocTypeList("", null, null);
             dtv.ShowDialog();
         }
 

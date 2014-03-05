@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Drawing;
 using MongoDB.Bson;
+using NLog;
+using System.Windows.Controls;
+using System.IO;
 
 namespace ScanMonitorApp
 {
@@ -132,6 +134,48 @@ namespace ScanMonitorApp
             if (BottomRightY < rect.Y)
                 return false;
             return true;
+        }
+    }
+
+    public class DocTypeDisplayHelper
+    {
+        private static Logger logger = LogManager.GetCurrentClassLogger();
+
+        public static void LoadDocThumbnail(Image imageControl, string uniqName, int heightOfThumbnail)
+        {
+            if (uniqName == "")
+            {
+                imageControl.Source = null;
+                return;
+            }
+            string[] splitNameAndPageNum = uniqName.Split('~');
+            string uniqNameOnly = (splitNameAndPageNum.Length > 0) ? splitNameAndPageNum[0] : "";
+            string pageNumStr = (splitNameAndPageNum.Length > 1) ? splitNameAndPageNum[1] : "";
+            int pageNum = 1;
+            if (pageNumStr.Trim().Length > 0)
+            {
+                try { pageNum = Convert.ToInt32(pageNumStr); }
+                catch { pageNum = 1; }
+            }
+            string imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, uniqNameOnly, pageNum, false);
+            if (!File.Exists(imgFileName))
+            {
+                logger.Info("Thumbnail file doesn't exist for {0}", uniqNameOnly);
+            }
+            try
+            {
+                System.Windows.Media.Imaging.BitmapImage newImg = new System.Windows.Media.Imaging.BitmapImage();
+                newImg.BeginInit();
+                newImg.UriSource = new Uri("File:" + imgFileName);
+                newImg.DecodePixelHeight = heightOfThumbnail;
+                newImg.EndInit();
+                imageControl.Source = newImg;
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Loading thumbnail file {0} excp {1}", imgFileName, excp.Message);
+            }
+
         }
     }
 }
