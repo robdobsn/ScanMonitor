@@ -60,6 +60,14 @@
             <Image x:Name="imgDocThumbnail" Grid.Column="1" Height="189" Margin="5,2,0,0" VerticalAlignment="Top"/>
             <Button x:Name="btnUseCurrentDocImageAsThumbnail" Content="Use Img" Height="21" Margin="0,207,90,0" VerticalAlignment="Top" Click="btnUseCurrentDocImageAsThumbnail_Click" IsEnabled="False" HorizontalAlignment="Right" Width="74" Grid.Column="1"/>
             <Button x:Name="btnClearThumbail" Content="Clear" Height="21" Margin="0,207,11,0" VerticalAlignment="Top" Click="btnClearThumbail_Click" IsEnabled="False" HorizontalAlignment="Right" Width="74" Grid.Column="1"/>
+            <Label Content="Date Locations" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="104" RenderTransformOrigin="0.488,0.429" Margin="5,135,0,0"/>
+            <RichTextBox x:Name="txtDateLocations" Margin="119,135,0,0" Height="26" VerticalAlignment="Top" TextChanged="txtDateLocations_TextChanged" IsEnabled="False">
+                <RichTextBox.Resources>
+                    <Style TargetType="{x:Type Paragraph}">
+                        <Setter Property="Margin" Value="0"/>
+                    </Style>
+                </RichTextBox.Resources>
+            </RichTextBox>
         </Grid>
         <Grid x:Name="matchAgainstFiledDocsGrid" Margin="10,10,10,0" Grid.Column="0" Grid.Row="2" Grid.RowSpan="1">
             <Button x:Name="btnTestMatch" Content="Find Matches" HorizontalAlignment="Left" Height="25" Margin="10,0,0,0" VerticalAlignment="Top" Width="90" Click="btnTestMatch_Click"/>

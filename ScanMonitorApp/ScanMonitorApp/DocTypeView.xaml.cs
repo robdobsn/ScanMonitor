@@ -33,13 +33,14 @@ namespace ScanMonitorApp
         ObservableCollection<DocType> _docTypeColl = new ObservableCollection<DocType>();
         ObservableCollection<DocCompareRslt> _docCompareRslts = new ObservableCollection<DocCompareRslt>();
         private bool bInTextChangedHandler = false;
-//        List<VisRect> _visMatchRectangles = new List<VisRect>();
         private string _curDocDisplay_uniqName = "";
         private int _curDocDisplay_pageNum = 1;
         private ScanPages _curDocDisplay_scanPages;
         private ScanDocAllInfo _curUnfiledScanDocAllInfo = null;
         private string _curDocTypeThumbnail = "";
         private bool bInSetupDocTypeForm = false;
+        // Cache last parse result
+        private Dictionary<string, ParseResultCacheElem> _parseResultCache = new Dictionary<string,ParseResultCacheElem>();
 
         private LocationRectangleHandler locRectHandler;
 
@@ -168,8 +169,8 @@ namespace ScanMonitorApp
             DocType chkDocType = new DocType();
             chkDocType.docTypeName = txtDocTypeName.Text;
             chkDocType.isEnabled = true;
-            string txtExpr = GetMatchExprFromEditBox();
-            chkDocType.matchExpression = txtExpr;
+            chkDocType.matchExpression = GetTextFromRichTextBox(txtMatchExpression);
+            chkDocType.dateExpression = GetTextFromRichTextBox(txtDateLocations);
             return chkDocType;
         }
 
@@ -464,16 +465,16 @@ namespace ScanMonitorApp
             txtMatchExpression.CaretPosition = txtMatchExpression.Document.ContentEnd;
         }
 
-        private void SetTxtMatchExprBoxText(string txtStr)
+        private void SetTextInRichTextBox(RichTextBox rtb, string txtStr)
         {
             Paragraph para = new Paragraph(new Run(txtStr));
-            txtMatchExpression.Document.Blocks.Clear();
-            txtMatchExpression.Document.Blocks.Add(para);
+            rtb.Document.Blocks.Clear();
+            rtb.Document.Blocks.Add(para);
         }
 
-        private string GetMatchExprFromEditBox()
+        private string GetTextFromRichTextBox(RichTextBox rtb)
         {
-            string txtExpr = new TextRange(txtMatchExpression.Document.ContentStart, txtMatchExpression.Document.ContentEnd).Text;
+            string txtExpr = new TextRange(rtb.Document.ContentStart, rtb.Document.ContentEnd).Text;
             txtExpr = txtExpr.Replace("\r", "");
             txtExpr = txtExpr.Replace("\n", "");
             return txtExpr;
@@ -481,144 +482,123 @@ namespace ScanMonitorApp
 
         private void txtMatchExpression_TextChanged(object sender, TextChangedEventArgs e)
         {
+            HandleTextChangedForMatchAndDate(txtMatchExpression, "Match");
+        }
+
+        private void txtDateLocations_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            HandleTextChangedForMatchAndDate(txtDateLocations, "Date");
+        }
+
+        private List<ExprParseTerm> GetParseResultForMatchText(string txtExpr, string cacheKey)
+        {
+            if (_parseResultCache.ContainsKey(cacheKey))
+                if (_parseResultCache[cacheKey].parseText == txtExpr)
+                    return _parseResultCache[cacheKey].parseTerms;
+            ParseResultCacheElem newCacheElem = new ParseResultCacheElem();
+            List<ExprParseTerm> exprParseTermList = _docTypesMatcher.ParseDocMatchExpression(txtExpr, 0);
+            newCacheElem.parseText = txtExpr;
+            newCacheElem.parseTerms = exprParseTermList;
+            int bracketCount = 0;
+            foreach (ExprParseTerm exprTerm in exprParseTermList)
+                if (bracketCount <= exprTerm.locationBracketIdx)
+                    bracketCount = exprTerm.locationBracketIdx + 1;
+            newCacheElem.locationBracketCount = bracketCount;
+            _parseResultCache[cacheKey] = newCacheElem;
+            return exprParseTermList;
+        }
+
+        // The following assumes the cache has been primed before this point
+        private int GetBracketCountBaseForCacheKey(string cacheKey)
+        {
+            if (cacheKey == "Date")
+            {
+                if (_parseResultCache.ContainsKey("Match"))
+                    return _parseResultCache["Match"].locationBracketCount;
+            }
+            return 0;
+        }
+
+        private void HandleTextChangedForMatchAndDate(RichTextBox rtb, string cacheKey)
+        {
             // Avoid re-entering when we change the text programmatically
             if (bInTextChangedHandler)
                 return;
 
             // Check the richtextbox is valid
-            if (txtMatchExpression.Document == null)
+            if (rtb.Document == null)
                 return;
-
-            // Extract string
-            string txtExpr = GetMatchExprFromEditBox();
 
             // Handle button/field enable/disable
             UpdateUIForDocTypeChanges();
 
-            // Parse using our grammar
-            List<ExprParseTerm> exprParseTermList = _docTypesMatcher.ParseDocMatchExpression(txtExpr, 0);
+            // Extract string
+            string txtExpr = GetTextFromRichTextBox(rtb);
+
+            // Get the parse result for this text
+            List<ExprParseTerm> exprParseTermList = GetParseResultForMatchText(txtExpr, cacheKey);
 
             // Get current caret position
-            int curCaretPos = GetCaretPos(txtMatchExpression);
-
-            // Clear visual rectangles
-            locRectHandler.ClearVisRectangles();
+            int curCaretPos = GetCaretPos(rtb);
 
             // Generate the rich text to highlight string elements
             Paragraph para = new Paragraph();
             foreach (ExprParseTerm parseTerm in exprParseTermList)
             {
                 Run txtRun = new Run(txtExpr.Substring(parseTerm.stPos, parseTerm.termLen));
-                txtRun.Foreground = parseTerm.GetBrush();
+                txtRun.Foreground = parseTerm.GetBrush(GetBracketCountBaseForCacheKey(cacheKey));
                 para.Inlines.Add(txtRun);
-                // Check for location rectangle
-                if (parseTerm.termType == ExprParseTerm.ExprParseTermType.exprTerm_Location)
-                {
-                    locRectHandler.AddVisRectangle(txtExpr.Substring(parseTerm.stPos, parseTerm.termLen), parseTerm);
-                }
             }
 
             // Switch to new doc contents
             bInTextChangedHandler = true;
-            txtMatchExpression.Document.Blocks.Clear();
-            txtMatchExpression.Document.Blocks.Add(para);
-            SetCaretPos(txtMatchExpression, curCaretPos);
+            rtb.Document.Blocks.Clear();
+            rtb.Document.Blocks.Add(para);
+            SetCaretPos(rtb, curCaretPos);
             bInTextChangedHandler = false;
 
-            // Draw the location rectangles
-            locRectHandler.DrawVisRectangles();
+            // Set visualisation rectangles for both match and date boxes
+            DrawLocationRectanglesForAllBoxes();
 
             // Redisplay the check status for the currently displayed document
             CheckDisplayedDocForMatchAndShowResult();
         }
 
-/*
- * private void UpdateExprBasedOnRectangleChange(string docRectName)
+        private void DrawLocationRectanglesForAllBoxes()
         {
+            // Clear visual rectangles
+            locRectHandler.ClearVisRectangles();
 
-            // Find the rectangle that has changed/been-created
-            foreach (UIElement child in docOverlayCanvas.Children)
+            // Generate required location rectangles for match expression
+            string txtExpr = GetTextFromRichTextBox(txtMatchExpression);
+            string cacheTerm = "Match";
+            List<ExprParseTerm> exprParseTermList = GetParseResultForMatchText(txtExpr, cacheTerm);
+            int locRectMaxIdx = 0;
+            foreach (ExprParseTerm parseTerm in exprParseTermList)
             {
-                if (child.GetType() == typeof(Rectangle))
+                // Check for location rectangle
+                if (parseTerm.termType == ExprParseTerm.ExprParseTermType.exprTerm_Location)
                 {
-                    Rectangle rect = (Rectangle)child;
-                    if (rect.Name == docRectName)
-                    {
-                        // Get coords from rectangle
-                        double topLeftX = (double)rect.GetValue(Canvas.LeftProperty);
-                        double topLeftY = (double)rect.GetValue(Canvas.TopProperty);
-                        double width = rect.Width;
-                        double height = rect.Height;
-
-                        // Convert coords to image
-                        DocRectangle docRectPercent = locRectHandler.ConvertCanvasRectToDocPercent(new DocRectangle(topLeftX, topLeftY, width, height));
-                        Console.WriteLine("DocRectPerc " + docRectPercent.X + " " +
-                                    docRectPercent.Y + " " +
-                                    docRectPercent.BottomRightX + " " +
-                                    docRectPercent.BottomRightY);
-
-                        // Insert/change location in expression
-                        string[] rectParts = docRectName.Split('_');
-                        if (rectParts.Length < 2)
-                            return;
-                        int rectIdx = Convert.ToInt32(rectParts[1]);
-
-                        // Extract string
-                        string txtExpr = GetMatchExprFromEditBox(); 
-
-                        // Parse using our grammar
-                        List<ExprParseTerm> exprParseTermList = _docTypesMatcher.ParseDocMatchExpression(txtExpr, 0);
-
-                        // Get current caret position
-                        int curCaretPos = GetCaretPos(txtMatchExpression);
-
-                        // Find where to change/insert the location
-                        bool bInserted = false;
-                        int bestNewRectPos = txtExpr.Length;
-                        string newTextExpr = txtExpr;
-                        foreach (ExprParseTerm parseTerm in exprParseTermList)
-                        {
-                            Run txtRun = new Run(txtExpr.Substring(parseTerm.stPos, parseTerm.termLen));
-                            // Check for location rectangle
-                            if (parseTerm.termType == ExprParseTerm.ExprParseTermType.exprTerm_Location)
-                            {
-                                if (parseTerm.locationBracketIdx == rectIdx)
-                                {
-                                    newTextExpr = txtExpr.Substring(0, parseTerm.stPos) + FormatLocationStr(docRectPercent) + txtExpr.Substring(parseTerm.stPos + parseTerm.termLen);
-                                    bInserted = true;
-                                    break;
-                                }
-                            }
-                            else if (parseTerm.termType == ExprParseTerm.ExprParseTermType.exprTerm_Text)
-                                if (curCaretPos >= parseTerm.stPos)
-                                    bestNewRectPos = parseTerm.stPos + parseTerm.termLen;
-                        }
-                        if (!bInserted)
-                        {
-                            newTextExpr = txtExpr.Substring(0, bestNewRectPos) + "{" + FormatLocationStr(docRectPercent) + "}";
-                            string endOfStr = txtExpr.Substring(bestNewRectPos);
-                            if (endOfStr.Trim().Length > 0)
-                            {
-                                if (endOfStr.Trim().Substring(0, 1) == "{")
-                                {
-                                    int closePos = endOfStr.IndexOf('}');
-                                    if (closePos > 0)
-                                        endOfStr = endOfStr.Substring(closePos+1);
-                                }
-                            }
-                            newTextExpr += endOfStr;
-                            SetTxtMatchExprBoxText(newTextExpr);
-                        }
-
-                        // All rectangles will get redrawn as text expression is changed and causes trigger to refresh
-                        SetTxtMatchExprBoxText(newTextExpr);
-
-                        break;
-                    }
+                    locRectHandler.AddVisRectangle(txtExpr.Substring(parseTerm.stPos, parseTerm.termLen), cacheTerm, parseTerm.locationBracketIdx, parseTerm.GetBrush());
+                    if (locRectMaxIdx < parseTerm.locationBracketIdx)
+                        locRectMaxIdx = parseTerm.locationBracketIdx;
                 }
             }
+
+            // Generate location rectangles for date expressions
+            string dateExpr = GetTextFromRichTextBox(txtDateLocations);
+            cacheTerm = "Date";
+            List<ExprParseTerm> dateParseTermList = GetParseResultForMatchText(dateExpr, cacheTerm);
+            foreach (ExprParseTerm parseTerm in dateParseTermList)
+            {
+                // Check for location rectangle
+                if (parseTerm.termType == ExprParseTerm.ExprParseTermType.exprTerm_Location)
+                    locRectHandler.AddVisRectangle(dateExpr.Substring(parseTerm.stPos, parseTerm.termLen), cacheTerm, parseTerm.locationBracketIdx, parseTerm.GetBrush(locRectMaxIdx+1));
+            }
+
+            // Draw the location rectangles
+            locRectHandler.DrawVisRectangles();
         }
- * */
 
         private string FormatLocationStr(DocRectangle docRect)
         {
@@ -687,16 +667,25 @@ namespace ScanMonitorApp
                 exampleFileImageToolTip.IsOpen = false;
         }   
 
-        private void docRectChangesComplete(int docRectIdx, DocRectangle rectInDocPercent)
+        private void docRectChangesComplete(string nameOfMatchingTextBox, int docRectIdx, DocRectangle rectInDocPercent)
         {
+            // Check which text box the rectangle is in
+            RichTextBox rtb = txtMatchExpression;
+            string cacheTermForRtb = "Match";
+            if ((nameOfMatchingTextBox == "Date") || ((nameOfMatchingTextBox == "New") && txtDateLocations.IsKeyboardFocused))
+            {
+                rtb = txtDateLocations;
+                cacheTermForRtb = "Date";
+            }
+
             // Extract string
-            string txtExpr = GetMatchExprFromEditBox();
+            string txtExpr = GetTextFromRichTextBox(rtb);
 
             // Parse using our grammar
-            List<ExprParseTerm> exprParseTermList = _docTypesMatcher.ParseDocMatchExpression(txtExpr, 0);
+            List<ExprParseTerm> exprParseTermList = GetParseResultForMatchText(txtExpr, cacheTermForRtb);
 
             // Get current caret position
-            int curCaretPos = GetCaretPos(txtMatchExpression);
+            int curCaretPos = GetCaretPos(rtb);
 
             // Find where to change/insert the location
             bool bInserted = false;
@@ -733,89 +722,15 @@ namespace ScanMonitorApp
                     }
                 }
                 newTextExpr += endOfStr;
-                SetTxtMatchExprBoxText(newTextExpr);
+                SetTextInRichTextBox(rtb, newTextExpr);
             }
 
             // All rectangles will get redrawn as text expression is changed and causes trigger to refresh
-            SetTxtMatchExprBoxText(newTextExpr);
+            SetTextInRichTextBox(rtb, newTextExpr);
 
         }
 
         #endregion
-        /*
-         * 
-        #region Location Rectangle Display
-
-        private void ClearVisRectangles()
-        {
-            _visMatchRectangles.Clear();
-        }
-
-        private void AddVisRectangle(string rectLocStr, ExprParseTerm parseTerm)
-        {
-            VisRect visRect = new VisRect();
-            visRect.docRectPercent = new DocRectangle(rectLocStr);
-            visRect.parseTerm = parseTerm;
-            _visMatchRectangles.Add(visRect);
-        }
-
-        private void DrawVisRectangles()
-        {
-            docOverlayCanvas.Children.Clear();
-            if (exampleFileImage.ActualHeight <= 0 || double.IsNaN(exampleFileImage.ActualHeight))
-                return;
-            int maxLocationIdx = 0;
-            foreach (VisRect visRect in _visMatchRectangles)
-            {
-                visRect.rectName = AddVisRectToCanvas(visRect.docRectPercent, visRect.parseTerm.GetBrush(), visRect.parseTerm.locationBracketIdx);
-                if (maxLocationIdx < visRect.parseTerm.locationBracketIdx)
-                    maxLocationIdx = visRect.parseTerm.locationBracketIdx;
-            }
-            locRectHandler.SetNextLocationIdx(maxLocationIdx+1);
-        }
-
-        private DocRectangle ConvertDocPercentRectToCanvas(DocRectangle docPercentRect)
-        {
-            double tlx = exampleFileImage.ActualWidth * docPercentRect.X / 100;
-            double tly = exampleFileImage.ActualHeight * docPercentRect.Y / 100;
-            Point tlPoint = exampleFileImage.TranslatePoint(new Point(tlx, tly), docOverlayCanvas);
-            double wid = exampleFileImage.ActualWidth * docPercentRect.Width / 100;
-            double hig = exampleFileImage.ActualHeight * docPercentRect.Height / 100;
-            Point brPoint = exampleFileImage.TranslatePoint(new Point(tlx + wid, tly + hig), docOverlayCanvas);
-            return new DocRectangle(tlPoint.X, tlPoint.Y, brPoint.X - tlPoint.X, brPoint.Y - tlPoint.Y);
-        }
-
-        private DocRectangle ConvertCanvasRectToDocPercent(DocRectangle canvasRect)
-        {
-            Point tlPoint = docOverlayCanvas.TranslatePoint(new Point(canvasRect.X, canvasRect.Y), exampleFileImage);
-            double tlx = 100 * tlPoint.X / exampleFileImage.ActualWidth;
-            double tly = 100 * tlPoint.Y / exampleFileImage.ActualHeight;
-            Point brPoint = docOverlayCanvas.TranslatePoint(new Point(canvasRect.BottomRightX, canvasRect.BottomRightY), exampleFileImage);
-            double brx = 100 * brPoint.X / exampleFileImage.ActualWidth;
-            double bry = 100 * brPoint.Y / exampleFileImage.ActualHeight;
-            return new DocRectangle(tlx, tly, brx - tlx, bry - tly);
-        }
-
-        private string AddVisRectToCanvas(DocRectangle docRectPercent, Brush brushForPaint, int locationBracketIdx)
-        {
-            Rectangle rect = new Rectangle();
-            rect.Opacity = 0.5;
-            rect.Fill = brushForPaint;
-            DocRectangle canvasRect = ConvertDocPercentRectToCanvas(docRectPercent);
-            rect.Width = canvasRect.Width;
-            rect.Height = canvasRect.Height;
-            rect.Name = "visRect_" + locationBracketIdx.ToString();
-            docOverlayCanvas.Children.Add(rect);
-            rect.SetValue(Canvas.LeftProperty, canvasRect.X);
-            rect.SetValue(Canvas.TopProperty, canvasRect.Y);
-            rect.MouseDown += new MouseButtonEventHandler(exampleFileImage_MouseDown);
-            rect.MouseMove += new MouseEventHandler(exampleFileImage_MouseMove);
-            rect.MouseUp += new MouseButtonEventHandler(exampleFileImage_MouseUp);
-            return rect.Name;
-        }
-
-        #endregion
-        */
 
         #region Form events and buttons
 
@@ -831,6 +746,7 @@ namespace ScanMonitorApp
             btnNewDocType.IsEnabled = false;
             chkEnabledDocType.IsEnabled = true;
             txtMatchExpression.IsEnabled = true;
+            txtDateLocations.IsEnabled = true;
             btnCancelTypeChanges.IsEnabled = true;
             btnUseCurrentDocImageAsThumbnail.IsEnabled = true;
             btnClearThumbail.IsEnabled = true;
@@ -843,6 +759,7 @@ namespace ScanMonitorApp
             btnNewDocType.IsEnabled = false;
             txtDocTypeName.IsEnabled = true;
             chkEnabledDocType.IsEnabled = true;
+            txtDateLocations.IsEnabled = true;
             txtMatchExpression.IsEnabled = true;
             btnCancelTypeChanges.IsEnabled = true;
             btnUseCurrentDocImageAsThumbnail.IsEnabled = true;
@@ -857,11 +774,13 @@ namespace ScanMonitorApp
             txtDocTypeName.IsEnabled = true;
             chkEnabledDocType.IsEnabled = true;
             txtMatchExpression.IsEnabled = true;
+            txtDateLocations.IsEnabled = true;
             _selectedDocType = null;
             docTypeListView.SelectedItem = null;
             txtDocTypeName.Text = "";
             chkEnabledDocType.IsChecked = true;
-            SetTxtMatchExprBoxText("");
+            SetTextInRichTextBox(txtMatchExpression, "");
+            SetTextInRichTextBox(txtDateLocations, "");
             btnCancelTypeChanges.IsEnabled = true;
             ShowDocTypeThumbnail("");
             btnUseCurrentDocImageAsThumbnail.IsEnabled = true;
@@ -904,7 +823,8 @@ namespace ScanMonitorApp
                 // Create a new record
                 DocType newDocType = new DocType();
                 newDocType.CloneForRenaming(txtDocTypeName.Text, _selectedDocType);
-                newDocType.matchExpression = GetMatchExprFromEditBox();
+                newDocType.matchExpression = GetTextFromRichTextBox(txtMatchExpression);
+                newDocType.dateExpression = GetTextFromRichTextBox(txtDateLocations);
                 newDocType.isEnabled = (bool)chkEnabledDocType.IsChecked;
                 newDocType.thumbnailForDocType = _curDocTypeThumbnail;
 
@@ -926,7 +846,8 @@ namespace ScanMonitorApp
                 // Create a new record
                 DocType newDocType = new DocType();
                 newDocType.docTypeName = txtDocTypeName.Text;
-                newDocType.matchExpression = GetMatchExprFromEditBox();
+                newDocType.matchExpression = GetTextFromRichTextBox(txtMatchExpression);
+                newDocType.dateExpression = GetTextFromRichTextBox(txtDateLocations);
                 newDocType.isEnabled = (bool)chkEnabledDocType.IsChecked;
                 newDocType.thumbnailForDocType = _curDocTypeThumbnail;
 
@@ -936,7 +857,8 @@ namespace ScanMonitorApp
             else
             {
                 // Make changes to record
-                _selectedDocType.matchExpression = GetMatchExprFromEditBox();
+                _selectedDocType.matchExpression = GetTextFromRichTextBox(txtMatchExpression);
+                _selectedDocType.dateExpression = GetTextFromRichTextBox(txtDateLocations);
                 _selectedDocType.isEnabled = (bool)chkEnabledDocType.IsChecked;
                 _selectedDocType.thumbnailForDocType = _curDocTypeThumbnail;
 
@@ -986,6 +908,7 @@ namespace ScanMonitorApp
             btnSaveTypeChanges.IsEnabled = false;
             chkEnabledDocType.IsEnabled = false;
             txtMatchExpression.IsEnabled = false;
+            txtDateLocations.IsEnabled = false;
             txtDocTypeName.IsEnabled = false;
             btnClearThumbail.IsEnabled = false;
             btnUseCurrentDocImageAsThumbnail.IsEnabled = false;
@@ -994,14 +917,16 @@ namespace ScanMonitorApp
             {
                 txtDocTypeName.Text = "";
                 chkEnabledDocType.IsChecked = false;
-                SetTxtMatchExprBoxText("");
+                SetTextInRichTextBox(txtMatchExpression, "");
+                SetTextInRichTextBox(txtDateLocations, "");
                 ShowDocTypeThumbnail("");
             }
             else
             {
                 txtDocTypeName.Text = docType.docTypeName;
                 chkEnabledDocType.IsChecked = docType.isEnabled;
-                SetTxtMatchExprBoxText(docType.matchExpression);
+                SetTextInRichTextBox(txtMatchExpression, docType.matchExpression);
+                SetTextInRichTextBox(txtDateLocations, docType.dateExpression);
                 ShowDocTypeThumbnail(docType.thumbnailForDocType);
             }
             bInSetupDocTypeForm = false;
@@ -1052,15 +977,18 @@ namespace ScanMonitorApp
             bool somethingChanged = false;
             if (_selectedDocType != null)
             {
-                string txtExpr = GetMatchExprFromEditBox();
                 string compareStr = _selectedDocType.matchExpression;
                 if (compareStr == null)
                     compareStr = "";
-                bool matchExprChanged = (compareStr.Trim() != txtExpr.Trim());
+                bool matchExprChanged = (compareStr.Trim() != GetTextFromRichTextBox(txtMatchExpression).Trim());
+                compareStr = _selectedDocType.dateExpression;
+                if (compareStr == null)
+                    compareStr = "";
+                bool dateExprChanged = (compareStr.Trim() != GetTextFromRichTextBox(txtDateLocations).Trim());
                 bool docTypeEnabledChanged = (_selectedDocType.isEnabled != chkEnabledDocType.IsChecked);
                 bool docTypeRenamed = (_selectedDocType.docTypeName != txtDocTypeName.Text) && (txtDocTypeName.Text.Trim() != "");
                 bool thumbnailChanged = (_selectedDocType.thumbnailForDocType != _curDocTypeThumbnail);
-                somethingChanged = (matchExprChanged || docTypeEnabledChanged || docTypeRenamed || thumbnailChanged);
+                somethingChanged = (matchExprChanged || dateExprChanged || docTypeEnabledChanged || docTypeRenamed || thumbnailChanged);
             }
             else
             {
@@ -1104,24 +1032,30 @@ namespace ScanMonitorApp
 
         #endregion
 
-    }
-
-    public class DocCompareRslt
-    {
-        public DocCompareRslt()
+        private class DocCompareRslt
         {
-            bMatches = false;
-            bMatchesButShouldnt = false;
-            bDoesntMatchButShould = false;
+            public DocCompareRslt()
+            {
+                bMatches = false;
+                bMatchesButShouldnt = false;
+                bDoesntMatchButShould = false;
+            }
+
+            public string uniqName { get; set; }
+            public string matchStatus { get; set; }
+            public string docTypeFiled { get; set; }
+            public ScanPages scanPages { get; set; }
+            public bool bMatches { get; set; }
+            public bool bMatchesButShouldnt { get; set; }
+            public bool bDoesntMatchButShould { get; set; }
+            public DocTypeMatchResult matchResult { get; set; }
         }
 
-        public string uniqName { get; set; }
-        public string matchStatus { get; set; }
-        public string docTypeFiled { get; set; }
-        public ScanPages scanPages { get; set; }
-        public bool bMatches { get; set; }
-        public bool bMatchesButShouldnt { get; set; }
-        public bool bDoesntMatchButShould { get; set; }
-        public DocTypeMatchResult matchResult { get; set; }
+        private class ParseResultCacheElem
+        {
+            public string parseText = "";
+            public List<ExprParseTerm> parseTerms = new List<ExprParseTerm>();
+            public int locationBracketCount = 0;
+        }
     }
 }

@@ -14,6 +14,7 @@ namespace ScanMonitorApp
         {
             docTypeName = "";
             matchExpression = "";
+            dateExpression = "";
             thumbnailForDocType = "";
             isEnabled = false;
             previousName = "";
@@ -23,6 +24,7 @@ namespace ScanMonitorApp
         {
             docTypeName = newName;
             matchExpression = prevDocType.matchExpression;
+            dateExpression = prevDocType.dateExpression;
             thumbnailForDocType = prevDocType.thumbnailForDocType;
             isEnabled = false;
             previousName = prevDocType.docTypeName;
@@ -31,6 +33,7 @@ namespace ScanMonitorApp
         public ObjectId Id;
         public string docTypeName { get; set; }
         public string matchExpression { get; set; }
+        public string dateExpression { get; set; }
         public string thumbnailForDocType { get; set; }
         public bool isEnabled { get; set; }
         public string previousName { get; set; }

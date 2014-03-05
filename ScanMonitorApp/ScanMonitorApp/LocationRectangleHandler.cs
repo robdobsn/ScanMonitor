@@ -28,11 +28,11 @@ namespace ScanMonitorApp
         bool _dragSelectOverThreshold = false;
         Action<Point, DocRectangle> _tooltipMoveCallback;
         Action<Point> _tooltipCloseCallback;
-        Action<int, DocRectangle> _changesCompleteCallback;
+        Action<string, int, DocRectangle> _changesCompleteCallback;
 
         public LocationRectangleHandler(Image masterVisualElement, Canvas uiOverlayCanvas,
                                 Action<Point, DocRectangle> tooltipMoveCallback, Action<Point> tooltipCloseCallback,
-                                Action<int, DocRectangle> changesCompleteCallback)
+                                Action<string, int, DocRectangle> changesCompleteCallback)
         {
             _masterImage = masterVisualElement;
             _tooltipMoveCallback = tooltipMoveCallback;
@@ -53,11 +53,13 @@ namespace ScanMonitorApp
             _visMatchRectangles.Clear();
         }
 
-        public void AddVisRectangle(string rectLocStr, ExprParseTerm parseTerm)
+        public void AddVisRectangle(string rectLocStr, string txtBoxCorresponding, int bracketIdx, Brush colour)
         {
             VisRect visRect = new VisRect();
             visRect.docRectPercent = new DocRectangle(rectLocStr);
-            visRect.parseTerm = parseTerm;
+            visRect.locationBracketIdx = bracketIdx;
+            visRect.matchingTextBox = txtBoxCorresponding;
+            visRect.rectColour = colour;
             _visMatchRectangles.Add(visRect);
         }
 
@@ -66,14 +68,13 @@ namespace ScanMonitorApp
             _uiOverlayCanvas.Children.Clear();
             if (_masterImage.ActualHeight <= 0 || double.IsNaN(_masterImage.ActualHeight))
                 return;
-            int maxLocationIdx = 0;
+            int nextLocationIdx = 0;
             foreach (VisRect visRect in _visMatchRectangles)
             {
-                visRect.rectName = AddVisRectToCanvas(visRect.docRectPercent, visRect.parseTerm.GetBrush(), visRect.parseTerm.locationBracketIdx);
-                if (maxLocationIdx < visRect.parseTerm.locationBracketIdx)
-                    maxLocationIdx = visRect.parseTerm.locationBracketIdx;
+                visRect.rectName = AddVisRectToCanvas(visRect);
+                nextLocationIdx++;
             }
-            _dragSelect_nextLocationIdx = maxLocationIdx + 1;
+            _dragSelect_nextLocationIdx = nextLocationIdx;
         }
 
         private DocRectangle ConvertDocPercentRectToCanvas(DocRectangle docPercentRect)
@@ -98,15 +99,15 @@ namespace ScanMonitorApp
             return new DocRectangle(tlx, tly, brx - tlx, bry - tly);
         }
 
-        private string AddVisRectToCanvas(DocRectangle docRectPercent, Brush brushForPaint, int locationBracketIdx)
+        private string AddVisRectToCanvas(VisRect visRect)
         {
             Rectangle rect = new Rectangle();
             rect.Opacity = 0.5;
-            rect.Fill = brushForPaint;
-            DocRectangle canvasRect = ConvertDocPercentRectToCanvas(docRectPercent);
+            rect.Fill = visRect.rectColour;
+            DocRectangle canvasRect = ConvertDocPercentRectToCanvas(visRect.docRectPercent);
             rect.Width = canvasRect.Width;
             rect.Height = canvasRect.Height;
-            rect.Name = "visRect_" + locationBracketIdx.ToString();
+            rect.Name = visRect.matchingTextBox + "_" + visRect.locationBracketIdx.ToString();
             _uiOverlayCanvas.Children.Add(rect);
             rect.SetValue(Canvas.LeftProperty, canvasRect.X);
             rect.SetValue(Canvas.TopProperty, canvasRect.Y);
@@ -237,8 +238,9 @@ namespace ScanMonitorApp
                         string[] rectParts = _dragSelectionRectName.Split('_');
                         if (rectParts.Length < 2)
                             return;
+                        string matchingTextBox = rectParts[0];
                         int rectIdx = Convert.ToInt32(rectParts[1]);
-                        _changesCompleteCallback(rectIdx, docRectPercent);
+                        _changesCompleteCallback(matchingTextBox, rectIdx, docRectPercent);
                     }
                     e.Handled = true;
                 }
@@ -334,7 +336,7 @@ namespace ScanMonitorApp
             rect.Fill = brushForPaint;
             rect.Width = size.Width;
             rect.Height = size.Height;
-            rect.Name = "visRect_" + locationBracketIdx.ToString();
+            rect.Name = "New_" + locationBracketIdx.ToString();
             _uiOverlayCanvas.Children.Add(rect);
             rect.SetValue(Canvas.LeftProperty, size.X);
             rect.SetValue(Canvas.TopProperty, size.Y);
@@ -349,7 +351,9 @@ namespace ScanMonitorApp
 
         public class VisRect
         {
-            public ExprParseTerm parseTerm;
+            public Brush rectColour;
+            public string matchingTextBox;
+            public int locationBracketIdx;
             public DocRectangle docRectPercent;
             public string rectName;
             public Point BottomRightPoint()

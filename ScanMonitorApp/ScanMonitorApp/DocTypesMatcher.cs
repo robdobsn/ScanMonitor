@@ -154,7 +154,14 @@ namespace ScanMonitorApp
                                 break;
                             else
                             {
-                                double rectVal = Double.Parse(token);
+                                double rectVal = 0;
+                                try
+                                {
+                                    rectVal = Double.Parse(token);
+                                }
+                                catch
+                                {
+                                }
                                 docRectPercent.SetVal(docRectValIdx, rectVal);
                             }
                         }
@@ -372,10 +379,10 @@ namespace ScanMonitorApp
                 {
                     new SolidColorBrush(Colors.Pink),
                     new SolidColorBrush(Colors.Goldenrod),
-                    new SolidColorBrush(Colors.BurlyWood),
                     new SolidColorBrush(Colors.Indigo),
                     new SolidColorBrush(Colors.Chartreuse),
-                    new SolidColorBrush(Colors.Coral)
+                    new SolidColorBrush(Colors.DarkBlue),
+                    new SolidColorBrush(Colors.Cyan)
                 };
         public ExprParseTerm(ExprParseTermType type, int pos, int leng, int brackDepth, int locBrackIdx)
         {
@@ -395,10 +402,10 @@ namespace ScanMonitorApp
             exprTerm_Operator,
             exprTerm_Brackets,
         }
-        public Brush GetBrush()
+        public Brush GetBrush(int offset = 0)
         {
             if (termType == ExprParseTermType.exprTerm_Location)
-                return GetLocationBrush(locationBracketIdx);
+                return GetLocationBrush(locationBracketIdx + offset);
             return GetTermTypeBrush();
         }
         public static Brush GetBrushForLocationIdx(int locIdx)
