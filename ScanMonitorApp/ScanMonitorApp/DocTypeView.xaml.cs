@@ -946,7 +946,10 @@ namespace ScanMonitorApp
             int heightOfThumb = 150;
             if (!double.IsNaN(imgDocThumbnail.Height))
                 heightOfThumb = (int)imgDocThumbnail.Height;
-            DocTypeDisplayHelper.LoadDocThumbnail(imgDocThumbnail, uniqName, heightOfThumb);
+            if (uniqName == "")
+                imgDocThumbnail.Source = null;
+            else
+                imgDocThumbnail.Source = DocTypeDisplayHelper.LoadDocThumbnail(uniqName, heightOfThumb);
         }
 
         private bool AreDocTypeChangesPendingSaveOrCancel()

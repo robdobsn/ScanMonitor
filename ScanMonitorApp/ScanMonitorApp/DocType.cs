@@ -7,6 +7,7 @@ using MongoDB.Bson;
 using NLog;
 using System.Windows.Controls;
 using System.IO;
+using System.Windows.Media.Imaging;
 
 namespace ScanMonitorApp
 {
@@ -141,13 +142,9 @@ namespace ScanMonitorApp
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static void LoadDocThumbnail(Image imageControl, string uniqName, int heightOfThumbnail)
+        public static BitmapImage LoadDocThumbnail(string uniqName, int heightOfThumbnail)
         {
-            if (uniqName == "")
-            {
-                imageControl.Source = null;
-                return;
-            }
+            BitmapImage bitmap = null;
             string[] splitNameAndPageNum = uniqName.Split('~');
             string uniqNameOnly = (splitNameAndPageNum.Length > 0) ? splitNameAndPageNum[0] : "";
             string pageNumStr = (splitNameAndPageNum.Length > 1) ? splitNameAndPageNum[1] : "";
@@ -164,18 +161,18 @@ namespace ScanMonitorApp
             }
             try
             {
-                System.Windows.Media.Imaging.BitmapImage newImg = new System.Windows.Media.Imaging.BitmapImage();
-                newImg.BeginInit();
-                newImg.UriSource = new Uri("File:" + imgFileName);
-                newImg.DecodePixelHeight = heightOfThumbnail;
-                newImg.EndInit();
-                imageControl.Source = newImg;
+                bitmap = new System.Windows.Media.Imaging.BitmapImage();
+                bitmap.BeginInit();
+                bitmap.UriSource = new Uri("File:" + imgFileName);
+                bitmap.DecodePixelHeight = heightOfThumbnail;
+                bitmap.EndInit();
             }
             catch (Exception excp)
             {
                 logger.Error("Loading thumbnail file {0} excp {1}", imgFileName, excp.Message);
             }
 
+            return bitmap;
         }
     }
 }

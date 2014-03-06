@@ -91,6 +91,7 @@
     <Compile Include="DocTypePicker.xaml.cs">
       <DependentUpon>DocTypePicker.xaml</DependentUpon>
     </Compile>
+    <Compile Include="DocTypePickerCache.cs" />
     <Compile Include="DocTypesMatcher.cs" />
     <Compile Include="DocTypeView.xaml.cs">
       <DependentUpon>DocTypeView.xaml</DependentUpon>

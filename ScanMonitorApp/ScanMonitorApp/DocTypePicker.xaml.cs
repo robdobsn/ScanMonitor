@@ -24,15 +24,39 @@ namespace ScanMonitorApp
     public partial class DocTypePicker : Window
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
-        private DocTypesMatcher _docTypesMatcher;
-        BackgroundWorker _bwThread;
+        private static DocTypesMatcher _docTypesMatcher;
+        private static BackgroundWorker _bwThread;
         public string ResultDocType { get; set; }
+        private static List<Image> _thumbnailsOfDocTypes;
 
         public DocTypePicker(DocTypesMatcher docTypesMatcher)
         {
             InitializeComponent();
-            _docTypesMatcher = docTypesMatcher;
             ResultDocType = "";
+            int thumbnailHeight = Properties.Settings.Default.PickThumbHeight;
+
+            // Display images
+            lock(_thumbnailsOfDocTypes)
+            {
+                foreach (Image img in _thumbnailsOfDocTypes)
+                {
+                    // Assume landscape paper shaped cells
+                    int actualWidth = 400;
+                    if (!double.IsNaN(gridOfImages.ActualWidth))
+                        actualWidth = (int)gridOfImages.ActualWidth;
+                    int numAcross = actualWidth / (int)(thumbnailHeight * 0.7);
+                    gridOfImages.Columns = numAcross;
+                    // Add the image
+                    img.MouseDown += new MouseButtonEventHandler(HandleMouseDown);
+                    gridOfImages.Children.Add(img);
+                }
+            }
+        }
+
+        public static void UpdateThumbnails(DocTypesMatcher docTypesMatcher)
+        {
+            // DocTypes
+            _docTypesMatcher = docTypesMatcher;
 
             // Image filler thread
             _bwThread = new BackgroundWorker();
@@ -44,12 +68,11 @@ namespace ScanMonitorApp
             _bwThread.RunWorkerAsync();
         }
 
-        private void AddImages_DoWork(object sender, DoWorkEventArgs e)
+        private static void AddImages_DoWork(object sender, DoWorkEventArgs e)
         {
             int thumbnailHeight = Properties.Settings.Default.PickThumbHeight;
             BackgroundWorker worker = sender as BackgroundWorker;
             List<DocType> docTypeList = _docTypesMatcher.ListDocTypes();
-            int imgCount = 0;
             foreach (DocType dt in docTypeList)
             {
                 if ((worker.CancellationPending == true))
@@ -60,33 +83,15 @@ namespace ScanMonitorApp
 
                 if (dt.thumbnailForDocType != "")
                 {
-                    this.Dispatcher.BeginInvoke((Action)delegate()
-                    {
-                        //System.Windows.Media.Imaging.BitmapImage newImg = new System.Windows.Media.Imaging.BitmapImage();
-                        //newImg.BeginInit();
-                        //newImg.UriSource = new Uri("File:" + imgFileName);
-                        //newImg.DecodePixelHeight = 150;
-                        //newImg.EndInit();
-                        //img.Source = newImg;
-                        //gridOfImages.Children.Add(img);
-
-                        // Assume landscape paper shaped cells
-                        int actualWidth = 400;
-                        if (!double.IsNaN(gridOfImages.ActualWidth))
-                            actualWidth = (int)gridOfImages.ActualWidth;
-                        int numAcross = actualWidth / (int)(thumbnailHeight * 0.7);
-                        imgCount++;
-                        // int numDown = (imgCount / numAcross) + 1;
-                        gridOfImages.Columns = numAcross;
-                        // gridOfImages.Rows = numDown;
-                        Image img = new Image();
-                        img.Height = thumbnailHeight;
-                        DocTypeDisplayHelper.LoadDocThumbnail(img, dt.thumbnailForDocType, thumbnailHeight);
-                        img.MouseDown += new MouseButtonEventHandler(HandleMouseDown);
-                        img.Tag = dt.docTypeName;
-                        gridOfImages.Children.Add(img);
-                    });
-                    Thread.Sleep(50);
+                    //Image img = new Image();
+                    //img.Height = thumbnailHeight;
+                    //BitmapImage bitmap = DocTypeDisplayHelper.LoadDocThumbnail(dt.thumbnailForDocType, thumbnailHeight);
+                    //img.Tag = dt.docTypeName;
+                    //img.Source = bitmap;
+                    //lock (_thumbnailsOfDocTypes)
+                    //{
+                    //    _thumbnailsOfDocTypes.Add(img);
+                    //}
                 }
             }
         }

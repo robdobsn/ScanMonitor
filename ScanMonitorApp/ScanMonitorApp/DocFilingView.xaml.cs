@@ -1,10 +1,13 @@
 ﻿using NLog;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -32,14 +35,27 @@ namespace ScanMonitorApp
         private ScanDocInfo _curDocScanDocInfo;
         private DocTypeMatchResult _latestMatchResult;
         private DocType _curSelectedDocType = null;
+        private BackgroundWorker _bwThreadForImagesPopup;
+        ObservableCollection<DocTypeCacheEntry> _thumbnailsOfDocTypes = new ObservableCollection<DocTypeCacheEntry>();
 
         public DocFilingView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher)
         {
             InitializeComponent();
             _scanDocHandler = scanDocHandler;
             _docTypesMatcher = docTypesMatcher;
+            popupDocTypePickerThumbs.ItemsSource = _thumbnailsOfDocTypes;
             GetListOfDocsToFile();
             ShowDocToBeFiled(0);
+
+            // Image filler thread
+            _bwThreadForImagesPopup = new BackgroundWorker();
+            _bwThreadForImagesPopup.WorkerSupportsCancellation = true;
+            _bwThreadForImagesPopup.WorkerReportsProgress = true;
+            _bwThreadForImagesPopup.DoWork += new DoWorkEventHandler(AddImages_DoWork);
+
+            // Use a background worker to populate
+            _bwThreadForImagesPopup.RunWorkerAsync();
+
         }
 
         private void GetListOfDocsToFile()
@@ -351,14 +367,105 @@ namespace ScanMonitorApp
 
         private void btnPickDocType_Click(object sender, RoutedEventArgs e)
         {
-            DocTypePicker _docTypePicker;
-            _docTypePicker = new DocTypePicker(_docTypesMatcher);
-            _docTypePicker.ShowDialog();
-            if (_docTypePicker.ResultDocType != "")
+            using (new WaitCursor())
             {
-                // Show type and date
-                ShowDocumentTypeAndDate(_docTypePicker.ResultDocType);
+                if (!popupDocTypePicker.IsOpen)
+                    popupDocTypePicker.IsOpen = true;
             }
+        }
+
+        private void btnClickImageDocType_Click(object sender, RoutedEventArgs e)
+        {
+            popupDocTypePicker.IsOpen = false;
+            object tag = null;
+            if (sender.GetType() == typeof(Image))
+                tag = ((Image)sender).Tag;
+            if (sender.GetType() == typeof(Button))
+                tag = ((Button)sender).Tag;
+            if (tag.GetType() == typeof(string))
+                ShowDocumentTypeAndDate((string)tag);
+        }
+
+        private void AddImages_DoWork(object sender, DoWorkEventArgs e)
+        {
+            int thumbnailHeight = Properties.Settings.Default.PickThumbHeight;
+            BackgroundWorker worker = sender as BackgroundWorker;
+            List<DocType> docTypeList = _docTypesMatcher.ListDocTypes();
+            foreach (DocType dt in docTypeList)
+            {
+                if ((worker.CancellationPending == true))
+                {
+                    e.Cancel = true;
+                    break;
+                }
+
+                if (dt.thumbnailForDocType != "")
+                {
+                    this.Dispatcher.BeginInvoke((Action)delegate()
+                    {
+                        BitmapImage bitmap = DocTypeDisplayHelper.LoadDocThumbnail(dt.thumbnailForDocType, thumbnailHeight);
+                        DocTypeCacheEntry ce = new DocTypeCacheEntry();
+                        ce.ThumbUniqName = dt.thumbnailForDocType;
+                        ce.ThumbBitmap = bitmap;
+                        ce.DocTypeName = dt.docTypeName;
+                        _thumbnailsOfDocTypes.Add(ce);
+                    });
+                    Thread.Sleep(50);
+                }
+            }
+        }
+
+        private class WaitCursor : IDisposable
+        {
+            private Cursor _previousCursor;
+
+            public WaitCursor()
+            {
+                _previousCursor = Mouse.OverrideCursor;
+
+                Mouse.OverrideCursor = Cursors.Wait;
+            }
+
+            #region IDisposable Members
+
+            public void Dispose()
+            {
+                Mouse.OverrideCursor = _previousCursor;
+            }
+
+            #endregion
+        }
+    }
+
+    class DocTypeCacheEntry : INotifyPropertyChanged
+    {
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private void NotifyPropertyChanged(string propertyName)
+        {
+            if (PropertyChanged != null)
+            {
+                PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
+
+        private string _thumbnailUniqName;
+        public string ThumbUniqName
+        {
+            get { return _thumbnailUniqName; }
+            set { _thumbnailUniqName = value; NotifyPropertyChanged("ThumbUniqName"); }
+        }
+        private BitmapImage _thumbnailBitmap;
+        public BitmapImage ThumbBitmap
+        {
+            get { return _thumbnailBitmap; }
+            set { _thumbnailBitmap = value; NotifyPropertyChanged("ThumbBitmap"); }
+        }
+        private string _docTypeName;
+        public string DocTypeName
+        {
+            get { return _docTypeName; }
+            set { _docTypeName = value; NotifyPropertyChanged("DocTypeName"); }
         }
 
     }
