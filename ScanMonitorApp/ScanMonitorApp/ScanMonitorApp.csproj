@@ -88,10 +88,6 @@
     </Compile>
     <Compile Include="DocTextAndDateExtractor.cs" />
     <Compile Include="DocType.cs" />
-    <Compile Include="DocTypePicker.xaml.cs">
-      <DependentUpon>DocTypePicker.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="DocTypePickerCache.cs" />
     <Compile Include="DocTypesMatcher.cs" />
     <Compile Include="DocTypeView.xaml.cs">
       <DependentUpon>DocTypeView.xaml</DependentUpon>
@@ -114,10 +110,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="DocFilingView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="DocTypePicker.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
