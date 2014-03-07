@@ -411,7 +411,7 @@ namespace ScanMonitorApp
             try
             {
                 MongoCollection<PathSubstMacro> collection_pathSubst = GetPathSubstCollection();
-                collection_pathSubst.Save(pathSubstMacro);
+                collection_pathSubst.Save(pathSubstMacro, SafeMode.True);
                 // Log it
                 logger.Info("Added/updated pathSubstMacro record for {0}", pathSubstMacro.origText);
             }
