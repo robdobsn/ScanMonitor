@@ -32,5 +32,14 @@
     <Setting Name="PickThumbHeight" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">150</Value>
     </Setting>
+    <Setting Name="PCtoRunMonitorOn" Type="System.String" Scope="User">
+      <Value Profile="(Default)">FRACTAL</Value>
+    </Setting>
+    <Setting Name="DefaultRenameTo" Type="System.String" Scope="User">
+      <Value Profile="(Default)">[PREFIX] [Y-M-D] [SUBJECT]</Value>
+    </Setting>
+    <Setting Name="DbCollectionForPathMacros" Type="System.String" Scope="User">
+      <Value Profile="(Default)">DocTypePathMacros</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

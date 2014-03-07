@@ -158,7 +158,8 @@ namespace ScanMonitorApp
         {
             if (!_bwThread.IsBusy)
             {
-                DocType chkDocType = GetDocTypeFromForm();
+                DocType chkDocType = GetDocTypeFromForm(new DocType());
+                chkDocType.isEnabled = true;
                 _bwThread.RunWorkerAsync(chkDocType);
                 btnTestMatch.Content = "Stop Finding";
                 SetDocMatchStatusText("Working...");
@@ -166,14 +167,17 @@ namespace ScanMonitorApp
             }
         }
 
-        private DocType GetDocTypeFromForm()
+        private DocType GetDocTypeFromForm(DocType docType)
         {
-            DocType chkDocType = new DocType();
-            chkDocType.docTypeName = txtDocTypeName.Text;
-            chkDocType.isEnabled = true;
-            chkDocType.matchExpression = GetTextFromRichTextBox(txtMatchExpression);
-            chkDocType.dateExpression = GetTextFromRichTextBox(txtDateLocations);
-            return chkDocType;
+            docType.docTypeName = txtDocTypeName.Text;
+            docType.isEnabled = (bool)chkEnabledDocType.IsChecked;
+            docType.matchExpression = GetTextFromRichTextBox(txtMatchExpression);
+            docType.dateExpression = GetTextFromRichTextBox(txtDateLocations);
+            docType.moveFileToPath = txtMoveTo.Text;
+            string defaultRenameToContents = Properties.Settings.Default.DefaultRenameTo;
+            docType.renameFileTo = txtRenameTo.Text == defaultRenameToContents ? "" : txtRenameTo.Text;
+            docType.thumbnailForDocType = _curDocTypeThumbnail;
+            return docType;
         }
 
         private void SetDocMatchStatusText(string inStr)
@@ -312,7 +316,8 @@ namespace ScanMonitorApp
         {
             if (_curDocDisplay_scanPages == null)
                 return;
-            DocType chkDocType = GetDocTypeFromForm();
+            DocType chkDocType = GetDocTypeFromForm(new DocType());
+            chkDocType.isEnabled = true;
             DocTypeMatchResult matchRslt = _docTypesMatcher.CheckIfDocMatches(_curDocDisplay_scanPages, chkDocType, true);
             DisplayMatchResultForDoc(matchRslt);
         }
@@ -754,6 +759,10 @@ namespace ScanMonitorApp
             chkEnabledDocType.IsEnabled = true;
             txtMatchExpression.IsEnabled = true;
             txtDateLocations.IsEnabled = true;
+            txtMoveTo.IsEnabled = true;
+            btnMoveToPick.IsEnabled = true;
+            txtRenameTo.IsEnabled = true;
+            btnRenameToMonthYear.IsEnabled = true;
             btnCancelTypeChanges.IsEnabled = true;
             btnUseCurrentDocImageAsThumbnail.IsEnabled = true;
             btnClearThumbail.IsEnabled = true;
@@ -766,8 +775,12 @@ namespace ScanMonitorApp
             btnNewDocType.IsEnabled = false;
             txtDocTypeName.IsEnabled = true;
             chkEnabledDocType.IsEnabled = true;
-            txtDateLocations.IsEnabled = true;
             txtMatchExpression.IsEnabled = true;
+            txtDateLocations.IsEnabled = true;
+            txtMoveTo.IsEnabled = true;
+            btnMoveToPick.IsEnabled = true;
+            txtRenameTo.IsEnabled = true;
+            btnRenameToMonthYear.IsEnabled = true;
             btnCancelTypeChanges.IsEnabled = true;
             btnUseCurrentDocImageAsThumbnail.IsEnabled = true;
             btnClearThumbail.IsEnabled = true;
@@ -782,6 +795,12 @@ namespace ScanMonitorApp
             chkEnabledDocType.IsEnabled = true;
             txtMatchExpression.IsEnabled = true;
             txtDateLocations.IsEnabled = true;
+            txtMoveTo.IsEnabled = true;
+            txtMoveTo.Text = "";
+            btnMoveToPick.IsEnabled = true;
+            txtRenameTo.IsEnabled = true;
+            txtRenameTo.Text = Properties.Settings.Default.DefaultRenameTo;
+            btnRenameToMonthYear.IsEnabled = true;
             _selectedDocType = null;
             docTypeListView.SelectedItem = null;
             txtDocTypeName.Text = "";
@@ -828,14 +847,8 @@ namespace ScanMonitorApp
                 _docTypesMatcher.AddOrUpdateDocTypeRecInDb(_selectedDocType);
 
                 // Create a new record
-                DocType newDocType = new DocType();
-                newDocType.CloneForRenaming(txtDocTypeName.Text, _selectedDocType);
-                newDocType.matchExpression = GetTextFromRichTextBox(txtMatchExpression);
-                newDocType.dateExpression = GetTextFromRichTextBox(txtDateLocations);
-                newDocType.isEnabled = (bool)chkEnabledDocType.IsChecked;
-                newDocType.thumbnailForDocType = _curDocTypeThumbnail;
-
-                // Create the new record
+                DocType newDocType = GetDocTypeFromForm(new DocType());
+                newDocType.previousName = _selectedDocType.docTypeName;
                 _docTypesMatcher.AddOrUpdateDocTypeRecInDb(newDocType);
             }
             else if (_selectedDocType == null)
@@ -850,24 +863,14 @@ namespace ScanMonitorApp
                     return;
                 }
 
-                // Create a new record
-                DocType newDocType = new DocType();
-                newDocType.docTypeName = txtDocTypeName.Text;
-                newDocType.matchExpression = GetTextFromRichTextBox(txtMatchExpression);
-                newDocType.dateExpression = GetTextFromRichTextBox(txtDateLocations);
-                newDocType.isEnabled = (bool)chkEnabledDocType.IsChecked;
-                newDocType.thumbnailForDocType = _curDocTypeThumbnail;
-
                 // Create the new record
+                DocType newDocType = GetDocTypeFromForm(new DocType());
                 _docTypesMatcher.AddOrUpdateDocTypeRecInDb(newDocType);
             }
             else
             {
-                // Make changes to record
-                _selectedDocType.matchExpression = GetTextFromRichTextBox(txtMatchExpression);
-                _selectedDocType.dateExpression = GetTextFromRichTextBox(txtDateLocations);
-                _selectedDocType.isEnabled = (bool)chkEnabledDocType.IsChecked;
-                _selectedDocType.thumbnailForDocType = _curDocTypeThumbnail;
+                // Get changes to record
+                _selectedDocType = GetDocTypeFromForm(_selectedDocType);
 
                 // Update the record
                 _docTypesMatcher.AddOrUpdateDocTypeRecInDb(_selectedDocType);
@@ -914,9 +917,13 @@ namespace ScanMonitorApp
             btnCancelTypeChanges.IsEnabled = false;
             btnSaveTypeChanges.IsEnabled = false;
             chkEnabledDocType.IsEnabled = false;
+            txtDocTypeName.IsEnabled = false;
             txtMatchExpression.IsEnabled = false;
             txtDateLocations.IsEnabled = false;
-            txtDocTypeName.IsEnabled = false;
+            txtMoveTo.IsEnabled = false;
+            btnMoveToPick.IsEnabled = false;
+            txtRenameTo.IsEnabled = false;
+            btnRenameToMonthYear.IsEnabled = false;
             btnClearThumbail.IsEnabled = false;
             btnUseCurrentDocImageAsThumbnail.IsEnabled = false;
             bInSetupDocTypeForm = true;
@@ -927,6 +934,8 @@ namespace ScanMonitorApp
                 SetTextInRichTextBox(txtMatchExpression, "");
                 SetTextInRichTextBox(txtDateLocations, "");
                 ShowDocTypeThumbnail("");
+                txtMoveTo.Text = "";
+                txtRenameTo.Text = Properties.Settings.Default.DefaultRenameTo;
             }
             else
             {
@@ -935,6 +944,9 @@ namespace ScanMonitorApp
                 SetTextInRichTextBox(txtMatchExpression, docType.matchExpression);
                 SetTextInRichTextBox(txtDateLocations, docType.dateExpression);
                 ShowDocTypeThumbnail(docType.thumbnailForDocType);
+                txtMoveTo.Text = docType.moveFileToPath;
+                string defaultRenameToContents = Properties.Settings.Default.DefaultRenameTo;
+                txtRenameTo.Text = docType.renameFileTo == defaultRenameToContents ? "" : docType.renameFileTo;
             }
             bInSetupDocTypeForm = false;
             UpdateUIForDocTypeChanges();
@@ -949,7 +961,7 @@ namespace ScanMonitorApp
             if (uniqName == "")
                 imgDocThumbnail.Source = null;
             else
-                imgDocThumbnail.Source = DocTypeDisplayHelper.LoadDocThumbnail(uniqName, heightOfThumb);
+                imgDocThumbnail.Source = DocTypeHelper.LoadDocThumbnail(uniqName, heightOfThumb);
         }
 
         private bool AreDocTypeChangesPendingSaveOrCancel()
@@ -975,7 +987,9 @@ namespace ScanMonitorApp
                 bool docTypeEnabledChanged = (_selectedDocType.isEnabled != chkEnabledDocType.IsChecked);
                 bool docTypeRenamed = (_selectedDocType.docTypeName != txtDocTypeName.Text) && (txtDocTypeName.Text.Trim() != "");
                 bool thumbnailChanged = (_selectedDocType.thumbnailForDocType != _curDocTypeThumbnail);
-                somethingChanged = (matchExprChanged || dateExprChanged || docTypeEnabledChanged || docTypeRenamed || thumbnailChanged);
+                bool renameToChanged = (_selectedDocType.renameFileTo != txtRenameTo.Text);
+                bool moveToChanged = (_selectedDocType.moveFileToPath != txtMoveTo.Text);
+                somethingChanged = (matchExprChanged || dateExprChanged || docTypeEnabledChanged || docTypeRenamed || thumbnailChanged || renameToChanged || moveToChanged);
             }
             else
             {
@@ -1017,6 +1031,39 @@ namespace ScanMonitorApp
             UpdateUIForDocTypeChanges();
         }
 
+        private void btnMoveToPick_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new System.Windows.Forms.FolderBrowserDialog();
+            System.Windows.Forms.DialogResult result = dialog.ShowDialog();
+            if (result == System.Windows.Forms.DialogResult.OK)
+            {
+                string folderName = dialog.SelectedPath;
+                txtMoveTo.Text = _docTypesMatcher.ComputeMinimalPath(folderName);
+            }
+        }
+
+        private void btnMoveToMonthYear_Click(object sender, RoutedEventArgs e)
+        {
+            // Add year & yearmonth to folder name
+            txtRenameTo.Text += @"\[year]\[year-month]";
+        }
+
+        private void txtMoveTo_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            UpdateUIForDocTypeChanges();
+        }
+
+        private void txtRenameTo_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            UpdateUIForDocTypeChanges();
+        }
+
+        private void btnMacros_Click(object sender, RoutedEventArgs e)
+        {
+            PathSubstView ptv = new PathSubstView(_docTypesMatcher);
+            ptv.ShowDialog();
+        }
+
         #endregion
 
         private class DocCompareRslt
@@ -1044,5 +1091,6 @@ namespace ScanMonitorApp
             public List<ExprParseTerm> parseTerms = new List<ExprParseTerm>();
             public int locationBracketCount = 0;
         }
+
     }
 }

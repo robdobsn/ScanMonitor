@@ -35,8 +35,6 @@ namespace ScanMonitorApp
 
         private List<string> foldersToMonitor = new List<string> { Properties.Settings.Default.FolderToMonitor };
 
-        private string _dbNameForDocTypes = Properties.Settings.Default.DbNameForDocs;
-        private string _dbCollectionForDocTypes = Properties.Settings.Default.DbCollectionForDocTypes;
         private ScanDocHandlerConfig _scanDocHandlerConfig = new ScanDocHandlerConfig(Properties.Settings.Default.DocAdminImgFolderBase,
             Properties.Settings.Default.MaxPagesForImages,
             Properties.Settings.Default.MaxPagesForText,
@@ -49,7 +47,7 @@ namespace ScanMonitorApp
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private System.Windows.Forms.NotifyIcon _notifyIcon;
         private DocTypesMatcher _docTypesMatcher;
-        private ScanFileMonitor _scanFileMonitor;
+        private ScanFileMonitor _scanFileMonitor = null;
         private ScanDocHandler _scanDocHandler;
 
         private void InitNotifyIcon()
@@ -90,6 +88,8 @@ namespace ScanMonitorApp
             e.Cancel = true;
             WindowState = WindowState.Minimized;
             Properties.Settings.Default.Save();
+            if (_scanFileMonitor != null)
+                _scanFileMonitor.Stop();
         }
 
         protected override void OnStateChanged(EventArgs e)
@@ -151,7 +151,7 @@ namespace ScanMonitorApp
             logger.Info("App Started");
 
             // Document matcher
-            _docTypesMatcher = new DocTypesMatcher(_dbNameForDocTypes, _dbCollectionForDocTypes);
+            _docTypesMatcher = new DocTypesMatcher();
             if (!_docTypesMatcher.Setup())
             {
                 MessageBoxButton btnMessageBox = MessageBoxButton.OK;
@@ -165,8 +165,13 @@ namespace ScanMonitorApp
             _scanDocHandler = new ScanDocHandler(AddToStatusText, _docTypesMatcher, _scanDocHandlerConfig);
 
             // Scan folder watcher
-            _scanFileMonitor = new ScanFileMonitor(AddToStatusText, _scanDocHandler);
-            _scanFileMonitor.Start(foldersToMonitor, TEST_MODE);
+            statusRunningMonitor.Content = "This PC is " + System.Environment.MachineName;
+            if (Properties.Settings.Default.PCtoRunMonitorOn.Trim() == System.Environment.MachineName.Trim())
+            {
+                _scanFileMonitor = new ScanFileMonitor(AddToStatusText, _scanDocHandler);
+                _scanFileMonitor.Start(foldersToMonitor, TEST_MODE);
+                statusRunningMonitor.Content += " and is Running Folder Monitor";
+            }
 
             // Start the web server
             WebServer ws = new WebServer("http://localhost:8080");
@@ -252,6 +257,12 @@ namespace ScanMonitorApp
         private void btnMigrate1_Click(object sender, RoutedEventArgs e)
         {
             MigrateFromOldApp.ReplaceDocTypeThumbnailStrs(_docTypesMatcher);
+        }
+
+        private void butViewSubstMacros_Click(object sender, RoutedEventArgs e)
+        {
+            PathSubstView ptv = new PathSubstView(_docTypesMatcher);
+            ptv.ShowDialog();
         }
     }
 }

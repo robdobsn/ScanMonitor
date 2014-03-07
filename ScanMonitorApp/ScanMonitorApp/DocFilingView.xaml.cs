@@ -403,7 +403,7 @@ namespace ScanMonitorApp
                 {
                     this.Dispatcher.BeginInvoke((Action)delegate()
                     {
-                        BitmapImage bitmap = DocTypeDisplayHelper.LoadDocThumbnail(dt.thumbnailForDocType, thumbnailHeight);
+                        BitmapImage bitmap = DocTypeHelper.LoadDocThumbnail(dt.thumbnailForDocType, thumbnailHeight);
                         DocTypeCacheEntry ce = new DocTypeCacheEntry();
                         ce.ThumbUniqName = dt.thumbnailForDocType;
                         ce.ThumbBitmap = bitmap;

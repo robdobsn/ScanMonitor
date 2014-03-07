@@ -75,6 +75,16 @@ namespace ScanMonitorApp
                 {
                     newDocType.thumbnailForDocType = "";
                 }
+
+                // Handle paths
+                string newPath = oldDocType.moveTo;
+                newDocType.moveFileToPath = docTypesMatcher.ComputeMinimalPath(newPath);
+
+                // Handle rename
+                string newName = oldDocType.renameTo;
+                newDocType.renameFileTo = newName;
+
+                // Update DB
                 if (!docTypesMatcher.AddOrUpdateDocTypeRecInDb(newDocType))
                     logger.Info("Failed to add doc type record {0}", newDocType.docTypeName);
             }

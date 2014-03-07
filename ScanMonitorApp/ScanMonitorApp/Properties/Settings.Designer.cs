@@ -139,5 +139,41 @@ namespace ScanMonitorApp.Properties {
                 this["PickThumbHeight"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("FRACTAL")]
+        public string PCtoRunMonitorOn {
+            get {
+                return ((string)(this["PCtoRunMonitorOn"]));
+            }
+            set {
+                this["PCtoRunMonitorOn"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("[PREFIX] [Y-M-D] [SUBJECT]")]
+        public string DefaultRenameTo {
+            get {
+                return ((string)(this["DefaultRenameTo"]));
+            }
+            set {
+                this["DefaultRenameTo"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("DocTypePathMacros")]
+        public string DbCollectionForPathMacros {
+            get {
+                return ((string)(this["DbCollectionForPathMacros"]));
+            }
+            set {
+                this["DbCollectionForPathMacros"] = value;
+            }
+        }
     }
 }

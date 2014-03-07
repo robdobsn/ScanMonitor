@@ -19,6 +19,8 @@ namespace ScanMonitorApp
             matchExpression = "";
             dateExpression = "";
             thumbnailForDocType = "";
+            moveFileToPath = "";
+            renameFileTo = "";
             isEnabled = false;
             previousName = "";
             renamedTo = "";
@@ -29,6 +31,8 @@ namespace ScanMonitorApp
             matchExpression = prevDocType.matchExpression;
             dateExpression = prevDocType.dateExpression;
             thumbnailForDocType = prevDocType.thumbnailForDocType;
+            moveFileToPath = prevDocType.moveFileToPath;
+            renameFileTo = prevDocType.renameFileTo;
             isEnabled = false;
             previousName = prevDocType.docTypeName;
             renamedTo = "";
@@ -41,6 +45,8 @@ namespace ScanMonitorApp
         public bool isEnabled { get; set; }
         public string previousName { get; set; }
         public string renamedTo { get; set; }
+        public string moveFileToPath { get; set; }
+        public string renameFileTo { get; set; }
     }
 
     public class DocTypeMatchResult
@@ -51,12 +57,6 @@ namespace ScanMonitorApp
         public int matchCertaintyPercent = 0;
         public MatchResultCodes matchResultCode = MatchResultCodes.NOT_FOUND;
         public List<ExtractedDate> datesFoundInDoc = new List<ExtractedDate>();
-    }
-
-    public class DocMatchAction
-    {
-        public string moveTo;
-        public string renameTo;
     }
 
     public class DocRectangle
@@ -99,15 +99,15 @@ namespace ScanMonitorApp
             catch
             { }
         }
-            
+
         public void SetVal(int valIdx, double val)
         {
-            switch(valIdx)
+            switch (valIdx)
             {
                 case 0: { X = Convert.ToInt32(val); break; }
                 case 1: { Y = Convert.ToInt32(val); break; }
                 case 2: { Width = Convert.ToInt32(val); break; }
-                case 3: { Height = Convert.ToInt32(val); break; }                
+                case 3: { Height = Convert.ToInt32(val); break; }
             }
         }
 
@@ -138,7 +138,14 @@ namespace ScanMonitorApp
         }
     }
 
-    public class DocTypeDisplayHelper
+    public class PathSubstMacro
+    {
+        public ObjectId Id;
+        public string origText { get; set; }
+        public string replaceText { get; set; }
+    }
+
+    public class DocTypeHelper
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -175,4 +182,6 @@ namespace ScanMonitorApp
             return bitmap;
         }
     }
+
+
 }

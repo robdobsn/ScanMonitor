@@ -16,13 +16,9 @@ namespace ScanMonitorApp
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private MongoClient _dbClient;
-        private string _dbNameForDocTypes;
-        private string _dbCollectionForDocTypes;
 
-        public DocTypesMatcher(string dbNameForDocTypes, string dbCollectionForDocTypes)
+        public DocTypesMatcher()
         {
-            _dbCollectionForDocTypes = dbCollectionForDocTypes;
-            _dbNameForDocTypes = dbNameForDocTypes;
             var connectionString = "mongodb://localhost";
             _dbClient = new MongoClient(connectionString);
         }
@@ -47,8 +43,8 @@ namespace ScanMonitorApp
         {
             // Setup db connection
             var server = _dbClient.GetServer();
-            var database = server.GetDatabase(_dbNameForDocTypes); // the name of the database
-            return database.GetCollection<DocType>(_dbCollectionForDocTypes);
+            var database = server.GetDatabase(Properties.Settings.Default.DbNameForDocs); // the name of the database
+            return database.GetCollection<DocType>(Properties.Settings.Default.DbCollectionForDocTypes);
         }
 
         public DocTypeMatchResult GetMatchingDocType(ScanPages scanPages)
@@ -292,7 +288,7 @@ namespace ScanMonitorApp
             catch (Exception excp)
             {
                 logger.Error("Cannot insert doctype rec into {0} Coll... {1} for file {2} excp {3}",
-                            _dbNameForDocTypes, _dbCollectionForDocTypes, docType.docTypeName,
+                            Properties.Settings.Default.DbNameForDocs, Properties.Settings.Default.DbCollectionForDocTypes, docType.docTypeName,
                             excp.Message);
                 return false;
             }
@@ -391,6 +387,85 @@ namespace ScanMonitorApp
             lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, matchExpression.Length, curBracketDepth);
             return parseTermsList;
         }
+
+        #region Substitution Macros (Paths)
+
+        private MongoCollection<PathSubstMacro> GetPathSubstCollection()
+        {
+            // Setup db connection
+            var server = _dbClient.GetServer();
+            var database = server.GetDatabase(Properties.Settings.Default.DbNameForDocs); // the name of the database
+            return database.GetCollection<PathSubstMacro>(Properties.Settings.Default.DbCollectionForPathMacros);
+        }
+
+        public List<PathSubstMacro> ListPathSubstMacros()
+        {
+            // Get list
+            MongoCollection<PathSubstMacro> collection_pathSubst = GetPathSubstCollection();
+            return collection_pathSubst.FindAll().ToList<PathSubstMacro>();
+        }
+
+        public bool AddOrUpdateSubstMacroRecInDb(PathSubstMacro pathSubstMacro)
+        {
+            // Mongo append
+            try
+            {
+                MongoCollection<PathSubstMacro> collection_pathSubst = GetPathSubstCollection();
+                collection_pathSubst.Save(pathSubstMacro);
+                // Log it
+                logger.Info("Added/updated pathSubstMacro record for {0}", pathSubstMacro.origText);
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Cannot insert pathSubstMacro rec into {0} Coll... {1} for file {2} excp {3}",
+                            Properties.Settings.Default.DbNameForDocs, Properties.Settings.Default.DbCollectionForPathMacros, pathSubstMacro.origText,
+                            excp.Message);
+                return false;
+            }
+            return true;
+        }
+
+        public void DeletePathSubstMacro(PathSubstMacro pathSubstMacro)
+        {
+            MongoCollection<PathSubstMacro> collection_pathSubst = GetPathSubstCollection();
+            var query = Query<PathSubstMacro>.EQ(e => e.Id, pathSubstMacro.Id);
+            collection_pathSubst.Remove(query);
+        }
+
+        public string ComputeMinimalPath(string folderName)
+        {
+            List<PathSubstMacro> pathSubstMacros = ListPathSubstMacros();
+
+            // Process each substitution until no substitutions done - or max exceeded
+            for (int i = 0; i < 20; i++)
+            {
+                bool bAnySubstDone = false;
+                foreach (PathSubstMacro psm in pathSubstMacros)
+                {
+                    int pos = folderName.ToLower().IndexOf(psm.replaceText.ToLower());
+                    if (pos >= 0)
+                    {
+                        folderName = folderName.Substring(0, pos) + psm.origText + folderName.Substring(pos + psm.replaceText.Length);
+                        bAnySubstDone = true;
+                    }
+                }
+                if (!bAnySubstDone)
+                    break;
+            }
+
+            // Replace datetime strings
+            folderName = Regex.Replace(folderName, @"[1-2]\d\d\d\\", @"[year]\");  // replace if occurs as end of folder name
+            folderName = Regex.Replace(folderName, @"[1-2]\d\d\d$", @"[year]");       // replace if occurs at end of path name
+            folderName = Regex.Replace(folderName, @"[1-2]\d\d\d\-\d\d\\", @"[year-month]\");
+            folderName = Regex.Replace(folderName, @"[1-2]\d\d\d\-\d\d$", @"[year-month]");
+            folderName = Regex.Replace(folderName, @"[1-2]\d\d\d\ Q[1-4]\\", @"[year-qtr]\");
+            folderName = Regex.Replace(folderName, @"[1-2]\d\d\d\ Q[1-4]$", @"[year-qtr]");
+
+            return folderName;
+        }
+
+        #endregion
+
     }
 
     public class ExprParseTerm
