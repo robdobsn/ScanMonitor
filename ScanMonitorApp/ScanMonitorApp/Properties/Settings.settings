@@ -41,5 +41,8 @@
     <Setting Name="DbCollectionForPathMacros" Type="System.String" Scope="User">
       <Value Profile="(Default)">DocTypePathMacros</Value>
     </Setting>
+    <Setting Name="DbConnectionString" Type="System.String" Scope="User">
+      <Value Profile="(Default)">mongodb://macallan</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

@@ -35,7 +35,7 @@ namespace ScanMonitorApp
             // Mongo init
             try
             {
-                var connectionString = "mongodb://localhost";
+                var connectionString = Properties.Settings.Default.DbConnectionString;
                 _dbClient = new MongoClient(connectionString);
             }
             catch (Exception excp)

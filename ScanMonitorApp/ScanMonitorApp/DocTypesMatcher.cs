@@ -19,7 +19,7 @@ namespace ScanMonitorApp
 
         public DocTypesMatcher()
         {
-            var connectionString = "mongodb://localhost";
+            var connectionString = Properties.Settings.Default.DbConnectionString;
             _dbClient = new MongoClient(connectionString);
         }
 

@@ -175,5 +175,17 @@ namespace ScanMonitorApp.Properties {
                 this["DbCollectionForPathMacros"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("mongodb://macallan")]
+        public string DbConnectionString {
+            get {
+                return ((string)(this["DbConnectionString"]));
+            }
+            set {
+                this["DbConnectionString"] = value;
+            }
+        }
     }
 }
