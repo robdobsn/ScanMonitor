@@ -45,7 +45,7 @@ namespace ScanMonitorApp
 
         #region Check Docs against DocTypes
 
-        public DocTypeMatchResult CheckIfDocMatches(ScanPages scanPages, DocType docType, bool extractDates)
+        public DocTypeMatchResult CheckIfDocMatches(ScanPages scanPages, DocType docType, bool extractDates, List<DocMatchingTextLoc> matchingTextLocs)
         {
             // Setup check info
             DocTypeMatchResult matchResult = new DocTypeMatchResult();
@@ -64,7 +64,7 @@ namespace ScanMonitorApp
 
             // Check the expression
             double matchFactorTotal = 0;
-            if (MatchAgainstDocText(docType.matchExpression, scanPages, ref matchFactorTotal))
+            if (MatchAgainstDocText(docType.matchExpression, scanPages, ref matchFactorTotal, matchingTextLocs))
             {
                 matchResult.matchCertaintyPercent = 100;
                 matchResult.matchResultCode = DocTypeMatchResult.MatchResultCodes.FOUND_MATCH;
@@ -75,22 +75,24 @@ namespace ScanMonitorApp
             // Extract date
             if (extractDates)
             {
-                List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(scanPages, docType.dateExpression);
+                int bestDateIdx = 0;
+                List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(scanPages, docType.dateExpression, out bestDateIdx);
                 matchResult.datesFoundInDoc = extractedDates;
                 if (extractedDates.Count > 0)
-                    matchResult.docDate = extractedDates[0].dateTime;
+                    matchResult.docDate = extractedDates[bestDateIdx].dateTime;
             }
 
             return matchResult;
         }
 
-        private bool MatchAgainstDocText(string matchExpression, ScanPages scanPages, ref double matchFactorTotal)
+        private bool MatchAgainstDocText(string matchExpression, ScanPages scanPages, ref double matchFactorTotal, List<DocMatchingTextLoc> matchingTextLocs)
         {
+            int curExpressionIdx = 0;
             StringTok st = new StringTok(matchExpression);
-            return EvalMatch(st, scanPages, ref matchFactorTotal);
+            return EvalMatch(st, scanPages, ref matchFactorTotal, ref curExpressionIdx, matchingTextLocs);
         }
 
-        private bool EvalMatch(StringTok st, ScanPages scanPages, ref double matchFactorTotal)
+        private bool EvalMatch(StringTok st, ScanPages scanPages, ref double matchFactorTotal, ref int curExpressionIdx, List<DocMatchingTextLoc> matchingTextLocs)
         {
             bool result = false;
             string token = "";
@@ -107,7 +109,7 @@ namespace ScanMonitorApp
                     return result;
                 else if (token == "(")
                 {
-                    bool tmpRslt = EvalMatch(st, scanPages, ref matchFactorTotal);
+                    bool tmpRslt = EvalMatch(st, scanPages, ref matchFactorTotal, ref curExpressionIdx, matchingTextLocs);
                     if (opIsInverse)
                         tmpRslt = !tmpRslt;
                     if (curOpIsOr)
@@ -140,15 +142,7 @@ namespace ScanMonitorApp
                             st.GetNextToken();
                         token = st.GetNextToken();
                         if (token != null)
-                        {
-                            try
-                            {
-                                matchFactorForTerm = Double.Parse(token);
-                            }
-                            catch
-                            {
-                            }
-                        }
+                            Double.TryParse(token, out matchFactorForTerm);
                     }
 
                     // Check for location on empty string
@@ -172,13 +166,7 @@ namespace ScanMonitorApp
                             else
                             {
                                 double rectVal = 0;
-                                try
-                                {
-                                    rectVal = Double.Parse(token);
-                                }
-                                catch
-                                {
-                                }
+                                Double.TryParse(token, out rectVal);
                                 docRectPercent.SetVal(docRectValIdx, rectVal);
                             }
                         }
@@ -187,7 +175,7 @@ namespace ScanMonitorApp
                     // Process the match string using the location rectangle
                     if (stringToMatch.Trim().Length >= 0)
                     {
-                        bool tmpRslt = MatchString(stringToMatch, docRectPercent, scanPages);
+                        bool tmpRslt = MatchString(stringToMatch, docRectPercent, scanPages, curExpressionIdx, matchingTextLocs);
                         if (opIsInverse)
                             tmpRslt = !tmpRslt;
                         if (curOpIsOr)
@@ -203,27 +191,45 @@ namespace ScanMonitorApp
                     // Set the docRect to the entire page (ready for next term)
                     docRectPercent = new DocRectangle(0,0,100,100);
                     matchFactorForTerm = 0;
+                    curExpressionIdx++;
                 }
             }
             return result;
         }
 
-        private bool MatchString(string str, DocRectangle docRectPercent, ScanPages scanPages)
+        private bool MatchString(string str, DocRectangle docRectPercent, ScanPages scanPages, int exprIdx, List<DocMatchingTextLoc> matchingTextLocs)
         {
+            bool result = false;
             for (int pageIdx = 0; pageIdx < scanPages.scanPagesText.Count; pageIdx++)
             {
                 List<ScanTextElem> scanPageText = scanPages.scanPagesText[pageIdx];
-                foreach (ScanTextElem textElem in scanPageText)
+                for (int elemIdx = 0; elemIdx < scanPageText.Count; elemIdx++)
                 {
+                    ScanTextElem textElem = scanPageText[elemIdx];
                     // Check bounds
                     if (docRectPercent.Intersects(textElem.bounds))
                     {
                         if (textElem.text.IndexOf(str.Trim(), StringComparison.OrdinalIgnoreCase) >= 0)
-                            return true;
+                        {
+                            result = true;
+                            if (matchingTextLocs != null)
+                            {
+                                DocMatchingTextLoc dtml = new DocMatchingTextLoc();
+                                dtml.pageIdx = pageIdx;
+                                dtml.elemIdx = elemIdx;
+                                dtml.exprIdx = exprIdx;
+                                matchingTextLocs.Add(dtml);
+                            }
+                            else
+                            {
+                                // If not compiling all text match locations then return immediately to save time
+                                return true;
+                            }
+                        }
                     }
                 }
             }
-            return false;
+            return result;
         }
 
         private class StringTok
@@ -274,11 +280,11 @@ namespace ScanMonitorApp
             foreach (DocType doctype in foundSdf)
             {
                 // Check if document matches
-                DocTypeMatchResult matchResult = CheckIfDocMatches(scanPages, doctype, false);
+                DocTypeMatchResult matchResult = CheckIfDocMatches(scanPages, doctype, false, null);
                 if (matchResult.matchCertaintyPercent == 100)
                 {
                     // Redo match to get date and time info
-                    matchResult = CheckIfDocMatches(scanPages, doctype, true);
+                    matchResult = CheckIfDocMatches(scanPages, doctype, true, null);
                 }
 
                 // Find the best match
@@ -298,10 +304,11 @@ namespace ScanMonitorApp
             // If no exact match get date info from entire doc
             if (bestMatchResult.matchCertaintyPercent != 100)
             {
-                List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(scanPages, "");
+                int bestDateIdx = 0;
+                List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(scanPages, "", out bestDateIdx);
                 bestMatchResult.datesFoundInDoc = extractedDates;
                 if (extractedDates.Count > 0)
-                    bestMatchResult.docDate = extractedDates[0].dateTime;
+                    bestMatchResult.docDate = extractedDates[bestDateIdx].dateTime;
             }
             return bestMatchResult;
         }
@@ -621,6 +628,7 @@ namespace ScanMonitorApp
                 case ExprParseTermType.exprTerm_Brackets: { return new SolidColorBrush(Colors.Green); }
                 case ExprParseTermType.exprTerm_Text: { return new SolidColorBrush(Colors.Black); }
                 case ExprParseTermType.exprTerm_Operator: { return new SolidColorBrush(Colors.Chocolate); }
+                case ExprParseTermType.exprTerm_MatchFactor: { return new SolidColorBrush(Colors.Orange); }
             }
             return new SolidColorBrush(Colors.Black);
         }
@@ -632,4 +640,10 @@ namespace ScanMonitorApp
         public int locationBracketIdx = 0;
     }
 
+    public class DocMatchingTextLoc
+    {
+        public int pageIdx;
+        public int elemIdx;
+        public int exprIdx;
+    }
 }

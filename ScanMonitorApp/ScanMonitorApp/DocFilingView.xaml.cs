@@ -126,11 +126,13 @@ namespace ScanMonitorApp
             _curSelectedDocType = _docTypesMatcher.GetDocType(docTypeName);
 
             // Extract date info again and update latest match result
+            int bestDateIdx = 0;
             List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(_curDocScanPages, 
-                                                    (_curSelectedDocType == null) ? "" : _curSelectedDocType.dateExpression);
+                                                    (_curSelectedDocType == null) ? "" : _curSelectedDocType.dateExpression,
+                                                    out bestDateIdx);
             _latestMatchResult.datesFoundInDoc = extractedDates;
             if (extractedDates.Count > 0)
-                _latestMatchResult.docDate = extractedDates[0].dateTime;
+                _latestMatchResult.docDate = extractedDates[bestDateIdx].dateTime;
             else
                 _latestMatchResult.docDate = DateTime.MinValue;
 
@@ -357,7 +359,7 @@ namespace ScanMonitorApp
                 pgNum = 1;
             if (_curDocDisplay_pageNum >= _curDocScanPages.scanPagesText.Count)
                 pgNum = _curDocScanPages.scanPagesText.Count;
-            DocTextAndDateExtractor.SearchForDateItem(_curDocScanPages, "", docRect, extractedDates, pgNum);
+            DocTextAndDateExtractor.SearchForDateItem(_curDocScanPages, "", docRect, 0, extractedDates, pgNum);
             if (extractedDates.Count > 0)
             {
                 SetDateRollers(extractedDates[0].dateTime.Year, extractedDates[0].dateTime.Month, extractedDates[0].dateTime.Day);

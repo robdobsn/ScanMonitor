@@ -58,7 +58,7 @@ namespace ScanMonitorApp
 
             // Location rectangle handler
             locRectHandler = new LocationRectangleHandler(exampleFileImage, docOverlayCanvas, tooltipCallback_MouseMove, tooptipCallback_MouseLeave, docRectChangesComplete);
-            locRectHandler.SelectionEnable(true);
+            locRectHandler.SelectionEnable(false);
 
             // Matcher thread
             _bwThread = new BackgroundWorker();
@@ -288,7 +288,7 @@ namespace ScanMonitorApp
             FiledDocInfo fdi = _scanDocHandler.GetFiledDocInfo(sdi.uniqName);
 
             // Check for a match
-            DocTypeMatchResult matchResult = _docTypesMatcher.CheckIfDocMatches(scanPages, docTypeToMatch, false);
+            DocTypeMatchResult matchResult = _docTypesMatcher.CheckIfDocMatches(scanPages, docTypeToMatch, false, null);
             if (matchResult.matchCertaintyPercent == 100)
             {
                 compRslt.bMatches = true;
@@ -319,17 +319,24 @@ namespace ScanMonitorApp
                 return;
             DocType chkDocType = GetDocTypeFromForm(new DocType());
             chkDocType.isEnabled = true;
-            DocTypeMatchResult matchRslt = _docTypesMatcher.CheckIfDocMatches(_curDocDisplay_scanPages, chkDocType, true);
-            DisplayMatchResultForDoc(matchRslt);
+            List<DocMatchingTextLoc> matchingTextLocs = new List<DocMatchingTextLoc>();
+            DocTypeMatchResult matchRslt = _docTypesMatcher.CheckIfDocMatches(_curDocDisplay_scanPages, chkDocType, true, matchingTextLocs);
+            DisplayMatchResultForDoc(matchRslt, matchingTextLocs);
         }
 
-        private void DisplayMatchResultForDoc(DocTypeMatchResult matchRslt)
+        private void DisplayMatchResultForDoc(DocTypeMatchResult matchRslt, List<DocMatchingTextLoc> matchingTextLocs)
         {
+            List<Brush> exprColrBrushes = new List<Brush> 
+            {
+                Brushes.DarkMagenta, Brushes.Green, Brushes.Red, Brushes.Orange, Brushes.Purple, Brushes.Peru, Brushes.Purple
+            };
+
             if (matchRslt.docDate != DateTime.MinValue)
                 txtDateResult.Text = matchRslt.docDate.ToLongDateString();
             else
                 txtDateResult.Text = "";
 
+            // Display match status
             string matchFactorStr = String.Format("({0})", (int)matchRslt.matchFactor);
             if (matchRslt.matchCertaintyPercent == 100)
             {
@@ -342,6 +349,17 @@ namespace ScanMonitorApp
                 txtCheckResult.Text = "FAILED " + matchFactorStr;
                 txtCheckResult.Foreground = Brushes.White;
                 txtCheckResult.Background = Brushes.Red;
+            }
+
+            // Display matching text locations
+            locRectHandler.ClearTextMatchRect();
+            foreach (DocMatchingTextLoc txtLoc in matchingTextLocs)
+            {
+                if (txtLoc.pageIdx+1 == _curDocDisplay_pageNum)
+                {
+                    Brush colrBrush = exprColrBrushes[txtLoc.exprIdx % exprColrBrushes.Count];
+                    locRectHandler.DrawTextMatchRect(_curDocDisplay_scanPages.scanPagesText[txtLoc.pageIdx][txtLoc.elemIdx].bounds, colrBrush);
+                }
             }
         }
 
@@ -388,8 +406,6 @@ namespace ScanMonitorApp
                 if (docCompRslt != null)
                 {
                     DisplayExampleDoc(docCompRslt.uniqName, 1, docCompRslt.scanPages);
-                    // Re-check the document and display result - the expression could have changed since table was populated
-                    CheckDisplayedDocForMatchAndShowResult();
                 }
             }
         }
@@ -482,7 +498,11 @@ namespace ScanMonitorApp
         private void SetTextInRichTextBox(RichTextBox rtb, string txtStr)
         {
             Paragraph para = new Paragraph(new Run(txtStr));
+            // Disable text changed handler while clearing
+            bInTextChangedHandler = true;
             rtb.Document.Blocks.Clear();
+            // Reenable for adding so it only gets called once
+            bInTextChangedHandler = false;
             rtb.Document.Blocks.Add(para);
         }
 
@@ -626,9 +646,6 @@ namespace ScanMonitorApp
 
         private void exampleFileImage_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Only start if document editing is enabled
-            if (!txtMatchExpression.IsEnabled)
-                return;
             locRectHandler.HandleMouseDown(sender, e);
         }
 
@@ -736,7 +753,6 @@ namespace ScanMonitorApp
                     }
                 }
                 newTextExpr += endOfStr;
-                SetTextInRichTextBox(rtb, newTextExpr);
             }
 
             // All rectangles will get redrawn as text expression is changed and causes trigger to refresh
@@ -750,7 +766,7 @@ namespace ScanMonitorApp
 
         private void docOverlayCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            locRectHandler.DrawVisRectangles();
+//            locRectHandler.DrawVisRectangles();
         }
 
         private void btnEditDocType_Click(object sender, RoutedEventArgs e)
@@ -761,6 +777,7 @@ namespace ScanMonitorApp
             chkEnabledDocType.IsEnabled = true;
             txtMatchExpression.IsEnabled = true;
             txtDateLocations.IsEnabled = true;
+            locRectHandler.SelectionEnable(true);
             txtMoveTo.IsEnabled = true;
             btnMoveToPick.IsEnabled = true;
             txtRenameTo.IsEnabled = true;
@@ -779,6 +796,7 @@ namespace ScanMonitorApp
             chkEnabledDocType.IsEnabled = true;
             txtMatchExpression.IsEnabled = true;
             txtDateLocations.IsEnabled = true;
+            locRectHandler.SelectionEnable(true);
             txtMoveTo.IsEnabled = true;
             btnMoveToPick.IsEnabled = true;
             txtRenameTo.IsEnabled = true;
@@ -797,6 +815,7 @@ namespace ScanMonitorApp
             chkEnabledDocType.IsEnabled = true;
             txtMatchExpression.IsEnabled = true;
             txtDateLocations.IsEnabled = true;
+            locRectHandler.SelectionEnable(true);
             txtMoveTo.IsEnabled = true;
             txtMoveTo.Text = "";
             btnMoveToPick.IsEnabled = true;
@@ -922,6 +941,7 @@ namespace ScanMonitorApp
             txtDocTypeName.IsEnabled = false;
             txtMatchExpression.IsEnabled = false;
             txtDateLocations.IsEnabled = false;
+            locRectHandler.SelectionEnable(false);
             txtMoveTo.IsEnabled = false;
             btnMoveToPick.IsEnabled = false;
             txtRenameTo.IsEnabled = false;
@@ -1072,6 +1092,13 @@ namespace ScanMonitorApp
         {
             PathSubstView ptv = new PathSubstView(_docTypesMatcher);
             ptv.ShowDialog();
+        }
+
+        private void exampleFileImage_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            locRectHandler.DrawVisRectangles();
+            // Re-check the document and display result
+            CheckDisplayedDocForMatchAndShowResult();
         }
 
         #endregion

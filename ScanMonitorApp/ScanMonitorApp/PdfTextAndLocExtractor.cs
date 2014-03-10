@@ -300,13 +300,32 @@ namespace ScanMonitorApp
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
         private DocRectangle ConvertToDocRect(iTextSharp.text.pdf.parser.Vector topLeftCoord, iTextSharp.text.pdf.parser.Vector bottomRightCoord,
-                            iTextSharp.text.Rectangle pageRect)
+                            iTextSharp.text.Rectangle pageRect, int pageRotation)
         {
             double tlX = topLeftCoord.Dot(new iTextSharp.text.pdf.parser.Vector(1, 0, 0));
             double tlY = topLeftCoord.Dot(new iTextSharp.text.pdf.parser.Vector(0, 1, 0));
             double width = bottomRightCoord.Dot(new iTextSharp.text.pdf.parser.Vector(1, 0, 0)) - tlX;
             double height = tlY - bottomRightCoord.Dot(new iTextSharp.text.pdf.parser.Vector(0, 1, 0));
-            return new DocRectangle(tlX * 100 / pageRect.Width, (pageRect.Height - tlY) * 100 / pageRect.Height, width * 100 / pageRect.Width, height * 100 / pageRect.Height);
+            DocRectangle docRect = new DocRectangle(tlX * 100 / pageRect.Width, (pageRect.Height - tlY) * 100 / pageRect.Height, width * 100 / pageRect.Width, height * 100 / pageRect.Height);
+            docRect.RotateAt(pageRotation, 50, 50);
+            return docRect;
+        }
+
+        private int GetTextRotation(iTextSharp.text.pdf.parser.Vector topLeftCoord, iTextSharp.text.pdf.parser.Vector bottomRightCoord)
+        {
+            double tlX = topLeftCoord.Dot(new iTextSharp.text.pdf.parser.Vector(1, 0, 0));
+            double tlY = topLeftCoord.Dot(new iTextSharp.text.pdf.parser.Vector(0, 1, 0));
+            double width = bottomRightCoord.Dot(new iTextSharp.text.pdf.parser.Vector(1, 0, 0)) - tlX;
+            double height = tlY - bottomRightCoord.Dot(new iTextSharp.text.pdf.parser.Vector(0, 1, 0));
+            if (height > 0)
+            {
+                if (width > 0)
+                    return 0;
+                return 270;
+            }
+            if (width < 0)
+                return 180;
+            return 90;
         }
 
         public ScanPages ExtractDocInfo(string uniqName, string fileName, int maxPagesToExtractFrom, ref int totalPages)
@@ -340,23 +359,44 @@ namespace ScanMonitorApp
                 // Create new structures for the information
                 int pageNumber = 1;
                 List<List<ScanTextElem>> scanPagesText = new List<List<ScanTextElem>>();
+                List<int> pageRotations = new List<int>();
                 foreach (List<LocationTextExtractionStrategyEx.TextInfo> pageInfo in extractedTextAndLoc)
                 {
                     iTextSharp.text.Rectangle pageRect = pdfReader.GetPageSize(pageNumber);
+                    int pageRot = pdfReader.GetPageRotation(pageNumber);
+
+                    // Check through found text to see if the page seems to be rotated
+                    int[] rotCounts = new int[] { 0,0,0,0 };
+                    foreach (LocationTextExtractionStrategyEx.TextInfo txtInfo in pageInfo)
+                    {
+                        int thisRotation = GetTextRotation(txtInfo.TopLeft, txtInfo.BottomRight);
+                        rotCounts[(thisRotation / 90) % 4]++;
+                    }
+                    int maxRot = 0;
+                    int maxRotCount = 0;
+                    for (int i = 0; i < rotCounts.Length; i++)
+                        if (maxRotCount < rotCounts[i])
+                        {
+                            maxRotCount = rotCounts[i];
+                            maxRot = i * 90;
+                        }
+                    Console.WriteLine("{2} Page{0}rot = {1}", pageNumber, maxRot, uniqName);
+
                     List<ScanTextElem> scanTextElems = new List<ScanTextElem>();
                     foreach (LocationTextExtractionStrategyEx.TextInfo txtInfo in pageInfo)
                     {
-                        DocRectangle boundsRectPercent = ConvertToDocRect(txtInfo.TopLeft, txtInfo.BottomRight, pageRect);
+                        DocRectangle boundsRectPercent = ConvertToDocRect(txtInfo.TopLeft, txtInfo.BottomRight, pageRect, maxRot);
                         ScanTextElem sti = new ScanTextElem(txtInfo.Text, boundsRectPercent);
                         scanTextElems.Add(sti);
                     }
                     scanPagesText.Add(scanTextElems);
+                    pageRotations.Add(maxRot);
                     pageNumber++;
                 }
 
                 // Total pages
                 totalPages = pdfReader.NumberOfPages;
-                ScanPages scanPages = new ScanPages(uniqName, scanPagesText);
+                ScanPages scanPages = new ScanPages(uniqName, pageRotations, scanPagesText);
                 return scanPages;
             }
         }

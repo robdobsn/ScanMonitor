@@ -10,6 +10,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using NLog;
 using MongoDB.Driver;
+using System.Drawing;
 
 namespace ScanMonitorApp
 {
@@ -19,7 +20,7 @@ namespace ScanMonitorApp
         private GhostscriptRasterizer _rasterizer = null;
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public List<string> Start(string inputPdfPath, string uniqName, string outputPath, int maxPages)
+        public List<string> Start(string inputPdfPath, string uniqName, ScanPages scanPages, string outputPath, int maxPages)
         {
             List<string> imgFileNames = new List<string>();
 
@@ -50,6 +51,11 @@ namespace ScanMonitorApp
                 try
                 {
                     System.Drawing.Image img = _rasterizer.GetPage(desired_x_dpi, desired_y_dpi, pageNumber);
+                    // Rotate image as required
+                    if (pageNumber - 1 < scanPages.pageRotations.Count)
+                        if (scanPages.pageRotations[pageNumber - 1] != 0)
+                            img = RotateImageWithoutCrop(img, scanPages.pageRotations[pageNumber - 1]);
+                    // Save to file
                     img.Save(pageFileName, ImageFormat.Png);
                     imgFileNames.Add(pageFileName);
                 }
@@ -65,6 +71,51 @@ namespace ScanMonitorApp
             logger.Info("Converted {0} ({1} pages) to image files in {2}", inputPdfPath, numPagesToConvert, stopwatch.Elapsed);
 
             return imgFileNames;
+        }
+
+        private Bitmap RotateImage(System.Drawing.Image inputImage, float angle)
+        {
+            int outWidth = inputImage.Width;
+            int outHeight = inputImage.Height;
+            if ((angle > 60 && angle < 120) || (angle > 240 && angle < 300))
+            {
+                outWidth = inputImage.Height;
+                outHeight = inputImage.Width;
+            }
+
+            Bitmap rotatedImage = new Bitmap(outWidth, outHeight);
+            using (Graphics g = Graphics.FromImage(rotatedImage))
+            {
+                g.TranslateTransform(inputImage.Width / 2, inputImage.Height / 2); //set the rotation point as the center into the matrix
+                g.RotateTransform(angle); //rotate
+                g.TranslateTransform(-inputImage.Width / 2, -inputImage.Height / 2); //restore rotation point into the matrix
+                g.DrawImage(inputImage, new Point(0, 0)); //draw the image on the new bitmap
+            }
+
+            return rotatedImage;
+        }
+
+        public Image RotateImageWithoutCrop(Image b, float angle)
+        {
+            if (angle > 0)
+            {
+                int l = b.Width;
+                int h = b.Height;
+                double an = angle * Math.PI / 180;
+                double cos = Math.Abs(Math.Cos(an));
+                double sin = Math.Abs(Math.Sin(an));
+                int nl = (int)(l * cos + h * sin);
+                int nh = (int)(l * sin + h * cos);
+                Bitmap returnBitmap = new Bitmap(nl, nh);
+                Graphics g = Graphics.FromImage(returnBitmap);
+                g.TranslateTransform((float)(nl - l) / 2, (float)(nh - h) / 2);
+                g.TranslateTransform((float)b.Width / 2, (float)b.Height / 2);
+                g.RotateTransform(angle);
+                g.TranslateTransform(-(float)b.Width / 2, -(float)b.Height / 2);
+                g.DrawImage(b, new Point(0, 0));
+                return returnBitmap;
+            }
+            else return b;
         }
 
         public static string GetFilenameOfImageOfPage(string baseFolderForImages, string uniqName, int pageNum, bool bCreateFolderIfReqd)

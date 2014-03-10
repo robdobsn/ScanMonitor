@@ -123,11 +123,20 @@ namespace ScanMonitorApp
         public ObjectId Id;
         public string uniqName { get; set; }
         public List<List<ScanTextElem>> scanPagesText { get; set; }
+        public List<int> pageRotations { get; set; }
 
-        public ScanPages(string a_uniqName, List<List<ScanTextElem>> spagesText)
+        public ScanPages(string a_uniqName)
+        {
+            uniqName = a_uniqName;
+            scanPagesText = new List<List<ScanTextElem>>();
+            pageRotations = new List<int>();
+        }
+
+        public ScanPages(string a_uniqName, List<int> pageRots, List<List<ScanTextElem>> spagesText)
         {
             uniqName = a_uniqName;
             scanPagesText = spagesText;
+            pageRotations = pageRots;
         }
     }
 

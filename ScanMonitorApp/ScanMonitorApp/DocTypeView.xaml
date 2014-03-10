@@ -31,7 +31,7 @@
             </ListView.View>
         </ListView>
         <GridSplitter Grid.Column="1" Margin="0,0,413,0" Width="0"/>
-        <Image x:Name="exampleFileImage" Grid.Row="0" Grid.Column="1" Grid.RowSpan="3" Grid.ColumnSpan="1" MouseDown="exampleFileImage_MouseDown" MouseMove="exampleFileImage_MouseMove" MouseUp="exampleFileImage_MouseUp" MouseLeave="exampleFileImage_MouseLeave" />
+        <Image x:Name="exampleFileImage" Grid.Row="0" Grid.Column="1" Grid.RowSpan="3" Grid.ColumnSpan="1" MouseDown="exampleFileImage_MouseDown" MouseMove="exampleFileImage_MouseMove" MouseUp="exampleFileImage_MouseUp" MouseLeave="exampleFileImage_MouseLeave" SizeChanged="exampleFileImage_SizeChanged" />
         <Canvas x:Name="docOverlayCanvas" Grid.Row="0" Grid.Column="1" Grid.RowSpan="3" Grid.ColumnSpan="1" Panel.ZIndex="1" SizeChanged="docOverlayCanvas_SizeChanged"></Canvas>
         <Popup x:Name="exampleFileImageToolTip" AllowsTransparency="True" Placement="Relative" PlacementTarget="{Binding ElementName=exampleFileImage}" IsEnabled="False">
             <TextBlock x:Name="exampleFileImageToolText" Background="Azure" FontSize="15" IsEnabled="False">ToolText</TextBlock>

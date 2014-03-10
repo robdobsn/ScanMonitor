@@ -12,7 +12,7 @@ namespace ScanMonitorApp
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        const string longDateRegex = @"(((0)[1-9])|((1|2)[0-9])|(3[0-1])|([1-9]))?(\s*?)([a-zA-Z]?[a-zA-Z]?)-?(\s*?)-?(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)[,-]?(\s*?)[,-]?(((19)?[89]\d)|((2\s*?0\s*?)?[012345l]\s*?[\dl]))([^,]|$)";
+        const string longDateRegex = @"(((0)[1-9])|((1|2)[0-9])|(3[0-1])|([1-9]))?(\s*?)([a-zA-Z\,\.]?[a-zA-Z\,\.]?)-?(\s*?)-?(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)[,-]?(\s*?)[,-]?(((19)?[89]\d)|((2\s*?0\s*?)?[012345l]\s*?[\dl]))([^,]|$)";
         const string USlongDateRegex = @"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)(\s*?)(1-\s*)?(((0)[1-9])|((1|2)[0-9])|(3[0-1])|([1-9]))(\s*?)([a-zA-Z]?[a-zA-Z]?),(\s*?)(((19)?[8|9]\d)|((20)?[0|1|2]\d))";
         const string shortDateLeadingZeroesRegex = @"(0[1-9]|[12][0-9]|3[01])\s?[-/.]\s?(0[1-9]|1[012])\s?[-/.]\s?((19|20)?(\d\d))";
         const string shortDateNoLeadingZeroesRegex = @"([1-9]|[12][0-9]|3[01])\s?[-/.]\s?([1-9]|1[012])\s?[-/.]\s?((19|20)?(\d\d))";
@@ -25,38 +25,67 @@ namespace ScanMonitorApp
                 { "sep", 9 }, { "oct", 10 }, { "nov", 11 }, { "dec", 12 }, 
             };
 
-        public static List<ExtractedDate> ExtractDatesFromDoc(ScanPages scanPages, string dateExpr)
+        public static List<ExtractedDate> ExtractDatesFromDoc(ScanPages scanPages, string dateExpr, out int bestDateIdx)
         {
             List<ExtractedDate> datesResult = new List<ExtractedDate>();
 
             // Extract location rectangles from doctype
-            if (dateExpr == "")
-                dateExpr = "all";
             List<ExprParseTerm> parseTerms = DocTypesMatcher.ParseDocMatchExpression(dateExpr, 0);
+            bool bAtLeastOneExprSearched = false;
             string lastDateSearchTerm = "";
-            DocRectangle lastDateSearchRect = new DocRectangle(0,0,100,100);
+            double lastDateSearchMatchFactor = 0;
             foreach (ExprParseTerm parseTerm in parseTerms)
             {
                 if (parseTerm.termType == ExprParseTerm.ExprParseTermType.exprTerm_Text)
                 {
                     if (lastDateSearchTerm != "")
-                        SearchForDateItem(scanPages, lastDateSearchTerm, lastDateSearchRect, datesResult);
+                    {
+                        SearchForDateItem(scanPages, lastDateSearchTerm, new DocRectangle(0,0,100,100), lastDateSearchMatchFactor, datesResult);
+                        bAtLeastOneExprSearched = true;
+                    }
                     lastDateSearchTerm = dateExpr.Substring(parseTerm.stPos, parseTerm.termLen);
-                    lastDateSearchRect = new DocRectangle(0,0,100,100);
+                    // Reset matchFactor for next search term
+                    lastDateSearchMatchFactor = 0;
                 }
                 if (parseTerm.termType == ExprParseTerm.ExprParseTermType.exprTerm_Location)
                 {
                     string locStr = dateExpr.Substring(parseTerm.stPos, parseTerm.termLen);
-                    lastDateSearchRect = new DocRectangle(locStr);
+                    DocRectangle lastDateSearchRect = new DocRectangle(locStr);
+                    SearchForDateItem(scanPages, lastDateSearchTerm, lastDateSearchRect, lastDateSearchMatchFactor, datesResult);
+                    lastDateSearchTerm = "";
+                    lastDateSearchMatchFactor = 0;
+                    bAtLeastOneExprSearched = true;
+                }
+                if (parseTerm.termType == ExprParseTerm.ExprParseTermType.exprTerm_MatchFactor)
+                {
+                    if (dateExpr.Length > parseTerm.stPos + 1)
+                    {
+                        string valStr = dateExpr.Substring(parseTerm.stPos + 1, parseTerm.termLen-1);
+                        Double.TryParse(valStr, out lastDateSearchMatchFactor);
+                    }
                 }
             }
-            if (lastDateSearchTerm != "")
-                SearchForDateItem(scanPages, lastDateSearchTerm, lastDateSearchRect, datesResult);
+
+            // There may be one last expression still to find - but be sure that at least one is searched for
+            if ((lastDateSearchTerm != "") || (!bAtLeastOneExprSearched))
+                SearchForDateItem(scanPages, lastDateSearchTerm, new DocRectangle(0,0,100,100), lastDateSearchMatchFactor, datesResult);
+
+            // Find the best date index based on highest match factor
+            bestDateIdx = 0;
+            double highestDateMatchFactor = 0;
+            for (int dateIdx = 0; dateIdx < datesResult.Count; dateIdx++)
+            {
+                if (highestDateMatchFactor < datesResult[dateIdx].matchFactor)
+                {
+                    bestDateIdx = dateIdx;
+                    highestDateMatchFactor = datesResult[dateIdx].matchFactor;
+                }
+            }
 
             return datesResult;
         }
 
-        public static void SearchForDateItem(ScanPages scanPages, string dateSearchTerm, DocRectangle dateDocRect, List<ExtractedDate> datesResult, int limitToPageNumN = -1)
+        public static void SearchForDateItem(ScanPages scanPages, string dateSearchTerm, DocRectangle dateDocRect, double matchFactor, List<ExtractedDate> datesResult, int limitToPageNumN = -1)
         {
             int firstPageIdx = 0;
             int lastPageIdxPlusOne = scanPages.scanPagesText.Count;
@@ -83,15 +112,15 @@ namespace ScanMonitorApp
                         bool bTryUS = false;
                         bool bTryNoZeroes = false;
                         bool bTrySpaceSeparated = false;
-                        if (dateSearchTerm.IndexOf("long", StringComparison.OrdinalIgnoreCase) >= 0)
+                        if (dateSearchTerm.IndexOf("~long", StringComparison.OrdinalIgnoreCase) >= 0)
                             bTryLong = true;
-                        if (dateSearchTerm.IndexOf("short", StringComparison.OrdinalIgnoreCase) >= 0)
+                        if (dateSearchTerm.IndexOf("~short", StringComparison.OrdinalIgnoreCase) >= 0)
                             bTryShort = true;
-                        if (dateSearchTerm.IndexOf("US", StringComparison.OrdinalIgnoreCase) >= 0)
+                        if (dateSearchTerm.IndexOf("~US", StringComparison.OrdinalIgnoreCase) >= 0)
                             bTryUS = true;
-                        if (dateSearchTerm.IndexOf("No0", StringComparison.OrdinalIgnoreCase) >= 0)
+                        if (dateSearchTerm.IndexOf("~No0", StringComparison.OrdinalIgnoreCase) >= 0)
                             bTryNoZeroes = true;
-                        if (dateSearchTerm.IndexOf("Spaces", StringComparison.OrdinalIgnoreCase) >= 0)
+                        if (dateSearchTerm.IndexOf("~Spaces", StringComparison.OrdinalIgnoreCase) >= 0)
                             bTrySpaceSeparated = true;
                         if (!(bTryLong | bTryShort))
                         {
@@ -102,31 +131,40 @@ namespace ScanMonitorApp
                             bTrySpaceSeparated = true;
                         }
 
+                        // Get match text if any
+                        string matchText = dateSearchTerm;
+                        int squigPos = dateSearchTerm.IndexOf('~');
+                        if (squigPos >= 0)
+                            matchText = dateSearchTerm.Substring(0, squigPos);
+                        double matchResultFactor = 0;
+                        if (textElem.text.IndexOf(matchText, StringComparison.OrdinalIgnoreCase) >= 0)
+                            matchResultFactor = matchFactor;
+
                         // Try to find dates
                         if (bTryLong)
                         {
                             MatchCollection ldMatches = Regex.Matches(textElem.text, longDateRegex, RegexOptions.IgnoreCase);
-                            CoerceMatchesToDates(datesResult, textElem, ldMatches, ExtractedDate.DateMatchType.LongDate, 13, 11, 1);
+                            CoerceMatchesToDates(datesResult, matchResultFactor, textElem, ldMatches, ExtractedDate.DateMatchType.LongDate, 13, 11, 1);
                             if (bTryUS)
                             {
                                 MatchCollection usldMatches = Regex.Matches(textElem.text, USlongDateRegex, RegexOptions.IgnoreCase);
-                                CoerceMatchesToDates(datesResult, textElem, usldMatches, ExtractedDate.DateMatchType.USLongDate, 14, 1, 4);
+                                CoerceMatchesToDates(datesResult, matchResultFactor, textElem, usldMatches, ExtractedDate.DateMatchType.USLongDate, 14, 1, 4);
                             }
                         }
 
                         if (bTryShort)
                         {
                             MatchCollection sdlzMatches = Regex.Matches(textElem.text, shortDateLeadingZeroesRegex, RegexOptions.IgnoreCase);
-                            CoerceMatchesToDates(datesResult, textElem, sdlzMatches, ExtractedDate.DateMatchType.ShortDateLeadingZeroes, 3, 2, 1);
+                            CoerceMatchesToDates(datesResult, matchResultFactor, textElem, sdlzMatches, ExtractedDate.DateMatchType.ShortDateLeadingZeroes, 3, 2, 1);
                             if (bTryNoZeroes)
                             {
                                 MatchCollection sdnlzMatches = Regex.Matches(textElem.text, shortDateNoLeadingZeroesRegex, RegexOptions.IgnoreCase);
-                                CoerceMatchesToDates(datesResult, textElem, sdnlzMatches, ExtractedDate.DateMatchType.ShortDateNoLeadingZeroes, 3, 2, 1);
+                                CoerceMatchesToDates(datesResult, matchResultFactor, textElem, sdnlzMatches, ExtractedDate.DateMatchType.ShortDateNoLeadingZeroes, 3, 2, 1);
                             }
                             if (bTrySpaceSeparated)
                             {
                                 MatchCollection sdspMatches = Regex.Matches(textElem.text, shortDateSpacesRegex, RegexOptions.IgnoreCase);
-                                CoerceMatchesToDates(datesResult, textElem, sdspMatches, ExtractedDate.DateMatchType.ShortDateNoLeadingZeroes, 3, 2, 1);
+                                CoerceMatchesToDates(datesResult, matchResultFactor, textElem, sdspMatches, ExtractedDate.DateMatchType.ShortDateNoLeadingZeroes, 3, 2, 1);
                             }
                         }
                     }
@@ -134,7 +172,7 @@ namespace ScanMonitorApp
             }
         }
 
-        private static void CoerceMatchesToDates(List<ExtractedDate> datesResult, ScanTextElem textElem, MatchCollection matches, ExtractedDate.DateMatchType matchType, int yearGroupIdx, int monthGroupIdx, int dayGroupIdx)
+        private static void CoerceMatchesToDates(List<ExtractedDate> datesResult, double matchResultFactor, ScanTextElem textElem, MatchCollection matches, ExtractedDate.DateMatchType matchType, int yearGroupIdx, int monthGroupIdx, int dayGroupIdx)
         {
             foreach (Match match in matches)
             {
@@ -183,6 +221,7 @@ namespace ScanMonitorApp
                     fd.dateTime = dt;
                     fd.dateMatchType = matchType;
                     fd.locationOfDateOnPagePercent = textElem.bounds;
+                    fd.matchFactor = matchResultFactor;
                     datesResult.Add(fd);
                 }
                 catch
@@ -213,6 +252,7 @@ namespace ScanMonitorApp
         public int posnInText = 0;
         public int matchLength = 0;
         public DateMatchType dateMatchType = DateMatchType.None;
+        public double matchFactor = 0;
 
         public string foundInText;
     }

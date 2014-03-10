@@ -77,6 +77,37 @@ namespace ScanMonitorApp
             _dragSelect_nextLocationIdx = nextLocationIdx;
         }
 
+        public void ClearTextMatchRect()
+        {
+            // Clear any existing rectangles with the right tag
+            List<UIElement> itemstoremove = new List<UIElement>();
+            foreach (UIElement uiElem in _uiOverlayCanvas.Children)
+            {
+                if (uiElem.GetType() == typeof(Rectangle))
+                {
+                    if (((Rectangle)uiElem).Tag == "textMatch")
+                        itemstoremove.Add(uiElem);
+                }
+            }
+            foreach (UIElement elem in itemstoremove)
+                _uiOverlayCanvas.Children.Remove(elem);
+        }
+
+        public void DrawTextMatchRect(DocRectangle docRect, Brush colr)
+        {
+            Rectangle rect = new Rectangle();
+            rect.Opacity = 0.5;
+            rect.Fill = colr;
+            DocRectangle canvasRect = ConvertDocPercentRectToCanvas(docRect);
+            rect.Width = canvasRect.Width;
+            rect.Height = canvasRect.Height;
+            rect.Tag = "textMatch";
+            rect.IsHitTestVisible = false;
+            _uiOverlayCanvas.Children.Add(rect);
+            rect.SetValue(Canvas.LeftProperty, canvasRect.X);
+            rect.SetValue(Canvas.TopProperty, canvasRect.Y);
+        }
+
         private DocRectangle ConvertDocPercentRectToCanvas(DocRectangle docPercentRect)
         {
             double tlx = _masterImage.ActualWidth * docPercentRect.X / 100;

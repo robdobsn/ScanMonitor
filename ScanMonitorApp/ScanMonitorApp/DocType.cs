@@ -68,6 +68,8 @@ namespace ScanMonitorApp
             Y = y;
             Width = wid;
             Height = hig;
+            if (Width < 0 || Height < 0)
+                FixNegatives();
         }
         public DocRectangle(double x, double y, double wid, double hig)
         {
@@ -75,6 +77,8 @@ namespace ScanMonitorApp
             Y = y;
             Width = wid;
             Height = hig;
+            if (Width < 0 || Height < 0)
+                FixNegatives();
         }
         public double BottomRightX { get { return X + Width; } }
         public double BottomRightY { get { return Y + Height; } }
@@ -96,6 +100,8 @@ namespace ScanMonitorApp
                     Width = Convert.ToDouble(splitStr[2]);
                 if (splitStr.Length > 3)
                     Height = Convert.ToDouble(splitStr[3]);
+                if (Width < 0 || Height < 0)
+                    FixNegatives();
             }
             catch
             { }
@@ -110,12 +116,30 @@ namespace ScanMonitorApp
                 case 2: { Width = Convert.ToInt32(val); break; }
                 case 3: { Height = Convert.ToInt32(val); break; }
             }
+            if (Width < 0 || Height < 0)
+                FixNegatives();
         }
 
         public double X;
         public double Y;
         public double Width;
         public double Height;
+
+        private void FixNegatives()
+        {
+            double brx = BottomRightX;
+            double bry = BottomRightY;
+            if (brx < X)
+            {
+                Width = X - brx;
+                X = brx;
+            }
+            if (bry < Y)
+            {
+                Height = Y - bry;
+                Y = bry;
+            }
+        }
 
         public bool Contains(DocRectangle rect)
         {
@@ -136,6 +160,20 @@ namespace ScanMonitorApp
             if (BottomRightY < rect.Y)
                 return false;
             return true;
+        }
+
+        public void RotateAt(double angleInDegs, double centreX, double centreY)
+        {
+            System.Windows.Media.Matrix rotMatrix = System.Windows.Media.Matrix.Identity;
+            rotMatrix.RotateAt(angleInDegs, centreX, centreY);
+            System.Windows.Point tl = new System.Windows.Point(X, Y);
+            System.Windows.Point br = new System.Windows.Point(BottomRightX, BottomRightY);
+            System.Windows.Point rotTl = rotMatrix.Transform(tl);
+            System.Windows.Point rotBr = rotMatrix.Transform(br);
+            X = Math.Min(rotTl.X, rotBr.X);
+            Y = Math.Min(rotTl.Y, rotBr.Y);
+            Width = Math.Abs(rotTl.X - rotBr.X);
+            Height = Math.Abs(rotTl.Y - rotBr.Y);
         }
     }
 

@@ -78,6 +78,21 @@ namespace ScanMonitorApp
             if (!CheckOkToAddToDb(uniqName))
                 return;
 
+            // TEST TEST
+//            if (uniqName != "2013_04_12_16_17_49")
+
+            if (uniqName != "2013_04_15_15_46_17")
+                return;
+
+            // Extract text blocks from file
+            ScanPages scanPages = new ScanPages(uniqName);
+            int totalNumPages = 0;
+            if (bExtractText)
+            {
+                PdfTextAndLocExtractor pdfExtractor = new PdfTextAndLocExtractor();
+                scanPages = pdfExtractor.ExtractDocInfo(uniqName, fileName, _scanConfig._maxPagesForText, ref totalNumPages);
+            }
+
             // Extract images from file
             if (bExtractImages)
             {
@@ -85,17 +100,8 @@ namespace ScanMonitorApp
                 if (procImages)
                 {
                     PdfRasterizer rs = new PdfRasterizer();
-                    List<string> imgFileNames = rs.Start(fileName, uniqName, _scanConfig._docAdminImgFolderBase, _scanConfig._maxPagesForImages);
+                    List<string> imgFileNames = rs.Start(fileName, uniqName, scanPages, _scanConfig._docAdminImgFolderBase, _scanConfig._maxPagesForImages);
                 }
-            }
-
-            // Extract text blocks from file
-            ScanPages scanPages = new ScanPages(uniqName, new List<List<ScanTextElem>>());
-            int totalNumPages = 0;
-            if (bExtractText)
-            {
-                PdfTextAndLocExtractor pdfExtractor = new PdfTextAndLocExtractor();
-                scanPages = pdfExtractor.ExtractDocInfo(uniqName, fileName, _scanConfig._maxPagesForText, ref totalNumPages);
             }
 
             // Form partial document info
