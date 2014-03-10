@@ -187,5 +187,17 @@ namespace ScanMonitorApp.Properties {
                 this["DbConnectionString"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Main\\RobAndJudyPersonal")]
+        public string BasePathForFilingFolderSelection {
+            get {
+                return ((string)(this["BasePathForFilingFolderSelection"]));
+            }
+            set {
+                this["BasePathForFilingFolderSelection"] = value;
+            }
+        }
     }
 }

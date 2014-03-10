@@ -184,6 +184,7 @@ namespace ScanMonitorApp
         {
             // Configure open file dialog box
             Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+            dlg.InitialDirectory = @"\\MACALLAN\Main\RobAndJudyPersonal\IT\Scanning\";
             dlg.FileName = @"\\MACALLAN\Main\RobAndJudyPersonal\IT\Scanning\rules.xml";
             dlg.DefaultExt = ".xml"; // Default file extension
             dlg.Filter = "XML documents (.xml)|*.xml"; // Filter files by extension 
@@ -204,6 +205,7 @@ namespace ScanMonitorApp
         {
             // Configure open file dialog box
             Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+            dlg.InitialDirectory = @"\\N7700PRO\Archive\ScanAdmin\ScanLogs\";
             dlg.FileName = @"\\N7700PRO\Archive\ScanAdmin\ScanLogs\ScanLog.log";
             dlg.DefaultExt = ".log"; // Default file extension
             dlg.Filter = "Log documents (.log)|*.log"; // Filter files by extension 
@@ -232,7 +234,8 @@ namespace ScanMonitorApp
         {
             // Configure open file dialog box
             Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
-            dlg.FileName = @"\\N7700PRO\Archive\ScanAdmin\ScanLogs";
+            dlg.InitialDirectory = @"\\N7700PRO\Archive\ScanAdmin\ScanLogs";
+            dlg.FileName = @"ScanLog.log";
             dlg.DefaultExt = ".log"; // Default file extension
             dlg.Filter = "Log documents (.log)|*.log"; // Filter files by extension 
 
@@ -264,5 +267,6 @@ namespace ScanMonitorApp
             PathSubstView ptv = new PathSubstView(_docTypesMatcher);
             ptv.ShowDialog();
         }
+
     }
 }

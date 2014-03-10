@@ -42,6 +42,7 @@ namespace ScanMonitorApp
         private bool bInSetupDocTypeForm = false;
         // Cache last parse result
         private Dictionary<string, ParseResultCacheElem> _parseResultCache = new Dictionary<string,ParseResultCacheElem>();
+        private string _lastSelectedFolder = "";
 
         private LocationRectangleHandler locRectHandler;
 
@@ -329,15 +330,16 @@ namespace ScanMonitorApp
             else
                 txtDateResult.Text = "";
 
+            string matchFactorStr = String.Format("({0})", (int)matchRslt.matchFactor);
             if (matchRslt.matchCertaintyPercent == 100)
             {
-                txtCheckResult.Text = "MATCHES";
+                txtCheckResult.Text = "MATCHES " + matchFactorStr;
                 txtCheckResult.Foreground = Brushes.White;
                 txtCheckResult.Background = Brushes.Green;
             }
             else
             {
-                txtCheckResult.Text = "FAILED";
+                txtCheckResult.Text = "FAILED " + matchFactorStr;
                 txtCheckResult.Foreground = Brushes.White;
                 txtCheckResult.Background = Brushes.Red;
             }
@@ -1034,10 +1036,18 @@ namespace ScanMonitorApp
         private void btnMoveToPick_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new System.Windows.Forms.FolderBrowserDialog();
+            dialog.Description = "Select folder for filing this type of document";
+            dialog.RootFolder = Environment.SpecialFolder.Desktop;
+            dialog.ShowNewFolderButton = true;
+            if ((_lastSelectedFolder != "") && (Directory.Exists(_lastSelectedFolder)))
+                dialog.SelectedPath = _lastSelectedFolder;
+            else if (Directory.Exists(Properties.Settings.Default.BasePathForFilingFolderSelection))
+                dialog.SelectedPath = Properties.Settings.Default.BasePathForFilingFolderSelection;
             System.Windows.Forms.DialogResult result = dialog.ShowDialog();
             if (result == System.Windows.Forms.DialogResult.OK)
             {
                 string folderName = dialog.SelectedPath;
+                _lastSelectedFolder = folderName;
                 txtMoveTo.Text = _docTypesMatcher.ComputeMinimalPath(folderName);
             }
         }

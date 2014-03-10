@@ -59,9 +59,9 @@
             <Button x:Name="btnEditDocType" Content="Edit" HorizontalAlignment="Left" Height="21" Margin="10,0,0,0" VerticalAlignment="Top" Width="60" Click="btnEditDocType_Click" IsEnabled="False"/>
             <Button x:Name="btnRenameDocType" Content="Rename" HorizontalAlignment="Left" Height="21" Margin="75,0,0,0" VerticalAlignment="Top" Width="60" Click="btnRenameDocType_Click" IsEnabled="False"/>
             <Button x:Name="btnNewDocType" Content="New" HorizontalAlignment="Left" Height="21" Margin="140,0,0,0" VerticalAlignment="Top" Width="60" Click="btnNewDocType_Click"/>
-            <Image x:Name="imgDocThumbnail" Grid.Column="1" Height="189" Margin="5,2,0,0" VerticalAlignment="Top"/>
-            <Button x:Name="btnUseCurrentDocImageAsThumbnail" Content="Use Img" Height="21" Margin="0,196,90,0" VerticalAlignment="Top" Click="btnUseCurrentDocImageAsThumbnail_Click" IsEnabled="False" HorizontalAlignment="Right" Width="79" Grid.Column="1"/>
-            <Button x:Name="btnClearThumbail" Content="Clear" Height="21" Margin="0,196,11,0" VerticalAlignment="Top" Click="btnClearThumbail_Click" IsEnabled="False" HorizontalAlignment="Right" Width="74" Grid.Column="1"/>
+            <Image x:Name="imgDocThumbnail" Grid.Column="1" Height="189" Margin="5,32,0,0" VerticalAlignment="Top"/>
+            <Button x:Name="btnUseCurrentDocImageAsThumbnail" Content="Use Img" Height="21" Margin="0,2,91,0" VerticalAlignment="Top" Click="btnUseCurrentDocImageAsThumbnail_Click" IsEnabled="False" HorizontalAlignment="Right" Width="79" Grid.Column="1"/>
+            <Button x:Name="btnClearThumbail" Content="Clear" Height="21" Margin="0,2,11,0" VerticalAlignment="Top" Click="btnClearThumbail_Click" IsEnabled="False" HorizontalAlignment="Right" Width="74" Grid.Column="1"/>
             <Label Content="Date Locations" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="104" RenderTransformOrigin="0.488,0.429" Margin="5,135,0,0"/>
             <RichTextBox x:Name="txtDateLocations" Margin="119,135,0,0" Height="26" VerticalAlignment="Top" TextChanged="txtDateLocations_TextChanged" IsEnabled="False">
                 <RichTextBox.Resources>
@@ -91,6 +91,7 @@
                         <GridViewColumn Header="Status" DisplayMemberBinding="{Binding matchStatus}"/>
                         <GridViewColumn Header="Unique Name" DisplayMemberBinding="{Binding uniqName}"/>
                         <GridViewColumn Header="Filed Type" DisplayMemberBinding="{Binding docTypeFiled}"/>
+                        <GridViewColumn Header="Match Factor" DisplayMemberBinding="{Binding matchResult.matchFactor}"/>
                     </GridView>
                 </ListView.View>
             </ListView>

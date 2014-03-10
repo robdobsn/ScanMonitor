@@ -17,6 +17,8 @@ namespace ScanMonitorApp
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private MongoClient _dbClient;
 
+        #region Init
+
         public DocTypesMatcher()
         {
             var connectionString = Properties.Settings.Default.DbConnectionString;
@@ -39,39 +41,9 @@ namespace ScanMonitorApp
             return false;
         }
 
-        private MongoCollection<DocType> GetDocTypesCollection()
-        {
-            // Setup db connection
-            var server = _dbClient.GetServer();
-            var database = server.GetDatabase(Properties.Settings.Default.DbNameForDocs); // the name of the database
-            return database.GetCollection<DocType>(Properties.Settings.Default.DbCollectionForDocTypes);
-        }
+        #endregion
 
-        public DocTypeMatchResult GetMatchingDocType(ScanPages scanPages)
-        {
-            // Get list of types
-            DocTypeMatchResult matchResult = new DocTypeMatchResult();
-            var collection_doctypes = GetDocTypesCollection();
-            MongoCursor<DocType> foundSdf = collection_doctypes.FindAll();
-            foreach (DocType doctype in foundSdf)
-            {
-                // Check if document matches
-                matchResult = CheckIfDocMatches(scanPages, doctype, false);
-                if (matchResult.matchCertaintyPercent == 100)
-                {
-                    // Redo match to get date and time info
-                    matchResult = CheckIfDocMatches(scanPages, doctype, true);
-                    return matchResult;
-                }
-            }
-
-            // Get date info from entire doc
-            List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(scanPages, "");
-            matchResult.datesFoundInDoc = extractedDates;
-            if (extractedDates.Count > 0)
-                matchResult.docDate = extractedDates[0].dateTime;
-            return matchResult;
-        }
+        #region Check Docs against DocTypes
 
         public DocTypeMatchResult CheckIfDocMatches(ScanPages scanPages, DocType docType, bool extractDates)
         {
@@ -91,12 +63,14 @@ namespace ScanMonitorApp
             }
 
             // Check the expression
-            if (MatchAgainstDocText(docType.matchExpression, scanPages))
+            double matchFactorTotal = 0;
+            if (MatchAgainstDocText(docType.matchExpression, scanPages, ref matchFactorTotal))
             {
                 matchResult.matchCertaintyPercent = 100;
                 matchResult.matchResultCode = DocTypeMatchResult.MatchResultCodes.FOUND_MATCH;
-                matchResult.docTypeName = docType.docTypeName;
             }
+            matchResult.docTypeName = docType.docTypeName;
+            matchResult.matchFactor = matchFactorTotal;
 
             // Extract date
             if (extractDates)
@@ -110,13 +84,13 @@ namespace ScanMonitorApp
             return matchResult;
         }
 
-        private bool MatchAgainstDocText(string matchExpression, ScanPages scanPages)
+        private bool MatchAgainstDocText(string matchExpression, ScanPages scanPages, ref double matchFactorTotal)
         {
             StringTok st = new StringTok(matchExpression);
-            return EvalMatch(st, scanPages);
+            return EvalMatch(st, scanPages, ref matchFactorTotal);
         }
 
-        private bool EvalMatch(StringTok st, ScanPages scanPages)
+        private bool EvalMatch(StringTok st, ScanPages scanPages, ref double matchFactorTotal)
         {
             bool result = false;
             string token = "";
@@ -124,6 +98,7 @@ namespace ScanMonitorApp
             bool opIsInverse = false;
             DocRectangle docRectPercent = new DocRectangle(0, 0, 100, 100);
             int docRectValIdx = 0;
+            double matchFactorForTerm = 0;
             while((token = st.GetNextToken()) != null)
             {
                 if (token.Trim() == "")
@@ -132,7 +107,7 @@ namespace ScanMonitorApp
                     return result;
                 else if (token == "(")
                 {
-                    bool tmpRslt = EvalMatch(st, scanPages);
+                    bool tmpRslt = EvalMatch(st, scanPages, ref matchFactorTotal);
                     if (opIsInverse)
                         tmpRslt = !tmpRslt;
                     if (curOpIsOr)
@@ -148,11 +123,37 @@ namespace ScanMonitorApp
                     opIsInverse = true;
                 else
                 {
+                    // We've reached a terminal token (string to match to text in the document)
+                    string stringToMatch = token;
+
+                    // Check for matchFactor - must have some text before it
+                    if (token == ":")
+                        return result;
+                    // See if there is a location defined by the next token
+                    while ((st.PeekNextToken() != null) && (st.PeekNextToken() == ""))
+                        st.GetNextToken();
+                    if ((st.PeekNextToken() != null) && (st.PeekNextToken() == ":"))
+                    {
+                        matchFactorForTerm = 0;
+                        st.GetNextToken();
+                        while ((st.PeekNextToken() != null) && (st.PeekNextToken() == ""))
+                            st.GetNextToken();
+                        token = st.GetNextToken();
+                        if (token != null)
+                        {
+                            try
+                            {
+                                matchFactorForTerm = Double.Parse(token);
+                            }
+                            catch
+                            {
+                            }
+                        }
+                    }
+
                     // Check for location on empty string
                     if (token == "{")
                         return result;
-                    // We've reached a terminal token (string to match to text in the document)
-                    string stringToMatch = token;
                     // See if there is a location defined by the next token
                     while ((st.PeekNextToken() != null) && (st.PeekNextToken() == ""))
                         st.GetNextToken();
@@ -193,10 +194,15 @@ namespace ScanMonitorApp
                             result |= tmpRslt;
                         else
                             result &= tmpRslt;
+
+                        // Handle match factor
+                        if (tmpRslt)
+                            matchFactorTotal += matchFactorForTerm;
                     }
 
                     // Set the docRect to the entire page (ready for next term)
                     docRectPercent = new DocRectangle(0,0,100,100);
+                    matchFactorForTerm = 0;
                 }
             }
             return result;
@@ -227,9 +233,7 @@ namespace ScanMonitorApp
 
             public StringTok (string inStr)
             {
-                //char[] terms = new char[] {'(', ')', '&', '|' };
-                //tokens = inStr.Split(terms);
-                string pattern = @"(\()|(\))|(\&)|(\|)|(\!)|(\{)|(\})|(\,)";
+                string pattern = @"(\()|(\))|(\&)|(\|)|(\!)|(\{)|(\})|(\,)|(\:)";
                 tokens = Regex.Split(inStr, pattern);
                 curPos = 0;
             }
@@ -247,6 +251,59 @@ namespace ScanMonitorApp
                     return null;
                 return tokens[curPos];
             }
+        }
+
+        #endregion
+
+        #region DocTypes Database Access
+
+        private MongoCollection<DocType> GetDocTypesCollection()
+        {
+            // Setup db connection
+            var server = _dbClient.GetServer();
+            var database = server.GetDatabase(Properties.Settings.Default.DbNameForDocs); // the name of the database
+            return database.GetCollection<DocType>(Properties.Settings.Default.DbCollectionForDocTypes);
+        }
+
+        public DocTypeMatchResult GetMatchingDocType(ScanPages scanPages, int maxMatchesToReturn = 1, List<DocTypeMatchResult> listOfPossibleMatches = null)
+        {
+            // Get list of types
+            DocTypeMatchResult bestMatchResult = new DocTypeMatchResult();
+            var collection_doctypes = GetDocTypesCollection();
+            MongoCursor<DocType> foundSdf = collection_doctypes.FindAll();
+            foreach (DocType doctype in foundSdf)
+            {
+                // Check if document matches
+                DocTypeMatchResult matchResult = CheckIfDocMatches(scanPages, doctype, false);
+                if (matchResult.matchCertaintyPercent == 100)
+                {
+                    // Redo match to get date and time info
+                    matchResult = CheckIfDocMatches(scanPages, doctype, true);
+                }
+
+                // Find the best match
+                if (bestMatchResult.matchCertaintyPercent <= matchResult.matchCertaintyPercent)
+                    if (bestMatchResult.matchFactor < matchResult.matchFactor)
+                        bestMatchResult = matchResult;
+
+                // Check if a list is to be returned
+                if (listOfPossibleMatches != null)
+                {
+                    if (listOfPossibleMatches.Count < maxMatchesToReturn)
+                        listOfPossibleMatches.Add(matchResult);
+                }
+
+            }
+
+            // If no exact match get date info from entire doc
+            if (bestMatchResult.matchCertaintyPercent != 100)
+            {
+                List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(scanPages, "");
+                bestMatchResult.datesFoundInDoc = extractedDates;
+                if (extractedDates.Count > 0)
+                    bestMatchResult.docDate = extractedDates[0].dateTime;
+            }
+            return bestMatchResult;
         }
 
         public string ListDocTypesJson()
@@ -295,22 +352,9 @@ namespace ScanMonitorApp
             return true;
         }
 
-        public void ApplyAliasList(string origDocType, string newDocType)
-        {
-            // read list from file - or database??
-            // use list generated when doc types read in - prob in database
-            // when doc types read in use info like [georgeheriots] to indicate GHS - 
-            // add an enable / disable field to database and set in UI to turn on / off rules??
-            // 
-        }
+        #endregion
 
-        private static int ParserAddTextToPoint(List<ExprParseTerm> parseTermsList, string matchExpression, int lastTxtStartIdx, int chIdx, int curBracketDepth)
-        {
-            string s = matchExpression.Substring(lastTxtStartIdx, chIdx-lastTxtStartIdx);
-            if (s.Length > 0)
-                parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Text, lastTxtStartIdx, chIdx-lastTxtStartIdx, curBracketDepth, 0));
-            return chIdx + 1;
-        }
+        #region Parse DocMatch Expression for Text Highlighting
 
         public static List<ExprParseTerm> ParseDocMatchExpression(string matchExpression, int cursorPosForBracketMatching)
         {
@@ -321,6 +365,7 @@ namespace ScanMonitorApp
             int lastLocStartIdx = 0;
             int lastTxtStartIdx = 0;
             int locationBracketIdx = 0;
+            bool bInMatchFactorTerm = false;
             for (int chIdx = 0; chIdx < matchExpression.Length; chIdx++)
             {
                 switch (matchExpression[chIdx])
@@ -328,7 +373,11 @@ namespace ScanMonitorApp
                     case '(':
                         {
                             // Add text upto this point
-                            lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+                            if (bInMatchFactorTerm)
+                                lastTxtStartIdx = ParserAddMatchFactor(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+                            else
+                                lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+                            bInMatchFactorTerm = false;
 
                             // Add bracket
                             if ((cursorPosForBracketMatching == chIdx) || (cursorPosForBracketMatching == chIdx + 1))
@@ -339,7 +388,11 @@ namespace ScanMonitorApp
                     case ')':
                         {
                             // Add text upto this point
-                            lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+                            if (bInMatchFactorTerm)
+                                lastTxtStartIdx = ParserAddMatchFactor(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+                            else
+                                lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+                            bInMatchFactorTerm = false;
 
                             // Add bracket
                             parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Brackets, chIdx, 1, --curBracketDepth, 0));
@@ -350,7 +403,11 @@ namespace ScanMonitorApp
                     case '{':
                         {
                             // Add text upto this point
-                            lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+                            if (bInMatchFactorTerm)
+                                lastTxtStartIdx = ParserAddMatchFactor(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+                            else
+                                lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+                            bInMatchFactorTerm = false;
 
                             // Add location bracket
                             if ((cursorPosForBracketMatching == chIdx) || (cursorPosForBracketMatching == chIdx + 1))
@@ -370,12 +427,23 @@ namespace ScanMonitorApp
                             locationBracketIdx++;
                             break;
                         }
+                    case ':':
+                        {
+                            lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+                            lastTxtStartIdx = chIdx;
+                            bInMatchFactorTerm = true;
+                            break;
+                        }
                     case '&':
                     case '|':
                     case '!':
                         {
                             // Add text upto this point
-                            lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+                            if (bInMatchFactorTerm)
+                                lastTxtStartIdx = ParserAddMatchFactor(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+                            else
+                                lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+                            bInMatchFactorTerm = false;
 
                             // Add operator
                             parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Operator, chIdx, 1, curBracketDepth, locationBracketIdx));
@@ -384,9 +452,30 @@ namespace ScanMonitorApp
                         }
                 }
             }
-            lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, matchExpression.Length, curBracketDepth);
+            if (bInMatchFactorTerm)
+                lastTxtStartIdx = ParserAddMatchFactor(parseTermsList, matchExpression, lastTxtStartIdx, matchExpression.Length, curBracketDepth);
+            else
+                lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, matchExpression.Length, curBracketDepth);
             return parseTermsList;
         }
+
+        private static int ParserAddMatchFactor(List<ExprParseTerm> parseTermsList, string matchExpression, int lastTxtStartIdx, int chIdx, int curBracketDepth)
+        {
+            string s = matchExpression.Substring(lastTxtStartIdx, chIdx - lastTxtStartIdx);
+            if (s.Length > 0)
+                parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_MatchFactor, lastTxtStartIdx, chIdx - lastTxtStartIdx, curBracketDepth, 0));
+            return chIdx + 1;
+        }
+
+        private static int ParserAddTextToPoint(List<ExprParseTerm> parseTermsList, string matchExpression, int lastTxtStartIdx, int chIdx, int curBracketDepth)
+        {
+            string s = matchExpression.Substring(lastTxtStartIdx, chIdx - lastTxtStartIdx);
+            if (s.Length > 0)
+                parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Text, lastTxtStartIdx, chIdx - lastTxtStartIdx, curBracketDepth, 0));
+            return chIdx + 1;
+        }
+
+        #endregion
 
         #region Substitution Macros (Paths)
 
@@ -466,6 +555,16 @@ namespace ScanMonitorApp
 
         #endregion
 
+        public void ApplyAliasList(string origDocType, string newDocType)
+        {
+            // read list from file - or database??
+            // use list generated when doc types read in - prob in database
+            // when doc types read in use info like [georgeheriots] to indicate GHS - 
+            // add an enable / disable field to database and set in UI to turn on / off rules??
+            // 
+        }
+
+
     }
 
     public class ExprParseTerm
@@ -477,7 +576,8 @@ namespace ScanMonitorApp
                     new SolidColorBrush(Colors.Indigo),
                     new SolidColorBrush(Colors.Chartreuse),
                     new SolidColorBrush(Colors.DarkBlue),
-                    new SolidColorBrush(Colors.Cyan)
+                    new SolidColorBrush(Colors.Cyan), 
+                    new SolidColorBrush(Colors.DarkOrange) 
                 };
         public ExprParseTerm(ExprParseTermType type, int pos, int leng, int brackDepth, int locBrackIdx)
         {
@@ -496,6 +596,7 @@ namespace ScanMonitorApp
             exprTerm_Text,
             exprTerm_Operator,
             exprTerm_Brackets,
+            exprTerm_MatchFactor
         }
         public Brush GetBrush(int offset = 0)
         {

@@ -44,5 +44,8 @@
     <Setting Name="DbConnectionString" Type="System.String" Scope="User">
       <Value Profile="(Default)">mongodb://macallan</Value>
     </Setting>
+    <Setting Name="BasePathForFilingFolderSelection" Type="System.String" Scope="User">
+      <Value Profile="(Default)">\\MACALLAN\Main\RobAndJudyPersonal</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

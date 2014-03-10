@@ -55,6 +55,7 @@ namespace ScanMonitorApp
         public string docTypeName = "";
         public DateTime docDate = DateTime.MinValue;
         public int matchCertaintyPercent = 0;
+        public double matchFactor = 0;
         public MatchResultCodes matchResultCode = MatchResultCodes.NOT_FOUND;
         public List<ExtractedDate> datesFoundInDoc = new List<ExtractedDate>();
     }
@@ -177,6 +178,7 @@ namespace ScanMonitorApp
             catch (Exception excp)
             {
                 logger.Error("Loading thumbnail file {0} excp {1}", imgFileName, excp.Message);
+                bitmap = null;
             }
 
             return bitmap;
