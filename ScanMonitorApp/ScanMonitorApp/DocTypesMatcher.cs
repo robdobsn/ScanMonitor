@@ -22,14 +22,14 @@ namespace ScanMonitorApp
 
         public DocTypesMatcher()
         {
-            var connectionString = Properties.Settings.Default.DbConnectionString;
-            _dbClient = new MongoClient(connectionString);
         }
 
         public bool Setup()
         {
             try
             {
+                var connectionString = Properties.Settings.Default.DbConnectionString;
+                _dbClient = new MongoClient(connectionString);
                 var collection_doctypes = GetDocTypesCollection();
                 collection_doctypes.EnsureIndex(new IndexKeysBuilder()
                             .Ascending("docTypeName"), IndexOptions.SetUnique(true));

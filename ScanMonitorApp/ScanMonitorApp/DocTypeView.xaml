@@ -60,11 +60,11 @@
             <Button x:Name="btnEditDocType" Content="Edit" HorizontalAlignment="Left" Height="21" Margin="10,0,0,0" VerticalAlignment="Top" Width="60" Click="btnEditDocType_Click" IsEnabled="False"/>
             <Button x:Name="btnRenameDocType" Content="Rename" HorizontalAlignment="Left" Height="21" Margin="75,0,0,0" VerticalAlignment="Top" Width="60" Click="btnRenameDocType_Click" IsEnabled="False"/>
             <Button x:Name="btnNewDocType" Content="New" HorizontalAlignment="Left" Height="21" Margin="140,0,0,0" VerticalAlignment="Top" Width="60" Click="btnNewDocType_Click"/>
-            <Image x:Name="imgDocThumbnail" Grid.Column="1" Height="189" Margin="5,32,0,0" VerticalAlignment="Top">
+            <Image x:Name="imgDocThumbnail" Grid.Column="1" Height="189" Margin="5,32,0,0" VerticalAlignment="Top" Source="res/NoThumbnail.png">
                 <Image.ContextMenu>
-                        <ContextMenu>
-                            <MenuItem x:Name="imgDocThumbMenuPaste" Header="Paste" Click="imgDocThumbMenuPaste_Click"/>
-                        </ContextMenu>
+                    <ContextMenu>
+                        <MenuItem x:Name="imgDocThumbMenuPasteImg" Header="Paste" Click="imgDocThumbMenuPaste_Click"/>
+                    </ContextMenu>
                 </Image.ContextMenu>
             </Image>
             <Button x:Name="btnUseCurrentDocImageAsThumbnail" Content="Use Img" Height="21" Margin="0,0,6,0" VerticalAlignment="Top" Click="btnUseCurrentDocImageAsThumbnail_Click" IsEnabled="False" HorizontalAlignment="Right" Width="58" Grid.Column="1"/>

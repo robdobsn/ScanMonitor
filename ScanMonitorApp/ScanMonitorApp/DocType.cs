@@ -217,7 +217,7 @@ namespace ScanMonitorApp
             else if (thumbnailStr.Contains("~~"))
             {
                 string baseStr = thumbnailStr.Replace("~~", "");
-                imgFileName = Path.Combine(Properties.Settings.Default.DocAdminImgFolderBase, @"PastedThumbs", thumbnailStr + ".png");
+                imgFileName = Path.Combine(Properties.Settings.Default.DocAdminImgFolderBase, @"PastedThumbs", baseStr + ".png");
             }
             else
             {

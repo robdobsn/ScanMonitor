@@ -25,7 +25,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\\\\SCAN1\\Users\\Rob\\Documents\\ScanSnap")]
+        [global::System.Configuration.DefaultSettingValueAttribute("c:\\users\\rob\\documents\\ScanTest\\Monitor")]
         public string FolderToMonitor {
             get {
                 return ((string)(this["FolderToMonitor"]));
@@ -37,7 +37,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Admin\\ScanAdmin\\ScannedDocImgs")]
+        [global::System.Configuration.DefaultSettingValueAttribute("c:\\users\\rob\\documents\\ScanTest\\Thumbs")]
         public string DocAdminImgFolderBase {
             get {
                 return ((string)(this["DocAdminImgFolderBase"]));
@@ -178,7 +178,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("mongodb://macallan")]
+        [global::System.Configuration.DefaultSettingValueAttribute("mongodb://localhost/")]
         public string DbConnectionString {
             get {
                 return ((string)(this["DbConnectionString"]));
@@ -190,13 +190,37 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Main\\RobAndJudyPersonal")]
+        [global::System.Configuration.DefaultSettingValueAttribute("c:\\users\\rob\\documents\\ScanTest\\FilingBase")]
         public string BasePathForFilingFolderSelection {
             get {
                 return ((string)(this["BasePathForFilingFolderSelection"]));
             }
             set {
                 this["BasePathForFilingFolderSelection"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("c:\\users\\rob\\documents\\ScanTest\\rules.xml")]
+        public string OldRulesFile {
+            get {
+                return ((string)(this["OldRulesFile"]));
+            }
+            set {
+                this["OldRulesFile"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("c:\\users\\rob\\documents\\ScanTest\\ScanLog.log")]
+        public string OldScanLogFile {
+            get {
+                return ((string)(this["OldScanLogFile"]));
+            }
+            set {
+                this["OldScanLogFile"] = value;
             }
         }
     }

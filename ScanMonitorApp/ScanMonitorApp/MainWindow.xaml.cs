@@ -185,8 +185,8 @@ namespace ScanMonitorApp
         {
             // Configure open file dialog box
             Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
-            dlg.InitialDirectory = @"\\MACALLAN\Main\RobAndJudyPersonal\IT\Scanning\";
-            dlg.FileName = @"\\MACALLAN\Main\RobAndJudyPersonal\IT\Scanning\rules.xml";
+            dlg.FileName = Properties.Settings.Default.OldRulesFile;
+            dlg.InitialDirectory = System.IO.Path.GetDirectoryName(dlg.FileName);
             dlg.DefaultExt = ".xml"; // Default file extension
             dlg.Filter = "XML documents (.xml)|*.xml"; // Filter files by extension 
 
@@ -235,8 +235,8 @@ namespace ScanMonitorApp
         {
             // Configure open file dialog box
             Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
-            dlg.InitialDirectory = @"\\N7700PRO\Archive\ScanAdmin\ScanLogs";
-            dlg.FileName = @"ScanLog.log";
+            dlg.FileName = Properties.Settings.Default.OldScanLogFile;
+            dlg.InitialDirectory = System.IO.Path.GetDirectoryName(dlg.FileName);
             dlg.DefaultExt = ".log"; // Default file extension
             dlg.Filter = "Log documents (.log)|*.log"; // Filter files by extension 
 

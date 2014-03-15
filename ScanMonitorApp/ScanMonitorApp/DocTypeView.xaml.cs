@@ -1025,7 +1025,7 @@ namespace ScanMonitorApp
             if (!double.IsNaN(imgDocThumbnail.Height))
                 heightOfThumb = (int)imgDocThumbnail.Height;
             if (thumbnailStr == "")
-                imgDocThumbnail.Source = null;
+                imgDocThumbnail.Source = new BitmapImage(new Uri("res/NoThumbnail.png", UriKind.Relative));
             else
                 imgDocThumbnail.Source = DocTypeHelper.LoadDocThumbnail(thumbnailStr, heightOfThumb);
         }
@@ -1087,7 +1087,8 @@ namespace ScanMonitorApp
 
         private void btnUseCurrentDocImageAsThumbnail_Click(object sender, RoutedEventArgs e)
         {
-            ShowDocTypeThumbnail(_curDocDisplay_uniqName + "~" + _curDocDisplay_pageNum.ToString());
+            if (_curDocDisplay_uniqName.Trim() != "")
+                ShowDocTypeThumbnail(_curDocDisplay_uniqName + "~" + _curDocDisplay_pageNum.ToString());
             UpdateUIForDocTypeChanges();
         }
 
@@ -1106,6 +1107,16 @@ namespace ScanMonitorApp
         private void btnClearThumbail_Click(object sender, RoutedEventArgs e)
         {
             ShowDocTypeThumbnail("");
+            UpdateUIForDocTypeChanges();
+        }
+
+        private void imgDocThumbMenuPaste_Click(object sender, RoutedEventArgs e)
+        {
+            // Save to a file in the thumbnails folder
+            string thumbnailStr = DocTypeHelper.GetNameForPastedThumbnail();
+            string thumbFilename = DocTypeHelper.GetFilenameFromThumbnailStr(thumbnailStr);
+            if (SaveClipboardImageToFile(thumbFilename))
+                ShowDocTypeThumbnail(thumbnailStr);
             UpdateUIForDocTypeChanges();
         }
 
@@ -1265,11 +1276,11 @@ namespace ScanMonitorApp
             e.Handled = true;
         }
 
-        private static void SaveClipboardImageToFile(string filePath)
+        private static bool SaveClipboardImageToFile(string filePath)
         {
             var image = Clipboard.GetImage();
             if (image == null)
-                return;
+                return false;
             try
             {
                 using (var fileStream = new FileStream(filePath, FileMode.Create))
@@ -1277,30 +1288,14 @@ namespace ScanMonitorApp
                     BitmapEncoder encoder = new PngBitmapEncoder();
                     encoder.Frames.Add(BitmapFrame.Create(image));
                     encoder.Save(fileStream);
+                    return true;
                 }
             }
             catch
             {
 
             }
+            return false;
         }
-
-        private void imgDocThumbMenuPaste_Click(object sender, RoutedEventArgs e)
-        {
-            // Save to a file in the thumbnails folder
-            string thumbnailStr = DocTypeHelper.GetNameForPastedThumbnail();
-            string thumbFilename = DocTypeHelper.GetFilenameFromThumbnailStr(thumbnailStr);
-            SaveClipboardImageToFile(thumbnailStr);
-            ShowDocTypeThumbnail(thumbnailStr);
-            UpdateUIForDocTypeChanges();
-        }
-
-
-
-
-
-
-
-
     }
 }

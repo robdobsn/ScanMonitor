@@ -3,10 +3,10 @@
   <Profiles />
   <Settings>
     <Setting Name="FolderToMonitor" Type="System.String" Scope="User">
-      <Value Profile="(Default)">\\SCAN1\Users\Rob\Documents\ScanSnap</Value>
+      <Value Profile="(Default)">c:\users\rob\documents\ScanTest\Monitor</Value>
     </Setting>
     <Setting Name="DocAdminImgFolderBase" Type="System.String" Scope="User">
-      <Value Profile="(Default)">\\MACALLAN\Admin\ScanAdmin\ScannedDocImgs</Value>
+      <Value Profile="(Default)">c:\users\rob\documents\ScanTest\Thumbs</Value>
     </Setting>
     <Setting Name="MaxPagesForImages" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">10</Value>
@@ -42,10 +42,16 @@
       <Value Profile="(Default)">DocTypePathMacros</Value>
     </Setting>
     <Setting Name="DbConnectionString" Type="System.String" Scope="User">
-      <Value Profile="(Default)">mongodb://macallan</Value>
+      <Value Profile="(Default)">mongodb://localhost/</Value>
     </Setting>
     <Setting Name="BasePathForFilingFolderSelection" Type="System.String" Scope="User">
-      <Value Profile="(Default)">\\MACALLAN\Main\RobAndJudyPersonal</Value>
+      <Value Profile="(Default)">c:\users\rob\documents\ScanTest\FilingBase</Value>
+    </Setting>
+    <Setting Name="OldRulesFile" Type="System.String" Scope="User">
+      <Value Profile="(Default)">c:\users\rob\documents\ScanTest\rules.xml</Value>
+    </Setting>
+    <Setting Name="OldScanLogFile" Type="System.String" Scope="User">
+      <Value Profile="(Default)">c:\users\rob\documents\ScanTest\ScanLog.log</Value>
     </Setting>
   </Settings>
 </SettingsFile>
