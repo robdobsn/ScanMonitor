@@ -1,4 +1,6 @@
-﻿using NLog;
+﻿using MahApps.Metro.Controls;
+using Microsoft.WindowsAPICodePack.Dialogs;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -23,9 +25,12 @@ namespace ScanMonitorApp
     /// <summary>
     /// Interaction logic for DocTypeView.xaml
     /// </summary>
-    public partial class DocTypeView : Window
+    public partial class DocTypeView : MetroWindow
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
+
+        const int MAX_NUM_DOCS_TO_ADD_TO_LIST = 200;
+
         private ScanDocHandler _scanDocHandler;
         private DocTypesMatcher _docTypesMatcher;
         private DocType _selectedDocType;
@@ -35,7 +40,8 @@ namespace ScanMonitorApp
         private bool bInTextChangedHandler = false;
         private string _curDocDisplay_uniqName = "";
         private int _curDocDisplay_pageNum = 1;
-        private ScanPages _curDocDisplay_scanPages;
+        private ScanPages _curDocDisplay_scanPages = null;
+        private DocTypeMatchResult _curDocDisplay_lastMatchResult = null;
         private ScanDocInfo _curUnfiledScanDocInfo = null;
         private ScanPages _curUnfiledScanDocPages = null;
         private string _curDocTypeThumbnail = "";
@@ -43,7 +49,6 @@ namespace ScanMonitorApp
         // Cache last parse result
         private Dictionary<string, ParseResultCacheElem> _parseResultCache = new Dictionary<string,ParseResultCacheElem>();
         private string _lastSelectedFolder = "";
-
         private LocationRectangleHandler locRectHandler;
 
         public DocTypeView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher)
@@ -181,7 +186,7 @@ namespace ScanMonitorApp
             return docType;
         }
 
-        private void SetDocMatchStatusText(string inStr)
+        private void SetDocMatchStatusText(string inStr, bool append = false)
         {
             List<Brush> colrBrushes = new List<Brush> 
             {
@@ -189,6 +194,8 @@ namespace ScanMonitorApp
             };
 
             FlowDocument fd = new FlowDocument();
+            if (append)
+                fd = rtbDocMatchStatus.Document;
             Paragraph para = new Paragraph();
             para.LineHeight = 10;
             para.Margin = new Thickness(0);
@@ -232,6 +239,9 @@ namespace ScanMonitorApp
             public int totalMatchesFound = 0;
             public int totalMatchesButShouldnt = 0;
             public int totalDoesntMatchButShould = 0;
+            public bool bNotAllResultsShow = false;
+            public bool bCancelled = false;
+            public Exception error = null;
         }
 
         private void FindMatchingDocs_DoWork(object sender, DoWorkEventArgs e)
@@ -241,6 +251,8 @@ namespace ScanMonitorApp
             BackgroundWorker worker = sender as BackgroundWorker;
             List<ScanDocInfo> sdiList = _scanDocHandler.GetListOfScanDocs();
             int docIdx = 0;
+            int docsFound = 0;
+            mdResult.bNotAllResultsShow = false;
             foreach (ScanDocInfo sdi in sdiList)
             {
                 if ((worker.CancellationPending == true))
@@ -260,10 +272,19 @@ namespace ScanMonitorApp
                 mdResult.totalFilesProcessed++;
                 if (rslt.bMatches || rslt.bDoesntMatchButShould)
                 {
-                    this.Dispatcher.BeginInvoke((Action)delegate()
+                    // Check for a limit to avoid swamping list
+                    docsFound++;
+                    if (docsFound < MAX_NUM_DOCS_TO_ADD_TO_LIST)
                     {
-                        _docCompareRslts.Add(rslt);
-                    });
+                        this.Dispatcher.BeginInvoke((Action)delegate()
+                        {
+                            _docCompareRslts.Add(rslt);
+                        });
+                    }
+                    else
+                    {
+                        mdResult.bNotAllResultsShow = true;
+                    }
                 }
 
                 docIdx++;
@@ -309,18 +330,22 @@ namespace ScanMonitorApp
                     compRslt.scanPages = scanPages;
                 }
             }
-            compRslt.matchResult = matchResult;
+            compRslt.matchFactorStr = matchResult.matchCertaintyPercent.ToString() + " + " + matchResult.matchFactor.ToString() + "%";
             return compRslt;
         }
 
         private void CheckDisplayedDocForMatchAndShowResult()
         {
             if (_curDocDisplay_scanPages == null)
+            {
+                _curDocDisplay_lastMatchResult = null;
                 return;
+            }
             DocType chkDocType = GetDocTypeFromForm(new DocType());
             chkDocType.isEnabled = true;
             List<DocMatchingTextLoc> matchingTextLocs = new List<DocMatchingTextLoc>();
             DocTypeMatchResult matchRslt = _docTypesMatcher.CheckIfDocMatches(_curDocDisplay_scanPages, chkDocType, true, matchingTextLocs);
+            _curDocDisplay_lastMatchResult = matchRslt;
             DisplayMatchResultForDoc(matchRslt, matchingTextLocs);
         }
 
@@ -337,38 +362,44 @@ namespace ScanMonitorApp
                 txtDateResult.Text = "";
 
             // Display match status
-            string matchFactorStr = String.Format("({0})", (int)matchRslt.matchFactor);
+            string matchFactorStr = String.Format("{0}", (int)matchRslt.matchFactor);
             if (matchRslt.matchCertaintyPercent == 100)
             {
-                txtCheckResult.Text = "MATCHES " + matchFactorStr;
+                txtCheckResult.Text = "MATCHES (" + matchFactorStr + "%)";
                 txtCheckResult.Foreground = Brushes.White;
                 txtCheckResult.Background = Brushes.Green;
             }
             else
             {
-                txtCheckResult.Text = "FAILED " + matchFactorStr;
+                txtCheckResult.Text = "FAILED (" + matchFactorStr + "%)";
                 txtCheckResult.Foreground = Brushes.White;
                 txtCheckResult.Background = Brushes.Red;
             }
 
             // Display matching text locations
-            locRectHandler.ClearTextMatchRect();
+            locRectHandler.ClearTextMatchRect("txtMatch");
             foreach (DocMatchingTextLoc txtLoc in matchingTextLocs)
             {
                 if (txtLoc.pageIdx+1 == _curDocDisplay_pageNum)
                 {
+                    DocRectangle inRect = _curDocDisplay_scanPages.scanPagesText[txtLoc.pageIdx][txtLoc.elemIdx].bounds;
                     Brush colrBrush = exprColrBrushes[txtLoc.exprIdx % exprColrBrushes.Count];
-                    locRectHandler.DrawTextMatchRect(_curDocDisplay_scanPages.scanPagesText[txtLoc.pageIdx][txtLoc.elemIdx].bounds, colrBrush);
+                    DocRectangle computedLocation = new DocRectangle(inRect.X, inRect.Y, inRect.Width, inRect.Height);
+                    double wid = computedLocation.Width;
+                    double inx = computedLocation.X;
+                    computedLocation.X = inx + txtLoc.posInText * wid / txtLoc.foundInTxtLen;
+                    computedLocation.Width = txtLoc.matchLen * wid / txtLoc.foundInTxtLen;
+                    locRectHandler.DrawTextMatchRect(_curDocDisplay_scanPages.scanPagesText[txtLoc.pageIdx][txtLoc.elemIdx].bounds, colrBrush, "txtMatch");
                 }
             }
         }
 
         private string DocMatchFormatResultStr(MatchDocsResult mdResult)
         {
-            return  "Files: " + mdResult.totalFilesProcessed.ToString() + "\n" +
+            return "Files: " + mdResult.totalFilesProcessed.ToString() + (mdResult.bNotAllResultsShow ? "*" : "") +  "\n" +
                                      "~1Matched: " + mdResult.totalMatchesFound.ToString() + "\n" +
                                      "~2Shouldn't: " + mdResult.totalMatchesButShouldnt.ToString() + "\n" +
-                                     "~3Should: " + mdResult.totalDoesntMatchButShould.ToString();        
+                                     "~3Should: " + mdResult.totalDoesntMatchButShould.ToString();
         }
 
         private void FindMatchingDocs_Stop()
@@ -384,12 +415,12 @@ namespace ScanMonitorApp
 
         private void FindMatchingDocs_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            //if ((e.Cancelled == true))
-            //    SetDocMatchStatusText("Cancelled");
-            //else if (!(e.Error == null))
-            //    SetDocMatchStatusText("Error: ~1" + e.Error.Message);
-            //else
-            //    SetDocMatchStatusText("Finished");
+            if ((e.Cancelled == true))
+                SetDocMatchStatusText("Cancelled", true);
+            else if (!(e.Error == null))
+                SetDocMatchStatusText("Error: ~1" + e.Error.Message, true);
+            else
+                SetDocMatchStatusText("Finished", true);
             btnTestMatch.Content = "Find Matches";
         }
 
@@ -647,21 +678,25 @@ namespace ScanMonitorApp
         private void exampleFileImage_MouseDown(object sender, MouseButtonEventArgs e)
         {
             locRectHandler.HandleMouseDown(sender, e);
+            e.Handled = true;
         }
 
         private void exampleFileImage_MouseMove(object sender, MouseEventArgs e)
         {
             locRectHandler.HandleMouseMove(sender, e);
+            e.Handled = true;
         }
 
         private void exampleFileImage_MouseLeave(object sender, MouseEventArgs e)
         {
             locRectHandler.HandleMouseLeave(sender, e);
+            e.Handled = true;
         }
 
         private void exampleFileImage_MouseUp(object sender, MouseButtonEventArgs e)
         {
             locRectHandler.HandleMouseUp(sender, e);
+            e.Handled = true;
         }
 
         private void tooltipCallback_MouseMove(Point ptOnImage, DocRectangle ptInDocPercent)
@@ -780,11 +815,14 @@ namespace ScanMonitorApp
             locRectHandler.SelectionEnable(true);
             txtMoveTo.IsEnabled = true;
             btnMoveToPick.IsEnabled = true;
+            btnMoveToMonthYear.IsEnabled = true;
+            btnMoveToYearQtr.IsEnabled = true;
             txtRenameTo.IsEnabled = true;
-            btnRenameToMonthYear.IsEnabled = true;
             btnCancelTypeChanges.IsEnabled = true;
             btnUseCurrentDocImageAsThumbnail.IsEnabled = true;
+            btnPickThumbnail.IsEnabled = true;
             btnClearThumbail.IsEnabled = true;
+
         }
 
         private void btnRenameDocType_Click(object sender, RoutedEventArgs e)
@@ -799,10 +837,12 @@ namespace ScanMonitorApp
             locRectHandler.SelectionEnable(true);
             txtMoveTo.IsEnabled = true;
             btnMoveToPick.IsEnabled = true;
+            btnMoveToMonthYear.IsEnabled = true;
+            btnMoveToYearQtr.IsEnabled = true;
             txtRenameTo.IsEnabled = true;
-            btnRenameToMonthYear.IsEnabled = true;
             btnCancelTypeChanges.IsEnabled = true;
             btnUseCurrentDocImageAsThumbnail.IsEnabled = true;
+            btnPickThumbnail.IsEnabled = true;
             btnClearThumbail.IsEnabled = true;
         }
 
@@ -819,9 +859,10 @@ namespace ScanMonitorApp
             txtMoveTo.IsEnabled = true;
             txtMoveTo.Text = "";
             btnMoveToPick.IsEnabled = true;
+            btnMoveToMonthYear.IsEnabled = true;
+            btnMoveToYearQtr.IsEnabled = true;
             txtRenameTo.IsEnabled = true;
             txtRenameTo.Text = Properties.Settings.Default.DefaultRenameTo;
-            btnRenameToMonthYear.IsEnabled = true;
             _selectedDocType = null;
             docTypeListView.SelectedItem = null;
             txtDocTypeName.Text = "";
@@ -831,6 +872,7 @@ namespace ScanMonitorApp
             btnCancelTypeChanges.IsEnabled = true;
             ShowDocTypeThumbnail("");
             btnUseCurrentDocImageAsThumbnail.IsEnabled = true;
+            btnPickThumbnail.IsEnabled = true;
             btnClearThumbail.IsEnabled = true;
         }
 
@@ -944,10 +986,12 @@ namespace ScanMonitorApp
             locRectHandler.SelectionEnable(false);
             txtMoveTo.IsEnabled = false;
             btnMoveToPick.IsEnabled = false;
+            btnMoveToMonthYear.IsEnabled = false;
+            btnMoveToYearQtr.IsEnabled = false;
             txtRenameTo.IsEnabled = false;
-            btnRenameToMonthYear.IsEnabled = false;
             btnClearThumbail.IsEnabled = false;
             btnUseCurrentDocImageAsThumbnail.IsEnabled = false;
+            btnPickThumbnail.IsEnabled = false;
             bInSetupDocTypeForm = true;
             if (docType == null)
             {
@@ -974,16 +1018,16 @@ namespace ScanMonitorApp
             UpdateUIForDocTypeChanges();
         }
 
-        private void ShowDocTypeThumbnail(string uniqName)
+        private void ShowDocTypeThumbnail(string thumbnailStr)
         {
-            _curDocTypeThumbnail = uniqName;
+            _curDocTypeThumbnail = thumbnailStr;
             int heightOfThumb = 150;
             if (!double.IsNaN(imgDocThumbnail.Height))
                 heightOfThumb = (int)imgDocThumbnail.Height;
-            if (uniqName == "")
+            if (thumbnailStr == "")
                 imgDocThumbnail.Source = null;
             else
-                imgDocThumbnail.Source = DocTypeHelper.LoadDocThumbnail(uniqName, heightOfThumb);
+                imgDocThumbnail.Source = DocTypeHelper.LoadDocThumbnail(thumbnailStr, heightOfThumb);
         }
 
         private bool AreDocTypeChangesPendingSaveOrCancel()
@@ -1047,6 +1091,18 @@ namespace ScanMonitorApp
             UpdateUIForDocTypeChanges();
         }
 
+        private void btnPickThumbnail_Click(object sender, RoutedEventArgs e)
+        {
+            CommonOpenFileDialog cofd = new CommonOpenFileDialog("Select thumbnail file");
+            cofd.Multiselect = false;
+            cofd.InitialDirectory = Properties.Settings.Default.BasePathForFilingFolderSelection;
+            cofd.Filters.Add(new CommonFileDialogFilter("Image File", ".jpg,.png"));
+            CommonFileDialogResult result = cofd.ShowDialog(this);
+            if (result == CommonFileDialogResult.Ok)
+                ShowDocTypeThumbnail(cofd.FileName);
+            UpdateUIForDocTypeChanges();
+        }
+
         private void btnClearThumbail_Click(object sender, RoutedEventArgs e)
         {
             ShowDocTypeThumbnail("");
@@ -1055,27 +1111,63 @@ namespace ScanMonitorApp
 
         private void btnMoveToPick_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new System.Windows.Forms.FolderBrowserDialog();
-            dialog.Description = "Select folder for filing this type of document";
-            dialog.RootFolder = Environment.SpecialFolder.Desktop;
-            dialog.ShowNewFolderButton = true;
-            if ((_lastSelectedFolder != "") && (Directory.Exists(_lastSelectedFolder)))
-                dialog.SelectedPath = _lastSelectedFolder;
-            else if (Directory.Exists(Properties.Settings.Default.BasePathForFilingFolderSelection))
-                dialog.SelectedPath = Properties.Settings.Default.BasePathForFilingFolderSelection;
-            System.Windows.Forms.DialogResult result = dialog.ShowDialog();
-            if (result == System.Windows.Forms.DialogResult.OK)
+            // Check what path to use
+            string folderToUse = "";
+            if (txtMoveTo.Text.Trim() != "")
             {
-                string folderName = dialog.SelectedPath;
+                bool pathContainsMacros = false;
+                folderToUse = _docTypesMatcher.ComputeExpandedPath(txtMoveTo.Text.Trim(), DateTime.Now, true, ref pathContainsMacros);
+            }
+            else if ((_lastSelectedFolder != "") && (Directory.Exists(_lastSelectedFolder)))
+            { 
+                folderToUse = _lastSelectedFolder;
+            }
+            else if (Directory.Exists(Properties.Settings.Default.BasePathForFilingFolderSelection))
+            {
+                folderToUse = Properties.Settings.Default.BasePathForFilingFolderSelection;
+            }
+
+            CommonOpenFileDialog cofd = new CommonOpenFileDialog("Select Folder for filing this document type");
+            cofd.IsFolderPicker = true;
+            cofd.Multiselect = false;
+            cofd.InitialDirectory = folderToUse;
+            cofd.DefaultDirectory = folderToUse;
+            cofd.EnsurePathExists = true;
+            CommonFileDialogResult result = cofd.ShowDialog(this);
+            if (result == CommonFileDialogResult.Ok)
+            {
+                string folderName = cofd.FileName;
                 _lastSelectedFolder = folderName;
                 txtMoveTo.Text = _docTypesMatcher.ComputeMinimalPath(folderName);
             }
+
+            //var dialog = new System.Windows.Forms.FolderBrowserDialog();
+            //dialog.Description = "Select folder for filing this type of document";
+            //dialog.RootFolder = Environment.SpecialFolder.Desktop;
+            //dialog.ShowNewFolderButton = true;
+            //if ((_lastSelectedFolder != "") && (Directory.Exists(_lastSelectedFolder)))
+            //    dialog.SelectedPath = _lastSelectedFolder;
+            //else if (Directory.Exists(Properties.Settings.Default.BasePathForFilingFolderSelection))
+            //    dialog.SelectedPath = Properties.Settings.Default.BasePathForFilingFolderSelection;
+            //System.Windows.Forms.DialogResult result = dialog.ShowDialog();
+            //if (result == System.Windows.Forms.DialogResult.OK)
+            //{
+            //    string folderName = dialog.SelectedPath;
+            //    _lastSelectedFolder = folderName;
+            //    txtMoveTo.Text = _docTypesMatcher.ComputeMinimalPath(folderName);
+            //}
         }
 
         private void btnMoveToMonthYear_Click(object sender, RoutedEventArgs e)
         {
             // Add year & yearmonth to folder name
-            txtRenameTo.Text += @"\[year]\[year-month]";
+            txtMoveTo.Text += @"\[year]\[year-month]";
+        }
+
+        private void btnMoveToYearQtr_Click(object sender, RoutedEventArgs e)
+        {
+            // Add year qtr to folder name
+            txtMoveTo.Text += @"\[year]\[year-qtr]";
         }
 
         private void txtMoveTo_TextChanged(object sender, TextChangedEventArgs e)
@@ -1119,7 +1211,7 @@ namespace ScanMonitorApp
             public bool bMatches { get; set; }
             public bool bMatchesButShouldnt { get; set; }
             public bool bDoesntMatchButShould { get; set; }
-            public DocTypeMatchResult matchResult { get; set; }
+            public string matchFactorStr { get; set; }
         }
 
         private class ParseResultCacheElem
@@ -1128,6 +1220,87 @@ namespace ScanMonitorApp
             public List<ExprParseTerm> parseTerms = new List<ExprParseTerm>();
             public int locationBracketCount = 0;
         }
+
+        private void txtDateResult_MouseEnter(object sender, MouseEventArgs e)
+        {
+//            popupDateResult.HorizontalOffset = ptOnImage.X - 100;
+//            popupDateResult.VerticalOffset = ptOnImage.Y;
+            locRectHandler.ClearTextMatchRect("dateMatch");
+            if (_curDocDisplay_lastMatchResult != null)
+            {
+                // Create popup string
+                string datestr = "";
+                foreach (ExtractedDate dat in _curDocDisplay_lastMatchResult.datesFoundInDoc)
+                {
+                    if (datestr.Length != 0)
+                        datestr += "\n";
+                    datestr += dat.dateTime.ToLongDateString() + " (" + dat.matchFactor.ToString() + "%) Page " + dat.pageNum;
+
+                    // Display match locations
+                    if (dat.pageNum == _curDocDisplay_pageNum)
+                    {
+                        Brush colrBrush = Brushes.Firebrick;
+                        DocRectangle inRect = dat.locationOfDateOnPagePercent;
+                        DocRectangle computedLocation = new DocRectangle(inRect.X, inRect.Y, inRect.Width, inRect.Height);
+                        double wid = computedLocation.Width;
+                        double inx = computedLocation.X;
+                        computedLocation.X = inx + dat.posnInText * wid / dat.foundInText.Length;
+                        computedLocation.Width = dat.matchLength * wid / dat.foundInText.Length;
+                        locRectHandler.DrawTextMatchRect(computedLocation, colrBrush, "dateMatch");
+                    }
+
+                }
+                popupDateResultText.Text = datestr;
+                if (!popupDateResult.IsOpen)
+                    popupDateResult.IsOpen = true;
+            }
+            e.Handled = true;
+        }
+
+        private void txtDateResult_MouseLeave(object sender, MouseEventArgs e)
+        {
+            popupDateResultText.Text = "";
+            popupDateResult.IsOpen = false;
+            locRectHandler.ClearTextMatchRect("dateMatch");
+            e.Handled = true;
+        }
+
+        private static void SaveClipboardImageToFile(string filePath)
+        {
+            var image = Clipboard.GetImage();
+            if (image == null)
+                return;
+            try
+            {
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    BitmapEncoder encoder = new PngBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(image));
+                    encoder.Save(fileStream);
+                }
+            }
+            catch
+            {
+
+            }
+        }
+
+        private void imgDocThumbMenuPaste_Click(object sender, RoutedEventArgs e)
+        {
+            // Save to a file in the thumbnails folder
+            string thumbnailStr = DocTypeHelper.GetNameForPastedThumbnail();
+            string thumbFilename = DocTypeHelper.GetFilenameFromThumbnailStr(thumbnailStr);
+            SaveClipboardImageToFile(thumbnailStr);
+            ShowDocTypeThumbnail(thumbnailStr);
+            UpdateUIForDocTypeChanges();
+        }
+
+
+
+
+
+
+
 
     }
 }

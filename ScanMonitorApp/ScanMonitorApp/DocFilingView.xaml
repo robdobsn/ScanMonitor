@@ -1,75 +1,176 @@
-﻿<Window x:Class="ScanMonitorApp.DocFilingView"
+﻿<Controls:MetroWindow x:Class="ScanMonitorApp.DocFilingView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="DocTypeView" Height="636" Width="1082">
+        xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
+        Title="Document Filing" Height="706" Width="1568" Loaded="MetroWindow_Loaded">
     <Grid>
+        <Grid.Background>
+            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                <GradientStop Color="White" Offset="0" />
+                <GradientStop Color="#FFD5E0E4" Offset="1" />
+            </LinearGradientBrush>
+        </Grid.Background>
         <Grid.ColumnDefinitions>
             <ColumnDefinition />
             <ColumnDefinition />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="80*"/>
-            <RowDefinition Height="473*" />
-            <RowDefinition Height="53" />
+            <RowDefinition Height="125*"/>
+            <RowDefinition Height="459*" />
+            <RowDefinition Height="57" />
         </Grid.RowDefinitions>
 
         <Image x:Name="imageDocToFile" Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="1" MouseMove="imageDocToFile_MouseMove" MouseLeave="imageDocToFile_MouseLeave" MouseDown="imageDocToFile_MouseDown" />
-        <Popup x:Name="imageDocToFileToolTip" AllowsTransparency="True" Placement="Relative" PlacementTarget="{Binding ElementName=imageDocToFile}" IsEnabled="False">
-            <TextBlock x:Name="imageDocToFileToolText" Background="Azure" FontSize="15" IsEnabled="False">ToolText</TextBlock>
+        <Popup x:Name="imageDocToFileToolTip" AllowsTransparency="True" Placement="Relative" PlacementTarget="{Binding ElementName=imageDocToFile}" IsEnabled="False" IsHitTestVisible="False">
+            <TextBlock x:Name="imageDocToFileToolText" Background="Azure" FontSize="15" IsEnabled="False" IsHitTestVisible="False">ToolText</TextBlock>
         </Popup>
         <Grid x:Name="docToFileInfoGrid" Margin="10,10,10,0" Grid.Column="1" Grid.Row="1" Grid.RowSpan="2">
-            <Label Content="Doc Type" HorizontalAlignment="Left" Height="44" VerticalAlignment="Top" Width="109" RenderTransformOrigin="0.488,0.429" Margin="5,10,0,0" FontSize="20"/>
-            <TextBox x:Name="txtDocTypeName" Height="44" Margin="119,10,10,0" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False"  FontSize="20">thing</TextBox>
-            <Button x:Name="btnViewDocTypes" Content="Types" HorizontalAlignment="Left" Height="50" Margin="0,59,0,0" VerticalAlignment="Top" Width="96" FontSize="16" Click="btnViewDocTypes_Click"/>
-            <Button x:Name="btnPickDocType" Content="Picker" HorizontalAlignment="Left" Height="50" Margin="119,59,0,0" VerticalAlignment="Top" Width="96" FontSize="16" Click="btnPickDocType_Click"/>
-            <Popup x:Name="popupDocTypePicker" PlacementTarget="{Binding ElementName=docToFileInfoGrid}" Placement="Center" StaysOpen="False" MaxHeight="800">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <ItemsControl x:Name="popupDocTypePickerThumbs">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <UniformGrid Columns="6">
-                                    <UniformGrid.Resources>
-                                        <Style TargetType="{x:Type Image}">
-                                            <Setter Property="Margin" Value="6"/>
-                                        </Style>
-                                    </UniformGrid.Resources>
-                                </UniformGrid>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Button Click="btnClickImageDocType_Click" Tag="{Binding DocTypeName}">
-                                    <Grid>
-                                        <Image Source="{Binding ThumbBitmap}" Tag="{Binding DocTypeName}" MouseDown="btnClickImageDocType_Click"/>
-                                        <StackPanel VerticalAlignment="Bottom" Background="Black" Opacity="0.80" Height="40">
-                                            <TextBlock Height="30" TextAlignment="Center" Text="{Binding DocTypeName}" Foreground="White" Margin="0,10,0,10" FontWeight="SemiBold"></TextBlock>
-                                        </StackPanel>
-                                    </Grid>
-                                </Button>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
+            <TextBox x:Name="txtDocTypeName" Height="68" Margin="10,10,166,0" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False"  FontSize="30">thing</TextBox>
+            <Popup x:Name="popupDocTypeResult" AllowsTransparency="True" Placement="Relative" PlacementTarget="{Binding ElementName=btnOtherDocTypes}" IsEnabled="False" StaysOpen="False">
+                <Border BorderThickness="2" BorderBrush="Black">
+                    <ListView x:Name="popupDocTypeResultList">
+                        <ListView.Resources>
+                            <Style TargetType="GridViewColumnHeader">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </Style>
+                        </ListView.Resources>
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn>
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <!--<Button x:Name="btnSelectDocType" Content="{Binding docTypeName}" Tag="{Binding docTypeName}" FontSize="20" Margin="10" Click="btnSelectDocType_Click"/>-->
+                                            <Label x:Name="btnSelectDocType" Content="{Binding docTypeName}" Tag="{Binding docTypeName}" FontSize="30" Margin="2" MouseDown="btnSelectDocType_Click"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </Border>
             </Popup>
+            <Button x:Name="btnPickDocType" Height="68" Margin="0,10,6,0" VerticalAlignment="Top" FontSize="16" Click="btnPickDocType_Click" HorizontalAlignment="Right" Width="68" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.stamp.at.png" Stretch="Fill"></Image>
+            </Button>
+            <Button x:Name="btnOtherDocTypes" Height="68" Margin="0,10,86,0" VerticalAlignment="Top" FontSize="16" Click="btnOtherDocTypes_Click" HorizontalAlignment="Right" Width="68" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="appbar.arrow.down.png"></Image>
+            </Button>
+            <Popup x:Name="popupDocTypePicker" PlacementTarget="{Binding ElementName=btnPickDocType}" Placement="Relative" StaysOpen="False" MaxHeight="800">
+                <Border BorderThickness="2" BorderBrush="Black">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="popupDocTypePickerThumbs">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="6">
+                                        <UniformGrid.Resources>
+                                            <Style TargetType="{x:Type Image}">
+                                                <Setter Property="Margin" Value="6"/>
+                                            </Style>
+                                        </UniformGrid.Resources>
+                                    </UniformGrid>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Click="btnClickImageDocType_Click" Tag="{Binding DocTypeName}">
+                                        <Grid>
+                                            <Image Source="{Binding ThumbBitmap}" Tag="{Binding DocTypeName}" MouseDown="btnClickImageDocType_Click"/>
+                                            <StackPanel VerticalAlignment="Bottom" Background="#FFD6E1E5" Opacity="0.80" Height="40">
+                                                <Label Height="30" Content="{Binding DocTypeName}" Foreground="White" Margin="5,10,5,10" FontWeight="SemiBold"></Label>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+            </Popup>
+            <Label x:Name="lblDestFileNameLabel" Content="File Name" HorizontalAlignment="Left" Height="38" Margin="10,392,0,0" VerticalAlignment="Top" Width="107" FontSize="20"/>
+            <Label x:Name="lblDestFileName" Content="" Height="38" Margin="124,393,10,0" VerticalAlignment="Top" FontSize="20" Background="White"/>
+            <Label x:Name="lblDestFilePrefix" Content="Prefix" HorizontalAlignment="Left" Height="38" Margin="10,294,0,0" VerticalAlignment="Top" Width="107" FontSize="20"/>
+            <Label x:Name="lblDestFileSuffix" Content="Subject" HorizontalAlignment="Left" Height="38" Margin="10,343,0,0" VerticalAlignment="Top" Width="114" FontSize="20"/>
+            <TextBox x:Name="txtDestFilePrefix" IsEnabled="False" Height="38" Margin="124,294,53,0" TextWrapping="Wrap" Text="TextBox" VerticalAlignment="Top" FontSize="20" TextChanged="txtDestFilePrefix_TextChanged"/>
+            <TextBox x:Name="txtDestFileSuffix" Height="38" Margin="124,343,53,0" TextWrapping="Wrap" Text="TextBox" VerticalAlignment="Top" FontSize="20" TextChanged="txtDestFileSuffix_TextChanged"/>
+            <Button x:Name="btnChangePrefix" VerticalAlignment="Top" Height="38" Margin="0,294,10,0" Click="btnChangePrefix_Click" FontSize="18" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="38">
+                <Image Source="res/appbar.edit.png" Stretch="Fill" />
+            </Button>
+            <Button x:Name="btnSuffixFromPageText" VerticalAlignment="Top" Height="38" Margin="0,343,10,0" Click="btnSuffixFromPageText_Click" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="38">
+                <Image Source="res/appbar.social.amazon.appstore.png" Stretch="Fill" Width="25" Height="25"/>
+            </Button>
         </Grid>
-        <Button x:Name="btnBackPage" Content="Back Page" Grid.Column="0" Margin="10,0,0,0" Grid.Row="2" VerticalAlignment="Top" HorizontalAlignment="Left" Width="108" Height="50" FontSize="16" Click="btnBackPage_Click"/>
-        <Button x:Name="btnNextPage" Content="Next Page" Grid.Column="0" Margin="148,0,0,0" Grid.Row="2" VerticalAlignment="Top" Height="50" HorizontalAlignment="Left" Width="108" FontSize="16" Click="btnNextPage_Click"/>
+        <Button x:Name="btnBackPage" Grid.Column="0" Margin="10,0,0,3" Grid.Row="2" HorizontalAlignment="Left" Width="108" FontSize="16" Click="btnBackPage_Click" Height="50" VerticalAlignment="Bottom" Style="{DynamicResource SquareButtonStyle}">
+            <Image Source="res/appbar.page.arrowback.png" Margin="3"></Image>
+        </Button>
+        <Button x:Name="btnNextPage" Grid.Column="0" Margin="195,0,0,2" Grid.Row="2" HorizontalAlignment="Left" Width="108" FontSize="16" Click="btnNextPage_Click" Height="50" VerticalAlignment="Bottom" Style="{DynamicResource SquareButtonStyle}">
+            <Image Source="appbar.page.arrow.png" Margin="3"/>
+        </Button>
+        <Button x:Name="btnViewDocTypes" Grid.Column="0"  Margin="0,0,104,3" FontSize="16" Click="btnViewDocTypes_Click" Height="50" VerticalAlignment="Bottom" Grid.Row="2" HorizontalAlignment="Right" Width="96" Style="{DynamicResource SquareButtonStyle}">
+            <Image Source="res/appbar.book.png" Margin="3"/>
+        </Button>
+
         <Grid Grid.Column="1" Margin="5">
-            <Button x:Name="btnPrevDoc" Content="Prev" VerticalAlignment="Top" HorizontalAlignment="Left" Width="96" Height="60" FontSize="16" Margin="123,5,0,0" Click="btnPrevDoc_Click"/>
-            <Button x:Name="btnNextDoc" Content="Next" VerticalAlignment="Top" HorizontalAlignment="Left" Width="96" Height="60" FontSize="16" Margin="248,5,0,0" Click="btnNextDoc_Click"/>
-            <Button x:Name="btnFirstDoc" Content="First" VerticalAlignment="Top" HorizontalAlignment="Left" Width="96" Height="60" FontSize="16" Click="btnFirstDoc_Click" Margin="0,5,0,0"/>
-            <Button x:Name="btnLastDoc" Content="Last" VerticalAlignment="Top" HorizontalAlignment="Left" Width="96" Height="60" FontSize="16" Margin="376,5,0,0" Click="btnLastDoc_Click"/>
+            <Button x:Name="btnPrevDoc" VerticalAlignment="Top" HorizontalAlignment="Left" Width="96" Height="60" FontSize="16" Margin="134,10,0,0" Click="btnPrevDoc_Click" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.chevron.left.png" Margin="3"></Image>
+            </Button>
+            <Button x:Name="btnNextDoc" VerticalAlignment="Top" HorizontalAlignment="Left" Width="96" Height="60" FontSize="16" Margin="259,10,0,0" Click="btnNextDoc_Click" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.chevron.right.png" Margin="3"></Image>
+            </Button>
+            <Button x:Name="btnFirstDoc" VerticalAlignment="Top" HorizontalAlignment="Left" Width="96" Height="60" FontSize="16" Click="btnFirstDoc_Click" Margin="11,10,0,0" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.chevron.leftleft.png" Margin="3"></Image>
+            </Button>
+            <Button x:Name="btnLastDoc" VerticalAlignment="Top" HorizontalAlignment="Left" Width="96" Height="60" FontSize="16" Margin="387,10,0,0" Click="btnLastDoc_Click" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.chevron.rightright.png" Margin="3"></Image>
+            </Button>
+            <Button x:Name="btnDeleteDoc" VerticalAlignment="Top" Height="60" FontSize="16" Margin="0,10,135,0" Click="btnDeleteDoc_Click" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="96">
+                <Image Source="res/appbar.delete.png" Margin="3"></Image>
+            </Button>
+            <Button x:Name="btnProcessDoc" VerticalAlignment="Top" Height="60" FontSize="16" Margin="0,10,10,0" Click="btnProcessDoc_Click" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="96">
+                <Image Source="res/appbar.cabinet.files.variant.png" Margin="3"></Image>
+            </Button>
+            <Label x:Name="lblStatusBarFileNo" Content="Label" HorizontalAlignment="Left" Height="38" Margin="11,77,0,0" VerticalAlignment="Top" Width="96" FontSize="20" Background="White"/>
+            <Label x:Name="lblStatusBarFileName" Content="Label" HorizontalAlignment="Left" Height="38" Margin="134,77,0,0" VerticalAlignment="Top" Width="221" FontSize="20" Background="White"/>
+            <Label x:Name="lblStatusBarProcStatus" Content="" Height="38" Margin="0,77,10,0" VerticalAlignment="Top" FontSize="20" Background="White" HorizontalAlignment="Right" Width="349"/>
         </Grid>
-        <Grid Grid.Column="1" Grid.Row="1" Margin="10,176,100,113">
-            <Button x:Name="btnDayUp" Content="+" VerticalAlignment="Top" HorizontalAlignment="Left" Width="74" Height="50" Margin="10,10,0,0" Click="btnDayUp_Click" FontSize="30"/>
-            <Button x:Name="btnMonthUp" Content="+" VerticalAlignment="Top" HorizontalAlignment="Left" Width="179" Height="50" Margin="117,10,0,0" Click="btnMonthUp_Click" FontSize="30"/>
-            <Button x:Name="btnYearUp" Content="+" VerticalAlignment="Top" HorizontalAlignment="Left" Width="90" Height="50" Margin="327,10,0,0" Click="btnYearUp_Click" FontSize="30"/>
-            <TextBox x:Name="lblDayVal" TextAlignment="Center" HorizontalAlignment="Left" Height="53" Margin="10,60,0,0" VerticalAlignment="Top" Width="74" FontSize="30" Background="#FFF7F7F7" BorderBrush="#FFCCCCCC" BorderThickness="1,0"/>
-            <TextBox x:Name="lblMonthVal" TextAlignment="Center" HorizontalAlignment="Left" Height="53" Margin="117,60,0,0" VerticalAlignment="Top" Width="179" FontSize="30" Background="#FFF7F7F7" BorderBrush="#FFCCCCCC" BorderThickness="1,0"/>
-            <TextBox x:Name="lblYearVal" TextAlignment="Center" HorizontalAlignment="Left" Height="53" Margin="327,60,0,0" VerticalAlignment="Top" Width="90" FontSize="30" Background="#FFF7F7F7" BorderBrush="#FFCCCCCC" BorderThickness="1,0"/>
-            <Button x:Name="btnDayDown" Content="-" VerticalAlignment="Top" HorizontalAlignment="Left" Width="74" Height="50" Margin="10,113,0,0" Click="btnDayDown_Click" FontSize="30"/>
-            <Button x:Name="btnMonthDown" Content="-" VerticalAlignment="Top" HorizontalAlignment="Left" Width="179" Height="50" Margin="117,113,0,0" Click="btnMonthDown_Click" FontSize="30"/>
-            <Button x:Name="btnYearDown" Content="-" VerticalAlignment="Top" HorizontalAlignment="Left" Width="90" Height="50" Margin="327,113,0,0" Click="btnYearDown_Click" FontSize="30"/>
+        <Grid Grid.Column="1" Grid.Row="1" Margin="10,107,10,0" Height="185" VerticalAlignment="Top">
+            <Button x:Name="btnDayUp" VerticalAlignment="Top" HorizontalAlignment="Left" Width="74" Height="50" Margin="10,11,0,0" Click="btnDayUp_Click" FontSize="30" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.add.png" Margin="3"></Image>
+            </Button>
+            <Button x:Name="btnMonthUp" VerticalAlignment="Top" HorizontalAlignment="Left" Width="179" Height="50" Margin="105,11,0,0" Click="btnMonthUp_Click" FontSize="30" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.add.png" Margin="3"></Image>
+            </Button>
+            <Button x:Name="btnYearUp" VerticalAlignment="Top" HorizontalAlignment="Left" Width="90" Height="50" Margin="309,10,0,0" Click="btnYearUp_Click" FontSize="30" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.add.png" Margin="3"/>
+            </Button>
+            <Border Margin="10,60,0,0" Background="White" BorderBrush="Black" BorderThickness="2" Height="68" VerticalAlignment="Top" HorizontalAlignment="Left" Width="74">
+                <TextBox x:Name="lblDayVal" TextAlignment="Center" HorizontalAlignment="Left" VerticalAlignment="Center" Width="74" FontSize="30" BorderThickness="0" />
+            </Border>
+            <Border Margin="105,61,0,0" Background="White" BorderBrush="Black" BorderThickness="2" Height="68" VerticalAlignment="Top" HorizontalAlignment="Left" Width="179">
+                <TextBox x:Name="lblMonthVal" TextAlignment="Center" HorizontalAlignment="Left" VerticalAlignment="Center" Width="179" FontSize="30" BorderThickness="0"/>
+            </Border>
+            <Border Margin="309,60,0,0" Background="White" BorderBrush="Black" BorderThickness="2" Height="68" VerticalAlignment="Top" HorizontalAlignment="Left" Width="90">
+                <TextBox x:Name="lblYearVal" TextAlignment="Center" HorizontalAlignment="Left" VerticalAlignment="Center" Width="90" FontSize="30" BorderThickness="0"/>
+            </Border>
+            <Button x:Name="btnDayDown" VerticalAlignment="Top" HorizontalAlignment="Left" Width="74" Height="50" Margin="10,128,0,0" Click="btnDayDown_Click" FontSize="30" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.sub.png" Stretch="None" Width="24"/>
+            </Button>
+            <Button x:Name="btnMonthDown" VerticalAlignment="Top" HorizontalAlignment="Left" Width="179" Height="50" Margin="105,128,0,0" Click="btnMonthDown_Click" FontSize="30" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.sub.png" Stretch="None" Width="24"/>
+            </Button>
+            <Button x:Name="btnYearDown" VerticalAlignment="Top" HorizontalAlignment="Left" Width="90" Height="50" Margin="309,128,0,0" Click="btnYearDown_Click" FontSize="30" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.sub.png" Stretch="None" Width="24"/>
+            </Button>
+            <Button x:Name="btnUseScanDate" VerticalAlignment="Top" HorizontalAlignment="Left" Width="68" Height="68" Margin="581,60,0,0" Click="btnUseScanDate_Click" FontSize="24" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.calendar.31.scan.png" Stretch="Fill" Width="48" Height="48"/>
+            </Button>
+            <Button x:Name="btnLastUsedDate" VerticalAlignment="Top" HorizontalAlignment="Left" Width="68" Height="68" Margin="499,60,0,0" Click="btnLastUsedDate_Click" FontSize="24" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.calendar.31.last.png" Stretch="Fill" Width="48" Height="48"/>
+            </Button>
+            <Button x:Name="btnDateFromPageText" VerticalAlignment="Top" HorizontalAlignment="Left" Width="68" Height="68" Margin="417,60,0,0" Click="btnDateFromPageText_Click" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.social.amazon.appstore.png" Stretch="Fill" Width="48" Height="48"/>
+            </Button>
+
         </Grid>
+        <Label x:Name="lblPageNum" Content="Label" Margin="123,0,0,3" Grid.Row="2" FontSize="30" HorizontalAlignment="Left" Width="67" Height="49" VerticalAlignment="Bottom" />
     </Grid>
-</Window>
+</Controls:MetroWindow>

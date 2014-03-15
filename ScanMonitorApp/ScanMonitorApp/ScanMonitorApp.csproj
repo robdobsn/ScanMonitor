@@ -13,6 +13,23 @@
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <WarningLevel>4</WarningLevel>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <PublishUrl>M:\RobDev\Deploy\ScanMonitorApp\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Unc</InstallFrom>
+    <UpdateEnabled>true</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <InstallUrl>//macallan/main/RobDev/Deploy/ScanMonitorApp/</InstallUrl>
+    <ApplicationRevision>1</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <PublishWizardCompleted>true</PublishWizardCompleted>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -33,6 +50,18 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <ManifestCertificateThumbprint>73FF7BAA46662122083970A5EEC2EFBFB03661D0</ManifestCertificateThumbprint>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ManifestKeyFile>ScanMonitorApp_TemporaryKey.pfx</ManifestKeyFile>
+  </PropertyGroup>
+  <PropertyGroup>
+    <GenerateManifests>true</GenerateManifests>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SignManifests>true</SignManifests>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Ghostscript.NET">
       <HintPath>..\packages\Ghostscript.NET.1.1.3\lib\net40\Ghostscript.NET.dll</HintPath>
@@ -42,6 +71,12 @@
     </Reference>
     <Reference Include="MahApps.Metro">
       <HintPath>..\packages\MahApps.Metro.0.12.1.0\lib\net45\MahApps.Metro.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.WindowsAPICodePack">
+      <HintPath>..\packages\WindowsAPICodePack-Core.1.1\lib\Microsoft.WindowsAPICodePack.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.WindowsAPICodePack.Shell">
+      <HintPath>..\packages\WindowsAPICodePack-Shell.1.1\lib\Microsoft.WindowsAPICodePack.Shell.dll</HintPath>
     </Reference>
     <Reference Include="MongoDB.Bson">
       <HintPath>..\packages\mongocsharpdriver.1.8.3\lib\net35\MongoDB.Bson.dll</HintPath>
@@ -93,6 +128,9 @@
       <DependentUpon>DocTypeView.xaml</DependentUpon>
     </Compile>
     <Compile Include="LocationRectangleHandler.cs" />
+    <Compile Include="MessageDialog.xaml.cs">
+      <DependentUpon>MessageDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="MigrateFromOldApp.cs" />
     <Compile Include="OldXmlRulesManager.cs" />
     <Compile Include="PathSubstView.xaml.cs">
@@ -132,6 +170,10 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="MessageDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="PathSubstView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -165,6 +207,7 @@
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
     <AppDesigner Include="Properties\" />
+    <None Include="ScanMonitorApp_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -172,7 +215,65 @@
   <ItemGroup>
     <Resource Include="res\scanner48x48.ico" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Resource Include="appbar.arrow.down.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="res\appbar.starwars.jedi.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="res\appbar.stamp.at.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="res\appbar.page.arrow.png" />
+    <Resource Include="res\appbar.page.arrowback.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="res\appbar.chevron.left.png" />
+    <Resource Include="res\appbar.chevron.leftleft.png" />
+    <Resource Include="res\appbar.chevron.right.png" />
+    <Resource Include="res\appbar.chevron.rightright.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="appbar.page.arrow.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="res\appbar.add.png" />
+    <Resource Include="res\appbar.sub.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="res\appbar.book.png" />
+    <Resource Include="res\appbar.cabinet.files.variant.png" />
+    <Resource Include="res\appbar.delete.png" />
+    <Resource Include="res\appbar.page.delete.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="res\appbar.social.amazon.appstore.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="res\appbar.calendar.31.last.png" />
+    <Resource Include="res\appbar.calendar.31.scan.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="res\appbar.edit.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include=".NETFramework,Version=v4.5">
+      <Visible>False</Visible>
+      <ProductName>Microsoft .NET Framework 4.5 %28x86 and x64%29</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -37,6 +37,15 @@ namespace ScanMonitorApp
             previousName = prevDocType.docTypeName;
             renamedTo = "";
         }
+        public string GetFileNamePrefix()
+        {
+            string rtn = docTypeName;
+            int pos = docTypeName.IndexOf('-');
+            if ((pos >= 0) && (pos+1 < docTypeName.Length))
+                rtn = docTypeName.Substring(pos+1);
+            return rtn.Trim();
+        }
+
         public ObjectId Id;
         public string docTypeName { get; set; }
         public string matchExpression { get; set; }
@@ -51,13 +60,22 @@ namespace ScanMonitorApp
 
     public class DocTypeMatchResult
     {
+        public DocTypeMatchResult()
+        {
+            docTypeName = "";
+            docDate = DateTime.MinValue;
+            matchCertaintyPercent = 0;
+            matchFactor = 0;
+            matchResultCode = MatchResultCodes.NOT_FOUND;
+            datesFoundInDoc = new List<ExtractedDate>();
+        }
         public enum MatchResultCodes { NOT_FOUND, FOUND_MATCH, NO_EXPR, DISABLED };
-        public string docTypeName = "";
-        public DateTime docDate = DateTime.MinValue;
-        public int matchCertaintyPercent = 0;
-        public double matchFactor = 0;
-        public MatchResultCodes matchResultCode = MatchResultCodes.NOT_FOUND;
-        public List<ExtractedDate> datesFoundInDoc = new List<ExtractedDate>();
+        public string docTypeName { get; set; }
+        public DateTime docDate { get; set; }
+        public int matchCertaintyPercent { get; set; }
+        public double matchFactor { get; set; }
+        public MatchResultCodes matchResultCode { get; set; }
+        public List<ExtractedDate> datesFoundInDoc { get; set; }
     }
 
     public class DocRectangle
@@ -188,38 +206,70 @@ namespace ScanMonitorApp
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static BitmapImage LoadDocThumbnail(string uniqName, int heightOfThumbnail)
+        public static string GetFilenameFromThumbnailStr(string thumbnailStr)
         {
-            BitmapImage bitmap = null;
-            string[] splitNameAndPageNum = uniqName.Split('~');
-            string uniqNameOnly = (splitNameAndPageNum.Length > 0) ? splitNameAndPageNum[0] : "";
-            string pageNumStr = (splitNameAndPageNum.Length > 1) ? splitNameAndPageNum[1] : "";
-            int pageNum = 1;
-            if (pageNumStr.Trim().Length > 0)
+            string imgFileName = "";
+            // Check for a path
+            if (thumbnailStr.Contains('\\') || thumbnailStr.Contains('/'))
             {
-                try { pageNum = Convert.ToInt32(pageNumStr); }
-                catch { pageNum = 1; }
+                imgFileName = thumbnailStr;
             }
-            string imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, uniqNameOnly, pageNum, false);
-            if (!File.Exists(imgFileName))
+            else if (thumbnailStr.Contains("~~"))
             {
-                logger.Info("Thumbnail file doesn't exist for {0}", uniqNameOnly);
+                string baseStr = thumbnailStr.Replace("~~", "");
+                imgFileName = Path.Combine(Properties.Settings.Default.DocAdminImgFolderBase, @"PastedThumbs", thumbnailStr + ".png");
             }
-            try
+            else
             {
-                bitmap = new System.Windows.Media.Imaging.BitmapImage();
-                bitmap.BeginInit();
-                bitmap.UriSource = new Uri("File:" + imgFileName);
-                bitmap.DecodePixelHeight = heightOfThumbnail;
-                bitmap.EndInit();
+                string[] splitNameAndPageNum = thumbnailStr.Split('~');
+                string uniqNameOnly = (splitNameAndPageNum.Length > 0) ? splitNameAndPageNum[0] : "";
+                string pageNumStr = (splitNameAndPageNum.Length > 1) ? splitNameAndPageNum[1] : "";
+                int pageNum = 1;
+                if (pageNumStr.Trim().Length > 0)
+                {
+                    try { pageNum = Convert.ToInt32(pageNumStr); }
+                    catch { pageNum = 1; }
+                }
+                imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, uniqNameOnly, pageNum, false);
             }
-            catch (Exception excp)
-            {
-                logger.Error("Loading thumbnail file {0} excp {1}", imgFileName, excp.Message);
-                bitmap = null;
-            }
+            return imgFileName;
+        }
 
+        public static BitmapImage LoadDocThumbnail(string thumbnailStr, int heightOfThumbnail)
+        {
+            // The thumbnailStr can be either a string like "uniqName~pageNum" OR a full file path
+            BitmapImage bitmap = null;
+            string imgFileName = GetFilenameFromThumbnailStr(thumbnailStr);
+            if ((imgFileName == "") || (!File.Exists(imgFileName)))
+            {
+                logger.Info("Thumbnail file doesn't exist for {0}", imgFileName);
+            }
+            else
+            {
+                try
+                {
+                    bitmap = new System.Windows.Media.Imaging.BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.UriSource = new Uri("File:" + imgFileName);
+                    bitmap.DecodePixelHeight = heightOfThumbnail;
+                    bitmap.EndInit();
+                }
+                catch (Exception excp)
+                {
+                    logger.Error("Loading thumbnail file {0} excp {1}", imgFileName, excp.Message);
+                    bitmap = null;
+                }
+            } 
             return bitmap;
+        }
+
+        public static string GetNameForPastedThumbnail()
+        {
+            string thumbName = "~~Thumb" + DateTime.Now.ToString("yyyyMMddhhmmss");
+            string thumbFileName = GetFilenameFromThumbnailStr(thumbName);
+            if (File.Exists(thumbFileName))
+                return "";
+            return thumbName;
         }
     }
 

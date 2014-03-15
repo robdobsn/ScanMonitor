@@ -1,4 +1,5 @@
-﻿using NLog;
+﻿using MahApps.Metro.Controls;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -23,7 +24,7 @@ namespace ScanMonitorApp
     /// <summary>
     /// Interaction logic for DocFilingView.xaml
     /// </summary>
-    public partial class DocFilingView : Window
+    public partial class DocFilingView : MetroWindow
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private ScanDocHandler _scanDocHandler;
@@ -37,6 +38,10 @@ namespace ScanMonitorApp
         private DocType _curSelectedDocType = null;
         private BackgroundWorker _bwThreadForImagesPopup;
         ObservableCollection<DocTypeCacheEntry> _thumbnailsOfDocTypes = new ObservableCollection<DocTypeCacheEntry>();
+        private ObservableCollection<DocTypeMatchResult> _listOfPossibleDocMatches = new ObservableCollection<DocTypeMatchResult>();
+        private DateTime _lastDocFiledAsDateTime = DateTime.Now;
+        private enum TouchFromPageText { TOUCH_NONE, TOUCH_DATE, TOUCH_SUFFIX }
+        private TouchFromPageText _touchFromPageText = TouchFromPageText.TOUCH_NONE;
 
         public DocFilingView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher)
         {
@@ -44,6 +49,7 @@ namespace ScanMonitorApp
             _scanDocHandler = scanDocHandler;
             _docTypesMatcher = docTypesMatcher;
             popupDocTypePickerThumbs.ItemsSource = _thumbnailsOfDocTypes;
+            popupDocTypeResultList.ItemsSource = _listOfPossibleDocMatches;
             GetListOfDocsToFile();
             ShowDocToBeFiled(0);
 
@@ -55,7 +61,6 @@ namespace ScanMonitorApp
 
             // Use a background worker to populate
             _bwThreadForImagesPopup.RunWorkerAsync();
-
         }
 
         private void GetListOfDocsToFile()
@@ -79,18 +84,20 @@ namespace ScanMonitorApp
                 _curDocToBeFiledIdxInList = 0;
             if (_docsToBeFiledUniqNames.Count == 0)
             {
+                _curDocToBeFiledIdxInList = 0;
                 ShowDocumentFirstTime("");
                 return;
             }
             if ((docIdx < 0) || (docIdx >= _docsToBeFiledUniqNames.Count))
                 return;
-            ShowDocumentFirstTime(_docsToBeFiledUniqNames[docIdx]);
             _curDocToBeFiledIdxInList = docIdx;
+            ShowDocumentFirstTime(_docsToBeFiledUniqNames[docIdx]);
         }
 
         private void ShowDocumentFirstTime(string uniqName)
         {
             // Load document info from db
+            List<DocTypeMatchResult> possMatches = new List<DocTypeMatchResult>();
             ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(uniqName);
             if ((scanDocAllInfo == null) || (scanDocAllInfo.scanDocInfo == null))
             {
@@ -107,12 +114,17 @@ namespace ScanMonitorApp
 
             // Re-check the document
             if (_curDocScanPages != null)
-                _latestMatchResult = _docTypesMatcher.GetMatchingDocType(_curDocScanPages);
+                _latestMatchResult = _docTypesMatcher.GetMatchingDocType(_curDocScanPages, possMatches);
             else if (_curDocScanDocInfo != null)
                 _latestMatchResult = _curDocScanDocInfo.docTypeMatchResult;
             else
                 _latestMatchResult = new DocTypeMatchResult();
 
+            // Update the doc type list view for popup
+            _listOfPossibleDocMatches.Clear();
+            foreach(DocTypeMatchResult res in possMatches)
+                _listOfPossibleDocMatches.Add(res);
+                
             // Display image of first page
             DisplayScannedDocImage(1);
 
@@ -139,11 +151,24 @@ namespace ScanMonitorApp
             // Show doc type
             txtDocTypeName.Text = (_curSelectedDocType == null) ? "" : _curSelectedDocType.docTypeName;
 
+            // Field enables
+            txtDestFilePrefix.IsEnabled = false;
+            btnChangePrefix.IsEnabled = true;
+            txtDestFilePrefix.Text = (_curSelectedDocType == null) ? "" : _curSelectedDocType.GetFileNamePrefix();
+            txtDestFileSuffix.IsEnabled = false;
+            txtDestFileSuffix.Text = "";
+            txtDestFileSuffix.IsEnabled = true;
+            _touchFromPageText = TouchFromPageText.TOUCH_NONE;
+
             // Set doc date
             DateTime dateToUse = DateTime.Now;
             if (_latestMatchResult.docDate != DateTime.MinValue)
                 dateToUse = _latestMatchResult.docDate;
             SetDateRollers(dateToUse.Year, dateToUse.Month, dateToUse.Day);
+
+            // Show Status
+            lblStatusBarFileNo.Content = (_curDocToBeFiledIdxInList + 1).ToString() + " / " + _docsToBeFiledUniqNames.Count.ToString();
+            lblStatusBarFileName.Content = _curDocScanDocInfo.uniqName;
         }
 
         private void DisplayScannedDocImage(int pageNum)
@@ -162,6 +187,7 @@ namespace ScanMonitorApp
                 _curDocDisplay_pageNum = 1;
                 btnBackPage.IsEnabled = false;
                 btnNextPage.IsEnabled = false;
+                lblPageNum.Content = "";
                 return;
             }
 
@@ -180,6 +206,7 @@ namespace ScanMonitorApp
             // Show back/next buttons
             btnBackPage.IsEnabled = (pageNum > 1);
             btnNextPage.IsEnabled = (pageNum < _curDocScanDocInfo.numPagesWithText);
+            lblPageNum.Content = pageNum.ToString();
         }
 
         private void btnFirstDoc_Click(object sender, RoutedEventArgs e)
@@ -229,7 +256,13 @@ namespace ScanMonitorApp
             ShowDocToBeFiled(_curDocToBeFiledIdxInList);
         }
 
-        private DateTime ExtractDateTime()
+        private void DisplayDestFileName()
+        {
+            if ((_curDocScanDocInfo != null) && (_curSelectedDocType != null))
+                lblDestFileName.Content = _scanDocHandler.FormatFileNameFromMacros(_curDocScanDocInfo.origFileName, _curSelectedDocType.renameFileTo, GetDateFromRollers(), txtDestFilePrefix.Text, txtDestFileSuffix.Text, _curSelectedDocType.docTypeName);
+        }
+
+        private DateTime GetDateFromRollers()
         {
             DateTime dt = DateTime.Now;
             try
@@ -261,41 +294,44 @@ namespace ScanMonitorApp
             lblDayVal.Text = day.ToString();
             lblMonthVal.Text = dt.ToString("MMMM");
             lblYearVal.Text = dt.Year.ToString();
+
+            // Show dest file name
+            DisplayDestFileName();
         }
 
         private void btnDayUp_Click(object sender, RoutedEventArgs e)
         {
-            DateTime dt = ExtractDateTime();
+            DateTime dt = GetDateFromRollers();
             SetDateRollers(dt.Year, dt.Month, dt.Day+1);
         }
 
         private void btnMonthUp_Click(object sender, RoutedEventArgs e)
         {
-            DateTime dt = ExtractDateTime();
+            DateTime dt = GetDateFromRollers();
             SetDateRollers(dt.Year, dt.Month+1, dt.Day);
         }
 
         private void btnYearUp_Click(object sender, RoutedEventArgs e)
         {
-            DateTime dt = ExtractDateTime();
+            DateTime dt = GetDateFromRollers();
             SetDateRollers(dt.Year+1, dt.Month, dt.Day);
         }
 
         private void btnDayDown_Click(object sender, RoutedEventArgs e)
         {
-            DateTime dt = ExtractDateTime();
+            DateTime dt = GetDateFromRollers();
             SetDateRollers(dt.Year, dt.Month, dt.Day - 1);
         }
 
         private void btnMonthDown_Click(object sender, RoutedEventArgs e)
         {
-            DateTime dt = ExtractDateTime();
+            DateTime dt = GetDateFromRollers();
             SetDateRollers(dt.Year, dt.Month - 1, dt.Day);
         }
 
         private void btnYearDown_Click(object sender, RoutedEventArgs e)
         {
-            DateTime dt = ExtractDateTime();
+            DateTime dt = GetDateFromRollers();
             SetDateRollers(dt.Year - 1, dt.Month, dt.Day);
         }
 
@@ -343,28 +379,44 @@ namespace ScanMonitorApp
                 imageDocToFileToolTip.IsOpen = false;
             else if (curMousePoint.Y < 0 || curMousePoint.Y > imageDocToFile.ActualHeight)
                 imageDocToFileToolTip.IsOpen = false;
+            e.Handled = true;
         }
 
         private void imageDocToFile_MouseDown(object sender, MouseButtonEventArgs e)
         {
+            e.Handled = true;
             if (_curDocScanPages == null)
                 return;
 
+            if (_touchFromPageText == TouchFromPageText.TOUCH_NONE)
+                return;
+
+            // Check for touch point
             Point curMousePoint = e.GetPosition(imageDocToFile);
             Point docCoords = ConvertImagePointToDocPoint(imageDocToFile, curMousePoint.X, curMousePoint.Y);
             DocRectangle docRect = new DocRectangle(docCoords.X, docCoords.Y, 0, 0);
-            List<ExtractedDate> extractedDates = new List<ExtractedDate>();
             int pgNum = _curDocDisplay_pageNum;
             if (_curDocDisplay_pageNum < 1)
                 pgNum = 1;
             if (_curDocDisplay_pageNum >= _curDocScanPages.scanPagesText.Count)
                 pgNum = _curDocScanPages.scanPagesText.Count;
-            DocTextAndDateExtractor.SearchForDateItem(_curDocScanPages, "", docRect, 0, extractedDates, pgNum);
-            if (extractedDates.Count > 0)
+
+            // Check for date
+            if (_touchFromPageText == TouchFromPageText.TOUCH_DATE)
             {
-                SetDateRollers(extractedDates[0].dateTime.Year, extractedDates[0].dateTime.Month, extractedDates[0].dateTime.Day);
+                List<ExtractedDate> extractedDates = new List<ExtractedDate>();
+                DocTextAndDateExtractor.SearchForDateItem(_curDocScanPages, "", docRect, 0, extractedDates, pgNum, false);
+                if (extractedDates.Count <= 0)
+                    DocTextAndDateExtractor.SearchForDateItem(_curDocScanPages, "", docRect, 0, extractedDates, pgNum, true);
+                if (extractedDates.Count > 0)
+                    SetDateRollers(extractedDates[0].dateTime.Year, extractedDates[0].dateTime.Month, extractedDates[0].dateTime.Day);
             }
-        
+            else if (_touchFromPageText == TouchFromPageText.TOUCH_SUFFIX)
+            {
+                string extractedText = DocTextAndDateExtractor.ExtractTextFromPage(_curDocScanPages, docRect, pgNum);
+                if (extractedText != "")
+                    txtDestFileSuffix.Text = txtDestFileSuffix.Text + (txtDestFileSuffix.Text.Trim() == "" ? "" : " ") + extractedText;
+            }
         }
 
         private void btnPickDocType_Click(object sender, RoutedEventArgs e)
@@ -401,6 +453,9 @@ namespace ScanMonitorApp
                     break;
                 }
 
+                if (!dt.isEnabled)
+                    continue;
+
                 if (dt.thumbnailForDocType != "")
                 {
                     this.Dispatcher.BeginInvoke((Action)delegate()
@@ -436,6 +491,135 @@ namespace ScanMonitorApp
             }
 
             #endregion
+        }
+
+        private void btnOtherDocTypes_Click(object sender, RoutedEventArgs e)
+        {
+            if (!popupDocTypeResult.IsOpen)
+                popupDocTypeResult.IsOpen = true;
+        }
+
+        private void btnSelectDocType_Click(object sender, RoutedEventArgs e)
+        {
+            popupDocTypeResult.IsOpen = false;
+            object tag = null;
+            if (sender.GetType() == typeof(Label))
+                tag = ((Label)sender).Tag;
+            if (tag.GetType() == typeof(string))
+                ShowDocumentTypeAndDate((string)tag);
+        }
+
+        private void btnDeleteDoc_Click(object sender, RoutedEventArgs e)
+        {
+            if (_curDocScanDocInfo == null)
+                return;
+
+            // Ask user if sure
+            MessageDialog msgDialog = new MessageDialog("Delete " + _curDocScanDocInfo.uniqName + " ?\n" + "Are you sure?", true, true, true, btnDeleteDoc, this);
+            msgDialog.ShowDialog();
+            if (msgDialog.dlgResult == MessageDialog.MsgDlgRslt.RSLT_YES)
+            {
+                // Delete file
+                bool deletedOk = _scanDocHandler.DeleteFile(_curDocScanDocInfo.uniqName, _curDocScanDocInfo.origFileName);
+                if (!deletedOk)
+                {
+                    lblStatusBarProcStatus.Content = "Failed to delete file";
+                    lblStatusBarProcStatus.Foreground = Brushes.Red;
+                }
+                else
+                {
+                    lblStatusBarProcStatus.Content = "Deleted";
+                    lblStatusBarProcStatus.Foreground = Brushes.Black;
+                }
+
+                // Goto a file if there is one
+                CheckForNewDocs();
+                ShowDocToBeFiled(_curDocToBeFiledIdxInList);
+            }
+        }
+
+        private void btnProcessDoc_Click(object sender, RoutedEventArgs e)
+        {
+            if (_curDocScanDocInfo == null)
+                return;
+
+            // Check a doc type has been selected
+            if (_curSelectedDocType == null)
+            {
+                lblStatusBarProcStatus.Content = "A document type must be selected";
+                lblStatusBarProcStatus.Foreground = Brushes.Red;
+                return;
+            }
+
+            // Check validity
+            string rsltText = "";
+            bool rslt = _scanDocHandler.CheckOkToFileDoc(_curDocScanDocInfo, _curSelectedDocType, GetDateFromRollers(), out rsltText);
+            if (!rslt)
+            {
+                lblStatusBarProcStatus.Content = rsltText;
+                lblStatusBarProcStatus.Foreground = Brushes.Red;
+                return;
+            }
+
+            // Save time as filed
+            _lastDocFiledAsDateTime = GetDateFromRollers();
+
+            // Process the doc
+            lblStatusBarProcStatus.Content = "Processing ...";
+            lblStatusBarProcStatus.Foreground = Brushes.Black;
+            rsltText = "";
+            _scanDocHandler.StartProcessFilingOfDoc(out rsltText);
+        }
+
+        private void MetroWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            this.WindowState = System.Windows.WindowState.Maximized;
+        }
+
+        private void btnUseScanDate_Click(object sender, RoutedEventArgs e)
+        {
+            if (_curDocScanDocInfo != null)
+                SetDateRollers(_curDocScanDocInfo.createDate.Year, _curDocScanDocInfo.createDate.Month, _curDocScanDocInfo.createDate.Day);
+        }
+
+        private void btnLastUsedDate_Click(object sender, RoutedEventArgs e)
+        {
+            if (_lastDocFiledAsDateTime != null)
+                SetDateRollers(_lastDocFiledAsDateTime.Year, _lastDocFiledAsDateTime.Month, _lastDocFiledAsDateTime.Day);
+        }
+
+        private void txtDestFilePrefix_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!txtDestFilePrefix.IsEnabled)
+                return;
+
+            // Show dest file name
+            DisplayDestFileName();
+        }
+
+        private void txtDestFileSuffix_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!txtDestFileSuffix.IsEnabled)
+                return;
+
+            // Show dest file name
+            DisplayDestFileName();
+        }
+
+        private void btnChangePrefix_Click(object sender, RoutedEventArgs e)
+        {
+            txtDestFilePrefix.IsEnabled = true;
+            btnChangePrefix.IsEnabled = false;
+        }
+
+        private void btnDateFromPageText_Click(object sender, RoutedEventArgs e)
+        {
+            _touchFromPageText = TouchFromPageText.TOUCH_DATE;
+        }
+
+        private void btnSuffixFromPageText_Click(object sender, RoutedEventArgs e)
+        {
+            _touchFromPageText = TouchFromPageText.TOUCH_SUFFIX;
         }
     }
 

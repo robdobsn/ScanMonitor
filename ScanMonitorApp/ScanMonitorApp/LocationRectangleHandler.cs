@@ -77,7 +77,7 @@ namespace ScanMonitorApp
             _dragSelect_nextLocationIdx = nextLocationIdx;
         }
 
-        public void ClearTextMatchRect()
+        public void ClearTextMatchRect(string txtMatchStr)
         {
             // Clear any existing rectangles with the right tag
             List<UIElement> itemstoremove = new List<UIElement>();
@@ -85,7 +85,8 @@ namespace ScanMonitorApp
             {
                 if (uiElem.GetType() == typeof(Rectangle))
                 {
-                    if (((Rectangle)uiElem).Tag == "textMatch")
+                    Rectangle tstRect = (Rectangle)uiElem;
+                    if (((string)(tstRect.Tag)) == txtMatchStr)
                         itemstoremove.Add(uiElem);
                 }
             }
@@ -93,7 +94,7 @@ namespace ScanMonitorApp
                 _uiOverlayCanvas.Children.Remove(elem);
         }
 
-        public void DrawTextMatchRect(DocRectangle docRect, Brush colr)
+        public void DrawTextMatchRect(DocRectangle docRect, Brush colr, string txtMatchStr)
         {
             Rectangle rect = new Rectangle();
             rect.Opacity = 0.5;
@@ -101,7 +102,7 @@ namespace ScanMonitorApp
             DocRectangle canvasRect = ConvertDocPercentRectToCanvas(docRect);
             rect.Width = canvasRect.Width;
             rect.Height = canvasRect.Height;
-            rect.Tag = "textMatch";
+            rect.Tag = txtMatchStr;
             rect.IsHitTestVisible = false;
             _uiOverlayCanvas.Children.Add(rect);
             rect.SetValue(Canvas.LeftProperty, canvasRect.X);

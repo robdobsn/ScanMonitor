@@ -9,6 +9,7 @@ using System.IO;
 using MongoDB.Driver.Builders;
 using Newtonsoft.Json;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace ScanMonitorApp
 {
@@ -78,11 +79,7 @@ namespace ScanMonitorApp
             if (!CheckOkToAddToDb(uniqName))
                 return;
 
-            // TEST TEST
-//            if (uniqName != "2013_04_12_16_17_49")
-
-            if (uniqName != "2013_04_15_15_46_17")
-                return;
+            return;
 
             // Extract text blocks from file
             ScanPages scanPages = new ScanPages(uniqName);
@@ -106,7 +103,7 @@ namespace ScanMonitorApp
 
             // Form partial document info
             DateTime fileDateTime = File.GetCreationTime(fileName);
-            ScanDocInfo scanDocInfo = new ScanDocInfo(uniqName, totalNumPages, scanPages.scanPagesText.Count, fileDateTime);
+            ScanDocInfo scanDocInfo = new ScanDocInfo(uniqName, totalNumPages, scanPages.scanPagesText.Count, fileDateTime, fileName.Replace('\\', '/'));
 
             // Find matching doc type
             if (bRecogniseDoc)
@@ -211,13 +208,15 @@ namespace ScanMonitorApp
             }
         }
 
-        public void AddFiledDocRecToMongo(FiledDocInfo filedDocInfo)
+        public bool AddFiledDocRecToMongo(FiledDocInfo filedDocInfo)
         {
             // Mongo append
+            bool bOk = false;
             try
             {
                 MongoCollection<FiledDocInfo> collection_fileddoc = GetFiledDocsCollection();
-                collection_fileddoc.Insert(filedDocInfo);
+                WriteConcernResult rslt = collection_fileddoc.Insert(filedDocInfo);
+                bOk = rslt.Ok;
                 // Log it
                 logger.Info("Added fileddoc record for {0}", filedDocInfo.uniqName);
             }
@@ -227,6 +226,7 @@ namespace ScanMonitorApp
                             _scanConfig._dbNameForDocs, _scanConfig._dbCollectionForFiledDocs, filedDocInfo.uniqName,
                             excp.Message);
             }
+            return bOk;
         }
 
         public string GetListOfScanDocsJson()
@@ -312,7 +312,7 @@ namespace ScanMonitorApp
             List<string> unfiledDocs = scannedDocUniqNames.Except(filedDocUniqNames).ToList();
 
             stopWatch.Stop();
-            Console.WriteLine("GetList Elapsed : {0}ms, recs {1}", stopWatch.ElapsedMilliseconds, unfiledDocs.Count);
+            //Console.WriteLine("GetList Elapsed : {0}ms, recs {1}", stopWatch.ElapsedMilliseconds, unfiledDocs.Count);
             return unfiledDocs;
         }
 
@@ -327,11 +327,153 @@ namespace ScanMonitorApp
             long filedCount = collection_fdinfo.Count();
 
             stopWatch.Stop();
-            Console.WriteLine("GetCount Elapsed : {0}ms, recs {1}", stopWatch.ElapsedMilliseconds, scannedCount - filedCount);
+            //Console.WriteLine("GetCount Elapsed : {0}ms, recs {1}", stopWatch.ElapsedMilliseconds, scannedCount - filedCount);
 
             return (int) (scannedCount - filedCount);
         }
 
+        public bool DeleteFile(string uniqName, string fullSourceName)
+        {
+            // Delete the physical file
+            bool fileDeleteOk = false;
+            string errStr = "";
+            if (fullSourceName != "")
+            {
+                try
+                {
+                    // Check file exists
+                    if (!File.Exists(fullSourceName))
+                        return true;
+
+                    File.Delete(fullSourceName);
+                    fileDeleteOk = true;
+                }
+                catch (Exception e)
+                {
+                    errStr = e.Message;
+                }
+            }
+            if (!fileDeleteOk)
+                return false;
+
+            // Record the deletion in the filed docs database
+            FiledDocInfo fdi = new FiledDocInfo(uniqName, "", DateTime.Now, "", "Deleted", "Deleted", false, FiledDocInfo.DocFinalStatus.STATUS_DELETED);
+            return AddFiledDocRecToMongo(fdi);
+        }
+
+        public bool CheckOkToFileDoc(ScanDocInfo scanDocInfo, DocType docType, DateTime dateTimeStamp, out string rsltText)
+        {
+            // Check path is valid
+            if (docType.moveFileToPath.Trim() == "")
+            {
+                rsltText = "DocType path is blank";
+                return false;
+            }
+
+            // Get the fully expanded path
+            bool pathContainsMacros = false;
+            string destPath = _docTypesMatcher.ComputeExpandedPath(docType.moveFileToPath, dateTimeStamp, false, ref pathContainsMacros);
+
+            // Create folder if the path contains macros
+            try
+            {
+                if (!Directory.Exists(destPath) && pathContainsMacros)
+                    Directory.CreateDirectory(destPath);
+            }
+            catch
+            {
+            }
+
+            // Check folder exists
+            if (!Directory.Exists(destPath))
+            {
+                rsltText = "DocType folder not found";
+                return false;
+            }
+
+            //// Check file name validity
+            //string fileNameToCheck = FormFileName(GetCurrentlySelectedPath(), fileNewName.Text);
+            //try
+            //{
+            //    System.IO.FileInfo fi = new System.IO.FileInfo(fileNameToCheck);
+            //    if (Path.GetFileNameWithoutExtension(fi.FullName) == "")
+            //    {
+            //        MessageBox.Show("The file name cannot be blank.", "Dest Name Invalid", MessageBoxButtons.OK);
+            //        return;
+            //    }
+            //}
+            //catch (ArgumentException e1)
+            //{
+            //    MessageBox.Show("The destination file name is invalid. " + e1.Message, "Dest Name Invalid", MessageBoxButtons.OK);
+            //    return;
+            //}
+            //catch (System.IO.PathTooLongException e2)
+            //{
+            //    MessageBox.Show("The destination file path is invalid. " + e2.Message, "Dest Name Invalid", MessageBoxButtons.OK);
+            //    return;
+            //}
+            //catch (NotSupportedException e3)
+            //{
+            //    MessageBox.Show("The destination file name is invalid. " + e3.Message, "Dest Name Invalid", MessageBoxButtons.OK);
+            //    return;
+            //}
+
+            //// Check if dest file exists
+            //if (File.Exists(fileNameToCheck))
+            //{
+            //    MessageBox.Show("A destination file of this name already exists", "Dest Name Invalid", MessageBoxButtons.OK);
+            //    return;
+            //}
+
+            rsltText = "Checked Ok";
+            return true;
+        }
+
+        public void StartProcessFilingOfDoc(out string rsltText)
+        {
+            rsltText = "";
+        }
+
+        private string ReplaceStringAnyCase(string input, string pattern, string replacement)
+        {
+            int pos = input.IndexOf(pattern, StringComparison.CurrentCultureIgnoreCase);
+            if (pos >= 0)
+                return input.Substring(0, pos) + replacement + input.Substring(pos + pattern.Length);
+            return input;
+        }
+
+        private static string MakeValidFileName(string name)
+        {
+            name = name.Replace(@"\r\n", " ");
+            string invalidChars = Regex.Escape(new string(Path.GetInvalidFileNameChars()));
+            string invalidReStr = string.Format(@"[{0}]+", invalidChars);
+            return Regex.Replace(name, invalidReStr, "_");
+        }
+
+        public string FormatFileNameFromMacros(string origName, string renameTo, DateTime fileAsDateTime, string prefix, string suffix, string docTypeName)
+        {
+            string fileName = renameTo;
+            if (fileName.Trim() == "")
+                fileName = Properties.Settings.Default.DefaultRenameTo;
+            string dateStr = string.Format("{0:yyyyMMdd}", fileAsDateTime);
+            fileName = ReplaceStringAnyCase(fileName, "[YMD]", dateStr);
+            string dateStr2 = string.Format("{0:yyyy-MM-dd}", fileAsDateTime);
+            fileName = ReplaceStringAnyCase(fileName, "[Y-M-D]", dateStr2);
+            string dateStrRev = string.Format("{0:ddMMyyyy}", fileAsDateTime);
+            fileName = ReplaceStringAnyCase(fileName, "[DMY]", dateStrRev);
+            string yearStr = string.Format("{0:yyyy}", fileAsDateTime);
+            fileName = ReplaceStringAnyCase(fileName, "[YEAR]", yearStr);
+            string monthStr = string.Format("{0:MM}", fileAsDateTime);
+            fileName = ReplaceStringAnyCase(fileName, "[MONTH]", monthStr);
+            string domStr = string.Format("{0:dd}", fileAsDateTime);
+            fileName = ReplaceStringAnyCase(fileName, "[DAY]", domStr);
+            fileName = ReplaceStringAnyCase(fileName, "[PREFIX]", prefix);
+            fileName = ReplaceStringAnyCase(fileName, "[SUBJECT]", suffix);
+            fileName = ReplaceStringAnyCase(fileName, "[DOCTYPE]", docTypeName);
+            fileName = fileName.Trim();
+            fileName = fileName + Path.GetExtension(origName);
+            return MakeValidFileName(fileName);
+        }
     }
 
     public class ScanDocHandlerConfig

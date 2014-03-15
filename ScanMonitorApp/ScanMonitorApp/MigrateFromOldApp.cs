@@ -67,9 +67,16 @@ namespace ScanMonitorApp
                 if (oldDocType.thumbFileNames.Count > 0)
                 {
                     string thumbFile = oldDocType.thumbFileNames[0].Replace('\\', '/');
-                    DateTime fileDateTime = File.GetCreationTime(thumbFile);
-                    string uniqName = ScanDocInfo.GetUniqNameForFile(thumbFile, fileDateTime);
-                    newDocType.thumbnailForDocType = uniqName;
+                    if (File.Exists(thumbFile))
+                    {
+                        DateTime fileDateTime = File.GetCreationTime(thumbFile);
+                        string uniqName = ScanDocInfo.GetUniqNameForFile(thumbFile, fileDateTime);
+                        newDocType.thumbnailForDocType = uniqName;
+                    }
+                    else
+                    {
+                        newDocType.thumbnailForDocType = "";
+                    }
                 }
                 else
                 {
@@ -163,14 +170,8 @@ namespace ScanMonitorApp
                         // Create filed info record
                         if (CREATE_RECORD_IN_DB)
                         {
-                            FiledDocInfo fdi = new FiledDocInfo();
-                            fdi.docDateFiled = DateTime.ParseExact(ad.ProcDateAndTime, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-                            fdi.includeInXCheck = true;
-                            fdi.docTypeFiled = ad.DocType;
-                            fdi.filingErrorMsg = ad.ProcMessage;
-                            fdi.filingResult = ad.ProcStatus;
-                            fdi.pathFiledTo = ad.DestFile.Replace('\\', '/');
-                            fdi.uniqName = ad.UniqName;
+                            DateTime docDateFiled = DateTime.ParseExact(ad.ProcDateAndTime, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                            FiledDocInfo fdi = new FiledDocInfo(ad.UniqName, ad.DocType, docDateFiled, ad.DestFile.Replace('\\', '/'), ad.ProcStatus, ad.ProcMessage, true, FiledDocInfo.DocFinalStatus.STATUS_NONE);
                             scanDocHandler.AddFiledDocRecToMongo(fdi);
                         }
 

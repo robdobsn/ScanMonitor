@@ -32,6 +32,7 @@ namespace ScanMonitorApp
     public partial class MainWindow : MetroWindow
     {
         private const bool TEST_MODE = true;
+        BackgroundWorker _bwThread;
 
         private List<string> foldersToMonitor = new List<string> { Properties.Settings.Default.FolderToMonitor };
 
@@ -247,8 +248,27 @@ namespace ScanMonitorApp
             {
                 // Open document 
                 string filename = dlg.FileName;
-                MigrateFromOldApp.LoadAuditFileToDb(filename, _scanDocHandler);
+
+                // Matcher thread
+                _bwThread = new BackgroundWorker();
+                _bwThread.WorkerSupportsCancellation = false;
+                _bwThread.WorkerReportsProgress = false;
+                _bwThread.DoWork += new DoWorkEventHandler(LoadAuditFileToDb_DoWork);
+                _bwThread.RunWorkerCompleted += new RunWorkerCompletedEventHandler(LoadAuditFileToDb_RunWorkerCompleted);
+                _bwThread.RunWorkerAsync(filename);
+                butAddOldLogRecs.IsEnabled = false;
             }
+        }
+
+        private void LoadAuditFileToDb_DoWork(object sender, DoWorkEventArgs e)
+        {
+            string filename = (string)e.Argument;
+            MigrateFromOldApp.LoadAuditFileToDb(filename, _scanDocHandler);
+        }
+
+        private void LoadAuditFileToDb_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            butAddOldLogRecs.IsEnabled = true;
         }
 
         private void butViewScanFiling_Click(object sender, RoutedEventArgs e)

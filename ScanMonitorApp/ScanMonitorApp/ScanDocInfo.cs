@@ -28,13 +28,14 @@ namespace ScanMonitorApp
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public ScanDocInfo(string a_uniqname, int a_numPages, int a_numPagesWithText, DateTime a_createDate)
+        public ScanDocInfo(string a_uniqname, int a_numPages, int a_numPagesWithText, DateTime a_createDate, string a_origFileName)
         {
             uniqName = a_uniqname;
             numPages = a_numPages;
             numPagesWithText = a_numPagesWithText;
             createDate = a_createDate;
             docTypeMatchResult = null;
+            origFileName = a_origFileName;
         }
         public ObjectId Id;
         public string uniqName { get; set; }
@@ -42,6 +43,7 @@ namespace ScanMonitorApp
         public int numPagesWithText { get; set; }
         public DateTime createDate { get; set; }
         public DocTypeMatchResult docTypeMatchResult { get; set; }
+        public string origFileName { get; set; }
 
         public static string GetUniqNameForFile(string fileName, DateTime dt)
         {
@@ -108,6 +110,21 @@ namespace ScanMonitorApp
 
     public class FiledDocInfo
     {
+        public enum DocFinalStatus
+        {
+            STATUS_NONE, STATUS_DELETED
+        }
+        public FiledDocInfo(string a_uniqName, string a_docTypeFiled, DateTime a_docDateFiled, string a_pathFiledTo, string a_filingResult, string a_filingErrorMsg, bool a_includeInXCheck, DocFinalStatus a_finalStatus)
+        {
+            uniqName = a_uniqName;
+            docTypeFiled = a_docTypeFiled;
+            docDateFiled = a_docDateFiled;
+            pathFiledTo = a_pathFiledTo;
+            filingResult = a_filingResult;
+            filingErrorMsg = a_filingErrorMsg;
+            includeInXCheck = a_includeInXCheck;
+            finalStatus = a_finalStatus;
+        }
         public ObjectId Id;
         public string uniqName { get; set; }
         public string docTypeFiled { get; set; }
@@ -116,6 +133,7 @@ namespace ScanMonitorApp
         public string filingResult { get; set; }
         public string filingErrorMsg { get; set;}
         public bool includeInXCheck { get; set; }
+        public DocFinalStatus finalStatus { get; set; }
     }
 
     public class ScanPages

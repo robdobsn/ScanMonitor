@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using MongoDB.Driver.Builders;
 using System.Windows.Media;
+using System.Diagnostics;
 
 namespace ScanMonitorApp
 {
@@ -209,7 +210,8 @@ namespace ScanMonitorApp
                     // Check bounds
                     if (docRectPercent.Intersects(textElem.bounds))
                     {
-                        if (textElem.text.IndexOf(str.Trim(), StringComparison.OrdinalIgnoreCase) >= 0)
+                        int mtchPos = textElem.text.IndexOf(str.Trim(), StringComparison.OrdinalIgnoreCase);
+                        if (mtchPos >= 0)
                         {
                             result = true;
                             if (matchingTextLocs != null)
@@ -218,6 +220,9 @@ namespace ScanMonitorApp
                                 dtml.pageIdx = pageIdx;
                                 dtml.elemIdx = elemIdx;
                                 dtml.exprIdx = exprIdx;
+                                dtml.posInText = mtchPos;
+                                dtml.matchLen = str.Trim().Length;
+                                dtml.foundInTxtLen = textElem.text.Length;
                                 matchingTextLocs.Add(dtml);
                             }
                             else
@@ -271,7 +276,7 @@ namespace ScanMonitorApp
             return database.GetCollection<DocType>(Properties.Settings.Default.DbCollectionForDocTypes);
         }
 
-        public DocTypeMatchResult GetMatchingDocType(ScanPages scanPages, int maxMatchesToReturn = 1, List<DocTypeMatchResult> listOfPossibleMatches = null)
+        public DocTypeMatchResult GetMatchingDocType(ScanPages scanPages, List<DocTypeMatchResult> listOfPossibleMatches = null)
         {
             // Get list of types
             DocTypeMatchResult bestMatchResult = new DocTypeMatchResult();
@@ -281,23 +286,26 @@ namespace ScanMonitorApp
             {
                 // Check if document matches
                 DocTypeMatchResult matchResult = CheckIfDocMatches(scanPages, doctype, false, null);
-                if (matchResult.matchCertaintyPercent == 100)
-                {
-                    // Redo match to get date and time info
-                    matchResult = CheckIfDocMatches(scanPages, doctype, true, null);
-                }
 
                 // Find the best match
-                if (bestMatchResult.matchCertaintyPercent <= matchResult.matchCertaintyPercent)
+                bool bThisIsBestMatch = false;
+                if (bestMatchResult.matchCertaintyPercent < matchResult.matchCertaintyPercent)
+                    bThisIsBestMatch = true;
+                else if (bestMatchResult.matchCertaintyPercent == matchResult.matchCertaintyPercent)
                     if (bestMatchResult.matchFactor < matchResult.matchFactor)
-                        bestMatchResult = matchResult;
+                        bThisIsBestMatch = true;
 
-                // Check if a list is to be returned
-                if (listOfPossibleMatches != null)
+                // Redo match to get date and time info
+                if (bThisIsBestMatch)
                 {
-                    if (listOfPossibleMatches.Count < maxMatchesToReturn)
-                        listOfPossibleMatches.Add(matchResult);
+                    matchResult = CheckIfDocMatches(scanPages, doctype, true, null);
+                    bestMatchResult = matchResult;
                 }
+
+                // Check if this should be returned in the list of best matches
+                if (listOfPossibleMatches != null)
+                    if ((matchResult.matchCertaintyPercent > 0) || (matchResult.matchFactor > 0))
+                            listOfPossibleMatches.Add(matchResult);
 
             }
 
@@ -310,6 +318,13 @@ namespace ScanMonitorApp
                 if (extractedDates.Count > 0)
                     bestMatchResult.docDate = extractedDates[bestDateIdx].dateTime;
             }
+
+            // If list of best matches to be returned then sort that list now
+            if (listOfPossibleMatches != null)
+            {
+                listOfPossibleMatches = listOfPossibleMatches.OrderByDescending(o => o.matchCertaintyPercent).ThenBy(o => o.matchFactor).ToList();
+            }
+
             return bestMatchResult;
         }
 
@@ -560,6 +575,70 @@ namespace ScanMonitorApp
             return folderName;
         }
 
+        public string ComputeExpandedPath(string minimalPath, DateTime dateTimeOfFile, bool removeDateMacros, ref bool bPathContainsDateMacros)
+        {
+            bPathContainsDateMacros = false;
+            string inPath = minimalPath.ToLower();
+            List<PathSubstMacro> pathSubstMacros = ListPathSubstMacros();
+
+            // Process each substitution until no substitutions done - or max exceeded
+            for (int i = 0; i < 20; i++)
+            {
+                bool bAnySubstDone = false;
+                foreach (PathSubstMacro psm in pathSubstMacros)
+                {
+                    int pos = inPath.ToLower().IndexOf(psm.origText.ToLower());
+                    if (pos >= 0)
+                    {
+                        inPath = inPath.Substring(0, pos) + psm.replaceText + inPath.Substring(pos + psm.origText.Length);
+                        bAnySubstDone = true;
+                    }
+                }
+                if (!bAnySubstDone)
+                    break;
+            }
+
+            // Store path to compare later
+            string compareToPath = inPath;
+
+            // Remove/Replace datetime strings
+            if (removeDateMacros)
+            {
+                int brackPos = inPath.IndexOf('[');
+                if (brackPos >= 0)
+                {
+                    // Find prior / or \
+                    for (int chIdx = brackPos; chIdx >= 0; chIdx--)
+                        if ((inPath[chIdx] == '/') || (inPath[chIdx] == '\\'))
+                        {
+                            brackPos = chIdx;
+                            break;
+                        }
+                    inPath = inPath.Substring(0, brackPos);
+                }
+            }
+            else
+            {
+                string yearStr = string.Format("{0:yyyy}", dateTimeOfFile);
+                inPath = inPath.Replace("[year]", yearStr);
+                string yearMonStr = string.Format("{0:yyyy-MM}", dateTimeOfFile);
+                inPath = inPath.Replace("[year-month]", yearMonStr);
+
+                // Check for year-quarter
+                if (inPath.ToLower().Contains("[year-qtr]"))
+                {
+                    // Calculate quarter
+                    int quarterNo = 1 + (dateTimeOfFile.Month - 1) / 3;
+                    string replStr = string.Format("{0:yyyy} Q{1}", dateTimeOfFile, quarterNo);
+                    inPath = inPath.Replace("[year-qtr]", replStr);
+                }
+            }
+
+            // Check if date macros expanded
+            bPathContainsDateMacros = (compareToPath != inPath);
+
+            return inPath;
+        }
         #endregion
 
         public void ApplyAliasList(string origDocType, string newDocType)
@@ -642,8 +721,11 @@ namespace ScanMonitorApp
 
     public class DocMatchingTextLoc
     {
-        public int pageIdx;
-        public int elemIdx;
-        public int exprIdx;
+        public int pageIdx = 0;
+        public int elemIdx = 0;
+        public int exprIdx = 0;
+        public int posInText = 0;
+        public int matchLen = 0;
+        public int foundInTxtLen = 0;
     }
 }

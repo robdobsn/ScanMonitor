@@ -380,7 +380,7 @@ namespace ScanMonitorApp
                             maxRotCount = rotCounts[i];
                             maxRot = i * 90;
                         }
-                    Console.WriteLine("{2} Page{0}rot = {1}", pageNumber, maxRot, uniqName);
+                    //Console.WriteLine("{2} Page{0}rot = {1}", pageNumber, maxRot, uniqName);
 
                     List<ScanTextElem> scanTextElems = new List<ScanTextElem>();
                     foreach (LocationTextExtractionStrategyEx.TextInfo txtInfo in pageInfo)
