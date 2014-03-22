@@ -29,7 +29,7 @@ namespace ScanMonitorApp
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        const int MAX_NUM_DOCS_TO_ADD_TO_LIST = 200;
+        const int MAX_NUM_DOCS_TO_ADD_TO_LIST = 500;
 
         private ScanDocHandler _scanDocHandler;
         private DocTypesMatcher _docTypesMatcher;
@@ -50,6 +50,8 @@ namespace ScanMonitorApp
         private Dictionary<string, ParseResultCacheElem> _parseResultCache = new Dictionary<string,ParseResultCacheElem>();
         private string _lastSelectedFolder = "";
         private LocationRectangleHandler locRectHandler;
+        private int _lastFindNumFound = 0;
+        private int _lastFindStartPos = 0;
 
         public DocTypeView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher)
         {
@@ -156,18 +158,50 @@ namespace ScanMonitorApp
                     if (rsltMessageBox == MessageBoxResult.Yes)
                         chkEnabledDocType.IsChecked = true;
                 }
-                FindMatchingDocs_Start();
+                _lastFindStartPos = 0;
+                FindMatchingDocs_Start(false, 0);
             }
         }
 
-        private void FindMatchingDocs_Start()
+
+        private void btnListAll_Click(object sender, RoutedEventArgs e)
+        {
+            if (_bwThread.IsBusy)
+                return;
+            _lastFindStartPos = 0;
+            FindMatchingDocs_Start(true, 0);
+        }
+
+
+        private void btnListNextSet_Click(object sender, RoutedEventArgs e)
+        {
+            if (_bwThread.IsBusy)
+                return;
+
+            int nextSetStart = _lastFindStartPos + MAX_NUM_DOCS_TO_ADD_TO_LIST;
+            _lastFindStartPos = nextSetStart;
+
+            FindMatchingDocs_Start(true, nextSetStart);
+        }
+
+        private void FindMatchingDocs_Start(bool listAll, int fromResultIdx)
         {
             if (!_bwThread.IsBusy)
             {
-                DocType chkDocType = GetDocTypeFromForm(new DocType());
-                chkDocType.isEnabled = true;
-                _bwThread.RunWorkerAsync(chkDocType);
+                if (listAll)
+                {
+                    object[] args = { null, fromResultIdx };
+                    _bwThread.RunWorkerAsync(args);
+                }
+                else
+                {
+                    DocType chkDocType = GetDocTypeFromForm(new DocType());
+                    chkDocType.isEnabled = true;
+                    object[] args = { chkDocType, fromResultIdx };
+                    _bwThread.RunWorkerAsync(args);
+                }
                 btnTestMatch.Content = "Stop Finding";
+                btnListAll.IsEnabled = false;
                 SetDocMatchStatusText("Working...");
                 _docCompareRslts.Clear();
             }
@@ -235,11 +269,14 @@ namespace ScanMonitorApp
 
         private class MatchDocsResult
         {
-            public int totalFilesProcessed = 0;
+            public int totalFilesScanned = 0;
+            public int totalFilesSearched = 0;
             public int totalMatchesFound = 0;
             public int totalMatchesButShouldnt = 0;
             public int totalDoesntMatchButShould = 0;
+            public int indexOfFirstFileDisplayed = 0;
             public bool bNotAllResultsShow = false;
+            public bool bMatchedResultsOnly = false;
             public bool bCancelled = false;
             public Exception error = null;
         }
@@ -250,32 +287,73 @@ namespace ScanMonitorApp
             e.Result = mdResult;
             BackgroundWorker worker = sender as BackgroundWorker;
             List<ScanDocInfo> sdiList = _scanDocHandler.GetListOfScanDocs();
-            int docIdx = 0;
             int docsFound = 0;
+
+            // Get args - document type to match and start position for filling list (this is
+            // so we don't swamp the list by including all results)
+            object[] args = (object[])e.Argument;
+            DocType docTypeToMatch = (DocType)args[0];
+            int includeInListFromIdx = (int)args[1];
+
+            // Match results
             mdResult.bNotAllResultsShow = false;
-            foreach (ScanDocInfo sdi in sdiList)
+            mdResult.totalFilesScanned = sdiList.Count;
+            mdResult.bMatchedResultsOnly = (docTypeToMatch != null);
+            mdResult.indexOfFirstFileDisplayed = -1;
+
+            // Start index in list
+            int nStartIdx = (docTypeToMatch == null) ? includeInListFromIdx : 0;
+            int nEndIdx = includeInListFromIdx + MAX_NUM_DOCS_TO_ADD_TO_LIST - 1;
+            if ((docTypeToMatch != null) || (nEndIdx > sdiList.Count - 1))
+                nEndIdx = sdiList.Count - 1;
+            for (int nDocIdx = nStartIdx; nDocIdx <= nEndIdx; nDocIdx++)
             {
+                ScanDocInfo sdi = sdiList[nDocIdx];
                 if ((worker.CancellationPending == true))
                 {
                     e.Cancel = true;
                     break;
                 }
 
-                DocType docTypeToMatch = (DocType)e.Argument;
-                DocCompareRslt rslt = CheckIfDocMatches(sdi, docTypeToMatch);
-                if (rslt.bMatches)
+                // Check if all docs required
+                DocCompareRslt rslt = new DocCompareRslt();
+                bool bShowDoc = false;
+                if (docTypeToMatch == null)
+                {
+                    ScanPages scanPages = _scanDocHandler.GetScanPages(sdi.uniqName);
+                    // See if doc has been filed - result maybe null
+                    FiledDocInfo fdi = _scanDocHandler.GetFiledDocInfo(sdi.uniqName);
+                    bShowDoc = true;
+                    rslt.uniqName = sdi.uniqName;
+                    rslt.bMatches = true;
+                    rslt.bMatchesButShouldnt = false;
+                    rslt.docTypeFiled = (fdi == null) ? "" : fdi.filedAs_docType;
+                    rslt.matchStatus = (fdi == null) ? "NOT-FILED" : "FILED";
+                    rslt.scanPages = scanPages;
                     mdResult.totalMatchesFound++;
-                if (rslt.bDoesntMatchButShould)
-                    mdResult.totalDoesntMatchButShould++;
-                if (rslt.bMatchesButShouldnt)
-                    mdResult.totalMatchesButShouldnt++;
-                mdResult.totalFilesProcessed++;
-                if (rslt.bMatches || rslt.bDoesntMatchButShould)
+                }
+                else
+                {
+                    rslt = CheckIfDocMatches(sdi, docTypeToMatch);
+                    if (rslt.bMatches)
+                        mdResult.totalMatchesFound++;
+                    if (rslt.bDoesntMatchButShould)
+                        mdResult.totalDoesntMatchButShould++;
+                    if (rslt.bMatchesButShouldnt)
+                        mdResult.totalMatchesButShouldnt++;
+                    if (rslt.bMatches || rslt.bDoesntMatchButShould)
+                        bShowDoc = true;
+                }
+                mdResult.totalFilesSearched++;
+                _lastFindNumFound = mdResult.totalFilesSearched;
+                if (bShowDoc)
                 {
                     // Check for a limit to avoid swamping list
                     docsFound++;
-                    if (docsFound < MAX_NUM_DOCS_TO_ADD_TO_LIST)
+                    if ((docsFound > includeInListFromIdx-nStartIdx) && (docsFound <= includeInListFromIdx - nStartIdx + MAX_NUM_DOCS_TO_ADD_TO_LIST))
                     {
+                        if (mdResult.indexOfFirstFileDisplayed == -1)
+                            mdResult.indexOfFirstFileDisplayed = nDocIdx;
                         this.Dispatcher.BeginInvoke((Action)delegate()
                         {
                             _docCompareRslts.Add(rslt);
@@ -283,13 +361,14 @@ namespace ScanMonitorApp
                     }
                     else
                     {
+                        // Indicate that not all results are shown
                         mdResult.bNotAllResultsShow = true;
                     }
                 }
 
-                docIdx++;
-                worker.ReportProgress((int)(docIdx * 100 / sdiList.Count));
-                if (((docIdx % 10) == 0) || (docIdx == sdiList.Count - 1))
+                // Update status
+                worker.ReportProgress((int)(nDocIdx * 100 / sdiList.Count));
+                if (((nDocIdx % 10) == 0) || (nDocIdx == nEndIdx))
                 {
                     string rsltStr = DocMatchFormatResultStr(mdResult);
                     this.Dispatcher.BeginInvoke((Action)delegate()
@@ -313,19 +392,19 @@ namespace ScanMonitorApp
             if (matchResult.matchCertaintyPercent == 100)
             {
                 compRslt.bMatches = true;
-                compRslt.bMatchesButShouldnt = (fdi != null) && (fdi.docTypeFiled != docTypeToMatch.docTypeName);
+                compRslt.bMatchesButShouldnt = (fdi != null) && (fdi.filedAs_docType != docTypeToMatch.docTypeName);
                 compRslt.uniqName = sdi.uniqName;
-                compRslt.docTypeFiled = (fdi == null) ? "" : fdi.docTypeFiled;
+                compRslt.docTypeFiled = (fdi == null) ? "" : fdi.filedAs_docType;
                 compRslt.matchStatus = (fdi == null) ? "NOT-FILED" : (compRslt.bMatchesButShouldnt ? "MATCH-BUT-SHOULDN'T" : "OK");
                 compRslt.scanPages = scanPages;
             }
             else
             {
-                compRslt.bDoesntMatchButShould = (fdi != null) && (fdi.docTypeFiled == docTypeToMatch.docTypeName);
+                compRslt.bDoesntMatchButShould = (fdi != null) && (fdi.filedAs_docType == docTypeToMatch.docTypeName);
                 if (compRslt.bDoesntMatchButShould)
                 {
                     compRslt.uniqName = sdi.uniqName;
-                    compRslt.docTypeFiled = (fdi == null) ? "" : fdi.docTypeFiled;
+                    compRslt.docTypeFiled = (fdi == null) ? "" : fdi.filedAs_docType;
                     compRslt.matchStatus = "SHOULD-BUT-DOESN'T";
                     compRslt.scanPages = scanPages;
                 }
@@ -396,10 +475,27 @@ namespace ScanMonitorApp
 
         private string DocMatchFormatResultStr(MatchDocsResult mdResult)
         {
-            return "Files: " + mdResult.totalFilesProcessed.ToString() + (mdResult.bNotAllResultsShow ? "*" : "") +  "\n" +
-                                     "~1Matched: " + mdResult.totalMatchesFound.ToString() + "\n" +
-                                     "~2Shouldn't: " + mdResult.totalMatchesButShouldnt.ToString() + "\n" +
-                                     "~3Should: " + mdResult.totalDoesntMatchButShould.ToString();
+            string fileStatStr = "";
+            if (mdResult.totalFilesScanned <= 0)
+            {
+                fileStatStr = "No files";
+                return fileStatStr;
+            }
+
+            if (mdResult.bMatchedResultsOnly)
+            {
+                fileStatStr = "Searched: " + mdResult.totalFilesSearched.ToString() + (mdResult.bNotAllResultsShow ? "*" : "") + " (" + mdResult.totalFilesScanned.ToString() + ")\n";
+                fileStatStr +=      "~1Matched: " + mdResult.totalMatchesFound.ToString() + "\n" +
+                                    "~2Shouldn't: " + mdResult.totalMatchesButShouldnt.ToString() + "\n" +
+                                    "~3Should: " + mdResult.totalDoesntMatchButShould.ToString();
+            }
+            else
+            {
+                fileStatStr = "Showing: " + mdResult.indexOfFirstFileDisplayed.ToString() + " - " + (mdResult.indexOfFirstFileDisplayed + mdResult.totalMatchesFound - 1).ToString() + "\n";
+                fileStatStr += "Total Files: " + mdResult.totalFilesScanned.ToString();
+            }
+
+            return fileStatStr;
         }
 
         private void FindMatchingDocs_Stop()
@@ -422,6 +518,7 @@ namespace ScanMonitorApp
             else
                 SetDocMatchStatusText("Finished", true);
             btnTestMatch.Content = "Find Matches";
+            btnListAll.IsEnabled = true;
         }
 
         #endregion
@@ -678,25 +775,21 @@ namespace ScanMonitorApp
         private void exampleFileImage_MouseDown(object sender, MouseButtonEventArgs e)
         {
             locRectHandler.HandleMouseDown(sender, e);
-            e.Handled = true;
         }
 
         private void exampleFileImage_MouseMove(object sender, MouseEventArgs e)
         {
             locRectHandler.HandleMouseMove(sender, e);
-            e.Handled = true;
         }
 
         private void exampleFileImage_MouseLeave(object sender, MouseEventArgs e)
         {
             locRectHandler.HandleMouseLeave(sender, e);
-            e.Handled = true;
         }
 
         private void exampleFileImage_MouseUp(object sender, MouseButtonEventArgs e)
         {
             locRectHandler.HandleMouseUp(sender, e);
-            e.Handled = true;
         }
 
         private void tooltipCallback_MouseMove(Point ptOnImage, DocRectangle ptInDocPercent)
@@ -709,14 +802,12 @@ namespace ScanMonitorApp
                         exampleFileImageToolTip.IsOpen = true;
                     exampleFileImageToolTip.HorizontalOffset = ptOnImage.X - 100;
                     exampleFileImageToolTip.VerticalOffset = ptOnImage.Y;
-                    List<ScanTextElem> scanTextElems = _curDocDisplay_scanPages.scanPagesText[_curDocDisplay_pageNum - 1];
-                    foreach (ScanTextElem el in scanTextElems)
-                        if (el.bounds.Intersects(ptInDocPercent))
-                        {
-                            exampleFileImageToolText.Text = el.text;
-                            bToolTipSet = true;
-                            break;
-                        }
+                    string pgText = GetTextFromPageIntersectWithRect(ptInDocPercent);
+                    if (pgText != "")
+                    {
+                        exampleFileImageToolText.Text = pgText;
+                        bToolTipSet = true;
+                    }
                 }
             if (!bToolTipSet)
             {
@@ -725,13 +816,31 @@ namespace ScanMonitorApp
             }
         }
 
+        private string GetTextFromPageIntersectWithRect(DocRectangle ptInDocPercent)
+        {
+            List<ScanTextElem> scanTextElems = _curDocDisplay_scanPages.scanPagesText[_curDocDisplay_pageNum - 1];
+            foreach (ScanTextElem el in scanTextElems)
+                if (el.bounds.Intersects(ptInDocPercent))
+                    return el.text;
+            return "";
+        }
+
         private void tooptipCallback_MouseLeave(Point ptOnImage)
         {
             if (ptOnImage.X < 0 || ptOnImage.X > exampleFileImage.ActualWidth)
                 exampleFileImageToolTip.IsOpen = false;
             else if (ptOnImage.Y < 0 || ptOnImage.Y > exampleFileImage.ActualHeight)
                 exampleFileImageToolTip.IsOpen = false;
-        }   
+        }
+
+        private void exampleFileImageContextMenu_Click(object sender, RoutedEventArgs e)
+        {
+            // Get position of right click
+            DocRectangle textPos = locRectHandler.GetRightClickPointInDocPercent();
+            string pgText = GetTextFromPageIntersectWithRect(textPos);
+            if (pgText != "")
+                System.Windows.Forms.Clipboard.SetText(pgText);
+        }
 
         private void docRectChangesComplete(string nameOfMatchingTextBox, int docRectIdx, DocRectangle rectInDocPercent)
         {
@@ -1062,15 +1171,11 @@ namespace ScanMonitorApp
                 somethingChanged = (txtDocTypeName.Text.Trim() != "");
             }
             if (somethingChanged)
-            {
-                btnCancelTypeChanges.IsEnabled = true;
                 btnSaveTypeChanges.IsEnabled = true;
-            }
             else
-            {
-                btnCancelTypeChanges.IsEnabled = false;
                 btnSaveTypeChanges.IsEnabled = false;
-            }
+            if (chkEnabledDocType.IsEnabled)
+                btnCancelTypeChanges.IsEnabled = true;
         }
 
         private void Window_Closing(object sender, CancelEventArgs e)
@@ -1297,5 +1402,6 @@ namespace ScanMonitorApp
             }
             return false;
         }
+
     }
 }

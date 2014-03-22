@@ -44,6 +44,116 @@ namespace ScanMonitorApp
 
         #endregion
 
+        #region DocTypes Database Access
+
+        private MongoCollection<DocType> GetDocTypesCollection()
+        {
+            // Setup db connection
+            var server = _dbClient.GetServer();
+            var database = server.GetDatabase(Properties.Settings.Default.DbNameForDocs); // the name of the database
+            return database.GetCollection<DocType>(Properties.Settings.Default.DbCollectionForDocTypes);
+        }
+
+        public DocTypeMatchResult GetMatchingDocType(ScanPages scanPages, List<DocTypeMatchResult> listOfPossibleMatches = null)
+        {
+            // Get list of types
+            DocTypeMatchResult bestMatchResult = new DocTypeMatchResult();
+            var collection_doctypes = GetDocTypesCollection();
+            MongoCursor<DocType> foundSdf = collection_doctypes.FindAll();
+            foreach (DocType doctype in foundSdf)
+            {
+                // Check if document matches
+                DocTypeMatchResult matchResult = CheckIfDocMatches(scanPages, doctype, false, null);
+
+                // Find the best match
+                bool bThisIsBestMatch = false;
+                if (bestMatchResult.matchCertaintyPercent < matchResult.matchCertaintyPercent)
+                    bThisIsBestMatch = true;
+                else if (bestMatchResult.matchCertaintyPercent == matchResult.matchCertaintyPercent)
+                    if (bestMatchResult.matchFactor < matchResult.matchFactor)
+                        bThisIsBestMatch = true;
+
+                // Redo match to get date and time info
+                if (bThisIsBestMatch)
+                {
+                    matchResult = CheckIfDocMatches(scanPages, doctype, true, null);
+                    bestMatchResult = matchResult;
+                }
+
+                // Check if this should be returned in the list of best matches
+                if (listOfPossibleMatches != null)
+                    if ((matchResult.matchCertaintyPercent > 0) || (matchResult.matchFactor > 0))
+                        listOfPossibleMatches.Add(matchResult);
+
+            }
+
+            // If no exact match get date info from entire doc
+            if (bestMatchResult.matchCertaintyPercent != 100)
+            {
+                int bestDateIdx = 0;
+                List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(scanPages, "", out bestDateIdx);
+                bestMatchResult.datesFoundInDoc = extractedDates;
+                if (extractedDates.Count > 0)
+                    bestMatchResult.docDate = extractedDates[bestDateIdx].dateTime;
+            }
+
+            // If list of best matches to be returned then sort that list now
+            if (listOfPossibleMatches != null)
+            {
+                listOfPossibleMatches = listOfPossibleMatches.OrderByDescending(o => o.matchCertaintyPercent).ThenBy(o => o.matchFactor).ToList();
+            }
+
+            return bestMatchResult;
+        }
+
+        public string ListDocTypesJson()
+        {
+            // Get list of documents
+            List<DocType> docTypeList = ListDocTypes();
+            return JsonConvert.SerializeObject(docTypeList);
+        }
+
+        public List<DocType> ListDocTypes()
+        {
+            // Get list of documents
+            MongoCollection<DocType> collection_doctypes = GetDocTypesCollection();
+            return collection_doctypes.FindAll().ToList<DocType>();
+        }
+
+        public string GetDocTypeJson(string docTypeName)
+        {
+            return JsonConvert.SerializeObject(GetDocType(docTypeName));
+        }
+
+        public DocType GetDocType(string docTypeName)
+        {
+            // Get first matching document
+            MongoCollection<DocType> collection_doctypes = GetDocTypesCollection();
+            return collection_doctypes.FindOne(Query.EQ("docTypeName", docTypeName));
+        }
+
+        public bool AddOrUpdateDocTypeRecInDb(DocType docType)
+        {
+            // Mongo append
+            try
+            {
+                MongoCollection<DocType> collection_docTypes = GetDocTypesCollection();
+                collection_docTypes.Save(docType, SafeMode.True);
+                // Log it
+                logger.Info("Added/updated doctype record for {0}", docType.docTypeName);
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Cannot insert doctype rec into {0} Coll... {1} for file {2} excp {3}",
+                            Properties.Settings.Default.DbNameForDocs, Properties.Settings.Default.DbCollectionForDocTypes, docType.docTypeName,
+                            excp.Message);
+                return false;
+            }
+            return true;
+        }
+
+        #endregion
+
         #region Check Docs against DocTypes
 
         public DocTypeMatchResult CheckIfDocMatches(ScanPages scanPages, DocType docType, bool extractDates, List<DocMatchingTextLoc> matchingTextLocs)
@@ -184,6 +294,8 @@ namespace ScanMonitorApp
                         else
                             result &= tmpRslt;
 
+                        // Clear the inverse operator after 1 use
+                        opIsInverse = false;
                         // Handle match factor
                         if (tmpRslt)
                             matchFactorTotal += matchFactorForTerm;
@@ -266,116 +378,6 @@ namespace ScanMonitorApp
 
         #endregion
 
-        #region DocTypes Database Access
-
-        private MongoCollection<DocType> GetDocTypesCollection()
-        {
-            // Setup db connection
-            var server = _dbClient.GetServer();
-            var database = server.GetDatabase(Properties.Settings.Default.DbNameForDocs); // the name of the database
-            return database.GetCollection<DocType>(Properties.Settings.Default.DbCollectionForDocTypes);
-        }
-
-        public DocTypeMatchResult GetMatchingDocType(ScanPages scanPages, List<DocTypeMatchResult> listOfPossibleMatches = null)
-        {
-            // Get list of types
-            DocTypeMatchResult bestMatchResult = new DocTypeMatchResult();
-            var collection_doctypes = GetDocTypesCollection();
-            MongoCursor<DocType> foundSdf = collection_doctypes.FindAll();
-            foreach (DocType doctype in foundSdf)
-            {
-                // Check if document matches
-                DocTypeMatchResult matchResult = CheckIfDocMatches(scanPages, doctype, false, null);
-
-                // Find the best match
-                bool bThisIsBestMatch = false;
-                if (bestMatchResult.matchCertaintyPercent < matchResult.matchCertaintyPercent)
-                    bThisIsBestMatch = true;
-                else if (bestMatchResult.matchCertaintyPercent == matchResult.matchCertaintyPercent)
-                    if (bestMatchResult.matchFactor < matchResult.matchFactor)
-                        bThisIsBestMatch = true;
-
-                // Redo match to get date and time info
-                if (bThisIsBestMatch)
-                {
-                    matchResult = CheckIfDocMatches(scanPages, doctype, true, null);
-                    bestMatchResult = matchResult;
-                }
-
-                // Check if this should be returned in the list of best matches
-                if (listOfPossibleMatches != null)
-                    if ((matchResult.matchCertaintyPercent > 0) || (matchResult.matchFactor > 0))
-                            listOfPossibleMatches.Add(matchResult);
-
-            }
-
-            // If no exact match get date info from entire doc
-            if (bestMatchResult.matchCertaintyPercent != 100)
-            {
-                int bestDateIdx = 0;
-                List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(scanPages, "", out bestDateIdx);
-                bestMatchResult.datesFoundInDoc = extractedDates;
-                if (extractedDates.Count > 0)
-                    bestMatchResult.docDate = extractedDates[bestDateIdx].dateTime;
-            }
-
-            // If list of best matches to be returned then sort that list now
-            if (listOfPossibleMatches != null)
-            {
-                listOfPossibleMatches = listOfPossibleMatches.OrderByDescending(o => o.matchCertaintyPercent).ThenBy(o => o.matchFactor).ToList();
-            }
-
-            return bestMatchResult;
-        }
-
-        public string ListDocTypesJson()
-        {
-            // Get list of documents
-            List<DocType> docTypeList = ListDocTypes();
-            return JsonConvert.SerializeObject(docTypeList);
-        }
-
-        public List<DocType> ListDocTypes()
-        {
-            // Get list of documents
-            MongoCollection<DocType> collection_doctypes = GetDocTypesCollection();
-            return collection_doctypes.FindAll().ToList<DocType>();
-        }
-
-        public string GetDocTypeJson(string docTypeName)
-        {
-            return JsonConvert.SerializeObject(GetDocType(docTypeName));
-        }
-
-        public DocType GetDocType(string docTypeName)
-        {
-            // Get first matching document
-            MongoCollection<DocType> collection_doctypes = GetDocTypesCollection();
-            return collection_doctypes.FindOne(Query.EQ("docTypeName", docTypeName));
-        }
-
-        public bool AddOrUpdateDocTypeRecInDb(DocType docType)
-        {
-            // Mongo append
-            try
-            {
-                MongoCollection<DocType> collection_docTypes = GetDocTypesCollection();
-                collection_docTypes.Save(docType, SafeMode.True);
-                // Log it
-                logger.Info("Added/updated doctype record for {0}", docType.docTypeName);
-            }
-            catch (Exception excp)
-            {
-                logger.Error("Cannot insert doctype rec into {0} Coll... {1} for file {2} excp {3}",
-                            Properties.Settings.Default.DbNameForDocs, Properties.Settings.Default.DbCollectionForDocTypes, docType.docTypeName,
-                            excp.Message);
-                return false;
-            }
-            return true;
-        }
-
-        #endregion
-
         #region Parse DocMatch Expression for Text Highlighting
 
         public static List<ExprParseTerm> ParseDocMatchExpression(string matchExpression, int cursorPosForBracketMatching)
@@ -384,7 +386,7 @@ namespace ScanMonitorApp
             List<ExprParseTerm> parseTermsList = new List<ExprParseTerm>();
             int curBracketDepth = 0;
             int matchBracketDepth = -1;
-            int lastLocStartIdx = 0;
+            int lastLocStartIdx = -1;
             int lastTxtStartIdx = 0;
             int locationBracketIdx = 0;
             bool bInMatchFactorTerm = false;
@@ -441,12 +443,25 @@ namespace ScanMonitorApp
                     case '}':
                         {
                             // Add location text and closing bracket
-                            parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Location, lastLocStartIdx, chIdx - lastLocStartIdx, curBracketDepth, locationBracketIdx));
+                            if (lastLocStartIdx != -1)
+                            {
+                                parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_Location, lastLocStartIdx, chIdx - lastLocStartIdx, curBracketDepth, locationBracketIdx));
+                            }
+                            else
+                            {
+                                // Add text upto this point
+                                if (bInMatchFactorTerm)
+                                    lastTxtStartIdx = ParserAddMatchFactor(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+                                else
+                                    lastTxtStartIdx = ParserAddTextToPoint(parseTermsList, matchExpression, lastTxtStartIdx, chIdx, curBracketDepth);
+                                bInMatchFactorTerm = false;
+                            }
                             parseTermsList.Add(new ExprParseTerm(ExprParseTerm.ExprParseTermType.exprTerm_LocationBrackets, chIdx, 1, --curBracketDepth, locationBracketIdx));
                             if ((cursorPosForBracketMatching == chIdx) || (cursorPosForBracketMatching == chIdx + 1))
                                 matchBracketDepth = curBracketDepth;
                             lastTxtStartIdx = chIdx + 1;
                             locationBracketIdx++;
+                            lastLocStartIdx = -1;
                             break;
                         }
                     case ':':

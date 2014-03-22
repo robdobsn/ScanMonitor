@@ -31,7 +31,7 @@ namespace ScanMonitorApp
     /// </summary>
     public partial class MainWindow : MetroWindow
     {
-        private const bool TEST_MODE = true;
+        private const bool TEST_MODE = false;
         BackgroundWorker _bwThread;
 
         private List<string> foldersToMonitor = new List<string> { Properties.Settings.Default.FolderToMonitor };
@@ -55,7 +55,7 @@ namespace ScanMonitorApp
         {
             // Notify icon
             _notifyIcon = new System.Windows.Forms.NotifyIcon();
-            _notifyIcon.Icon = ScanMonitorApp.Properties.Resources.scanner48x48;
+            _notifyIcon.Icon = ScanMonitorApp.Properties.Resources.simley64;
             _notifyIcon.Visible = true;
             _notifyIcon.MouseUp +=
                 new System.Windows.Forms.MouseEventHandler(delegate(object sender, System.Windows.Forms.MouseEventArgs args)
@@ -235,13 +235,21 @@ namespace ScanMonitorApp
         {
             // Configure open file dialog box
             Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
-            dlg.FileName = Properties.Settings.Default.OldScanLogFile;
-            dlg.InitialDirectory = System.IO.Path.GetDirectoryName(dlg.FileName);
+            dlg.FileName = System.IO.Path.GetFileName(Properties.Settings.Default.OldScanLogFile);
+            dlg.InitialDirectory = System.IO.Path.GetDirectoryName(Properties.Settings.Default.OldScanLogFile);
             dlg.DefaultExt = ".log"; // Default file extension
             dlg.Filter = "Log documents (.log)|*.log"; // Filter files by extension 
 
             // Show open file dialog box
-            Nullable<bool> result = dlg.ShowDialog();
+            Nullable<bool> result = false;
+            try
+            {
+                result = dlg.ShowDialog();
+            }
+            catch(Exception excp)
+            {
+                logger.Error("Exception {0}", excp.Message);
+            }
 
             // Process open file dialog box results 
             if (result == true)

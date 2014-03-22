@@ -68,13 +68,13 @@ namespace ScanMonitorApp
                         txtOrigExpression.Text = dtype.matchExpression;
                     }
 
-                    ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(selectedRow.UniqName);
-                    txtNewDocTypeName.Text = scanDocAllInfo.scanDocInfo.docTypeMatchResult.docTypeName + "(" + scanDocAllInfo.scanDocInfo.docTypeMatchResult.matchCertaintyPercent.ToString() + "%)";
-                    DocType dtype2 = _docTypesMatcher.GetDocType(scanDocAllInfo.scanDocInfo.docTypeMatchResult.docTypeName);
-                    if (dtype2 != null)
-                    {
-                        txtNewExpression.Text = dtype2.matchExpression;
-                    }
+                    //ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(selectedRow.UniqName);
+                    //txtNewDocTypeName.Text = scanDocAllInfo.scanDocInfo.docTypeMatchResult.docTypeName + "(" + scanDocAllInfo.scanDocInfo.docTypeMatchResult.matchCertaintyPercent.ToString() + "%)";
+                    //DocType dtype2 = _docTypesMatcher.GetDocType(scanDocAllInfo.scanDocInfo.docTypeMatchResult.docTypeName);
+                    //if (dtype2 != null)
+                    //{
+                    //    txtNewExpression.Text = dtype2.matchExpression;
+                    //}
 
                     // Get file name
                     //string fileName = selectedRow.ArchiveFile;

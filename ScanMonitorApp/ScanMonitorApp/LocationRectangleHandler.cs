@@ -29,6 +29,7 @@ namespace ScanMonitorApp
         Action<Point, DocRectangle> _tooltipMoveCallback;
         Action<Point> _tooltipCloseCallback;
         Action<string, int, DocRectangle> _changesCompleteCallback;
+        private Point _rightClickOnImagePoint = new Point(0,0);
 
         public LocationRectangleHandler(Image masterVisualElement, Canvas uiOverlayCanvas,
                                 Action<Point, DocRectangle> tooltipMoveCallback, Action<Point> tooltipCloseCallback,
@@ -151,11 +152,23 @@ namespace ScanMonitorApp
 
         #endregion
 
+        public DocRectangle GetRightClickPointInDocPercent()
+        {
+            Point ptOnCanvas = _masterImage.TranslatePoint(_rightClickOnImagePoint, _uiOverlayCanvas);
+            DocRectangle docCoords = ConvertCanvasRectToDocPercent(new DocRectangle(ptOnCanvas.X, ptOnCanvas.Y, 0, 0));
+            return docCoords;
+        }
+
         #region Mouse handling
 
         public void HandleMouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Only start if document editing is enabled
+            if (e.ChangedButton == MouseButton.Right)
+            {
+                _rightClickOnImagePoint = e.GetPosition(_masterImage);
+            }
+
+            // Only start rectangle actions if document editing is enabled
             if (!_selectionEnabled)
                 return;
 

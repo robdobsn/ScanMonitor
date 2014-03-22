@@ -28,15 +28,25 @@ namespace ScanMonitorApp
         private UIElement _fromElem;
         private Window _fromWin;
 
-        public MessageDialog(string message, bool showYes, bool showNo, bool showCancel, UIElement fromElem, Window fromWin)
+        public MessageDialog(string message, string yesButtonText, string noButtonText, string cancelButtonText, UIElement fromElem, Window fromWin)
         {
             InitializeComponent();
             txtMessage.Text = message;
-            btnCancel.Visibility = showCancel ? System.Windows.Visibility.Visible : System.Windows.Visibility.Hidden;
-            btnYes.Visibility = showYes ? System.Windows.Visibility.Visible : System.Windows.Visibility.Hidden;
-            btnNo.Visibility = showNo ? System.Windows.Visibility.Visible : System.Windows.Visibility.Hidden;
+            btnYes.Content = yesButtonText;
+            btnYes.Visibility = (yesButtonText.Trim() != "") ? System.Windows.Visibility.Visible : System.Windows.Visibility.Hidden;
+            btnNo.Content = noButtonText;
+            btnNo.Visibility = (noButtonText.Trim() != "") ? System.Windows.Visibility.Visible : System.Windows.Visibility.Hidden;
+            btnCancel.Content = cancelButtonText;
+            btnCancel.Visibility = (cancelButtonText.Trim() != "") ? System.Windows.Visibility.Visible : System.Windows.Visibility.Hidden;
             _fromElem = fromElem;
             _fromWin = fromWin;
+        }
+
+        public static MsgDlgRslt Show(string message, string yesButtonText, string noButtonText, string cancelButtonText, UIElement fromElem, Window fromWin)
+        {
+            MessageDialog msgDlg = new MessageDialog(message, yesButtonText, noButtonText, cancelButtonText, fromElem, fromWin);
+            msgDlg.ShowDialog();
+            return msgDlg.dlgResult;
         }
 
         private void btnYes_Click(object sender, RoutedEventArgs e)

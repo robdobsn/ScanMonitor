@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace ScanMonitorApp
 {
@@ -330,75 +331,85 @@ namespace ScanMonitorApp
 
         public ScanPages ExtractDocInfo(string uniqName, string fileName, int maxPagesToExtractFrom, ref int totalPages)
         {
+            ScanPages scanPages = null;
+
             // Extract text and location from pdf pages
             using (Stream newpdfStream = new FileStream(fileName, FileMode.Open, FileAccess.Read))
             {
                 List<List<LocationTextExtractionStrategyEx.TextInfo>> extractedTextAndLoc = new List<List<LocationTextExtractionStrategyEx.TextInfo>>();
 
-                PdfReader pdfReader = new PdfReader(newpdfStream);
-                int numPagesToUse = pdfReader.NumberOfPages;
-                if (numPagesToUse > maxPagesToExtractFrom)
-                    numPagesToUse = maxPagesToExtractFrom;
-                int numPagesWithText = 0;
-                for (int pageNum = 1; pageNum <= numPagesToUse; pageNum++)
+                using (PdfReader pdfReader = new PdfReader(newpdfStream))
                 {
-                    LocationTextExtractionStrategyEx locationStrategy = new LocationTextExtractionStrategyEx();
-                    try
+                    int numPagesToUse = pdfReader.NumberOfPages;
+                    if (numPagesToUse > maxPagesToExtractFrom)
+                        numPagesToUse = maxPagesToExtractFrom;
+                    int numPagesWithText = 0;
+                    for (int pageNum = 1; pageNum <= numPagesToUse; pageNum++)
                     {
-                        string text = PdfTextExtractor.GetTextFromPage(pdfReader, pageNum, locationStrategy);
-                        if (text != "")
-                            numPagesWithText++;
-                        extractedTextAndLoc.Add(locationStrategy.TextLocationInfo);
-                    }
-                    catch (Exception excp)
-                    {
-                        logger.Error("Failed to extract from pdf {0}, page {1} excp {2}", fileName, pageNum, excp.Message);
-                    }
-                }
-
-                // Create new structures for the information
-                int pageNumber = 1;
-                List<List<ScanTextElem>> scanPagesText = new List<List<ScanTextElem>>();
-                List<int> pageRotations = new List<int>();
-                foreach (List<LocationTextExtractionStrategyEx.TextInfo> pageInfo in extractedTextAndLoc)
-                {
-                    iTextSharp.text.Rectangle pageRect = pdfReader.GetPageSize(pageNumber);
-                    int pageRot = pdfReader.GetPageRotation(pageNumber);
-
-                    // Check through found text to see if the page seems to be rotated
-                    int[] rotCounts = new int[] { 0,0,0,0 };
-                    foreach (LocationTextExtractionStrategyEx.TextInfo txtInfo in pageInfo)
-                    {
-                        int thisRotation = GetTextRotation(txtInfo.TopLeft, txtInfo.BottomRight);
-                        rotCounts[(thisRotation / 90) % 4]++;
-                    }
-                    int maxRot = 0;
-                    int maxRotCount = 0;
-                    for (int i = 0; i < rotCounts.Length; i++)
-                        if (maxRotCount < rotCounts[i])
+                        LocationTextExtractionStrategyEx locationStrategy = new LocationTextExtractionStrategyEx();
+                        try
                         {
-                            maxRotCount = rotCounts[i];
-                            maxRot = i * 90;
+                            string text = PdfTextExtractor.GetTextFromPage(pdfReader, pageNum, locationStrategy);
+                            if (text != "")
+                                numPagesWithText++;
+                            extractedTextAndLoc.Add(locationStrategy.TextLocationInfo);
                         }
-                    //Console.WriteLine("{2} Page{0}rot = {1}", pageNumber, maxRot, uniqName);
-
-                    List<ScanTextElem> scanTextElems = new List<ScanTextElem>();
-                    foreach (LocationTextExtractionStrategyEx.TextInfo txtInfo in pageInfo)
-                    {
-                        DocRectangle boundsRectPercent = ConvertToDocRect(txtInfo.TopLeft, txtInfo.BottomRight, pageRect, maxRot);
-                        ScanTextElem sti = new ScanTextElem(txtInfo.Text, boundsRectPercent);
-                        scanTextElems.Add(sti);
+                        catch (Exception excp)
+                        {
+                            logger.Error("Failed to extract from pdf {0}, page {1} excp {2}", fileName, pageNum, excp.Message);
+                        }
                     }
-                    scanPagesText.Add(scanTextElems);
-                    pageRotations.Add(maxRot);
-                    pageNumber++;
-                }
 
-                // Total pages
-                totalPages = pdfReader.NumberOfPages;
-                ScanPages scanPages = new ScanPages(uniqName, pageRotations, scanPagesText);
-                return scanPages;
+                    // Create new structures for the information
+                    int pageNumber = 1;
+                    List<List<ScanTextElem>> scanPagesText = new List<List<ScanTextElem>>();
+                    List<int> pageRotations = new List<int>();
+                    foreach (List<LocationTextExtractionStrategyEx.TextInfo> pageInfo in extractedTextAndLoc)
+                    {
+                        iTextSharp.text.Rectangle pageRect = pdfReader.GetPageSize(pageNumber);
+                        int pageRot = pdfReader.GetPageRotation(pageNumber);
+
+                        // Check through found text to see if the page seems to be rotated
+                        int[] rotCounts = new int[] { 0, 0, 0, 0 };
+                        foreach (LocationTextExtractionStrategyEx.TextInfo txtInfo in pageInfo)
+                        {
+                            int thisRotation = GetTextRotation(txtInfo.TopLeft, txtInfo.BottomRight);
+                            rotCounts[(thisRotation / 90) % 4]++;
+                        }
+                        int maxRot = 0;
+                        int maxRotCount = 0;
+                        for (int i = 0; i < rotCounts.Length; i++)
+                            if (maxRotCount < rotCounts[i])
+                            {
+                                maxRotCount = rotCounts[i];
+                                maxRot = i * 90;
+                            }
+                        //Console.WriteLine("{2} Page{0}rot = {1}", pageNumber, maxRot, uniqName);
+
+                        List<ScanTextElem> scanTextElems = new List<ScanTextElem>();
+                        foreach (LocationTextExtractionStrategyEx.TextInfo txtInfo in pageInfo)
+                        {
+                            DocRectangle boundsRectPercent = ConvertToDocRect(txtInfo.TopLeft, txtInfo.BottomRight, pageRect, maxRot);
+                            ScanTextElem sti = new ScanTextElem(txtInfo.Text, boundsRectPercent);
+                            scanTextElems.Add(sti);
+                        }
+                        scanPagesText.Add(scanTextElems);
+                        pageRotations.Add(maxRot);
+                        pageNumber++;
+                    }
+
+                    // Total pages
+                    totalPages = pdfReader.NumberOfPages;
+                    scanPages = new ScanPages(uniqName, pageRotations, scanPagesText);
+                    pdfReader.Close();
+
+                    // Sleep for a little to allow other things to run
+                    Thread.Sleep(100);
+                }
             }
+
+            // Return scanned text from pages
+            return scanPages;
         }
     }
 }

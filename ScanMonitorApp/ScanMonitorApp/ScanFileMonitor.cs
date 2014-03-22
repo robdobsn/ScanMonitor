@@ -35,7 +35,6 @@ namespace ScanMonitorApp
             _bwFileMonitorThread.WorkerSupportsCancellation = true;
             _bwFileMonitorThread.WorkerReportsProgress = true;
             _bwFileMonitorThread.DoWork += new DoWorkEventHandler(FileMonitorThread_DoWork);
-            _bwFileMonitorThread.RunWorkerAsync();
         }
 
         ~ScanFileMonitor()
@@ -48,9 +47,13 @@ namespace ScanMonitorApp
 
         public void Start(List<string> foldersToMonitor, bool testMode)
         {
+            // Monitor folders
             MonitorFolders(foldersToMonitor);
             _monitorRunning = true;
             _testMode = testMode;
+
+            // Run background thread to test for new files
+            _bwFileMonitorThread.RunWorkerAsync();
         }
 
         public void Stop()
@@ -98,8 +101,9 @@ namespace ScanMonitorApp
                     }
                 }
             }
-            catch
+            catch (Exception excp)
             {
+                logger.Error("Failed with excp {0}", excp.Message);
                 checkOk = false;
             }
             return checkOk;
@@ -125,21 +129,6 @@ namespace ScanMonitorApp
                 return false;
             }
             return true;
-        }
-
-        public bool MoveFile(string srcName, string destName, ref string errStr)
-        {
-            bool bResult = false;
-            try
-            {
-                File.Move(srcName, destName);
-                bResult = true;
-            }
-            catch (Exception e)
-            {
-                errStr = e.Message;
-            }
-            return bResult;
         }
 
         private void HandleNewPdfFile(string fileName)
@@ -171,9 +160,16 @@ namespace ScanMonitorApp
                 return;
 
             // Process Pdf file
-            DateTime fileDateTime = File.GetCreationTime(fileName);
-            string uniqName = ScanDocInfo.GetUniqNameForFile(fileName, fileDateTime);
-            _scanDocHandler.ProcessPdfFile(fileName, uniqName, true, true, true, true, true, true);
+            try
+            {
+                DateTime fileDateTime = File.GetCreationTime(fileName);
+                string uniqName = ScanDocInfo.GetUniqNameForFile(fileName, fileDateTime);
+                _scanDocHandler.ProcessPdfFile(fileName, uniqName, true, true, true, true, true, true);
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Failed with excp {0}", excp.Message);
+            }
         }
 
         private List<FileSystemInfo> GetListOfFilesInWatchedFolder(string folderName)

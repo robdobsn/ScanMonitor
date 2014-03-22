@@ -111,13 +111,13 @@ namespace ScanMonitorApp
             {
                 string[] splitStr = rectCoordStr.Split(',');
                 if (splitStr.Length > 0)
-                    X = Convert.ToDouble(splitStr[0]);
+                    Double.TryParse(splitStr[0], out X);
                 if (splitStr.Length > 1)
-                    Y = Convert.ToDouble(splitStr[1]);
+                    Double.TryParse(splitStr[1], out Y);
                 if (splitStr.Length > 2)
-                    Width = Convert.ToDouble(splitStr[2]);
+                    Double.TryParse(splitStr[2], out Width);
                 if (splitStr.Length > 3)
-                    Height = Convert.ToDouble(splitStr[3]);
+                    Double.TryParse(splitStr[3], out Height);
                 if (Width < 0 || Height < 0)
                     FixNegatives();
             }

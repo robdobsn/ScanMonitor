@@ -25,7 +25,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("c:\\users\\rob\\documents\\ScanTest\\Monitor")]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\SCAN2\\Users\\Rob\\Documents\\ScanSnap")]
         public string FolderToMonitor {
             get {
                 return ((string)(this["FolderToMonitor"]));
@@ -37,7 +37,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("c:\\users\\rob\\documents\\ScanTest\\Thumbs")]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Admin\\ScanAdmin\\ScannedDocImgs")]
         public string DocAdminImgFolderBase {
             get {
                 return ((string)(this["DocAdminImgFolderBase"]));
@@ -82,7 +82,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("ScanDocInfo")]
+        [global::System.Configuration.DefaultSettingValueAttribute("ScanDocInfoTEST")]
         public string DbCollectionForDocInfo {
             get {
                 return ((string)(this["DbCollectionForDocInfo"]));
@@ -106,7 +106,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("ScanDocPages")]
+        [global::System.Configuration.DefaultSettingValueAttribute("ScanDocPagesTEST")]
         public string DbCollectionForDocPages {
             get {
                 return ((string)(this["DbCollectionForDocPages"]));
@@ -118,7 +118,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("FiledDocInfo")]
+        [global::System.Configuration.DefaultSettingValueAttribute("FiledDocInfoTEST")]
         public string DbCollectionForFiledDocs {
             get {
                 return ((string)(this["DbCollectionForFiledDocs"]));
@@ -142,7 +142,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("FRACTAL")]
+        [global::System.Configuration.DefaultSettingValueAttribute("SCAN2")]
         public string PCtoRunMonitorOn {
             get {
                 return ((string)(this["PCtoRunMonitorOn"]));
@@ -178,7 +178,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("mongodb://localhost/")]
+        [global::System.Configuration.DefaultSettingValueAttribute("mongodb://macallan/")]
         public string DbConnectionString {
             get {
                 return ((string)(this["DbConnectionString"]));
@@ -190,7 +190,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("c:\\users\\rob\\documents\\ScanTest\\FilingBase")]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Main\\RobAndJudyPersonal")]
         public string BasePathForFilingFolderSelection {
             get {
                 return ((string)(this["BasePathForFilingFolderSelection"]));
@@ -202,7 +202,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("c:\\users\\rob\\documents\\ScanTest\\rules.xml")]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\macallan\\main\\RobAndJudyPersonal\\IT\\Scanning\\rules.xml")]
         public string OldRulesFile {
             get {
                 return ((string)(this["OldRulesFile"]));
@@ -214,13 +214,85 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("c:\\users\\rob\\documents\\ScanTest\\ScanLog.log")]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\N7700PRO\\Archive\\ScanAdmin\\ScanLogs\\ScanLog.log")]
         public string OldScanLogFile {
             get {
                 return ((string)(this["OldScanLogFile"]));
             }
             set {
                 this["OldScanLogFile"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Admin\\ScanAdmin\\ScanDocBackups")]
+        public string DocArchiveFolder {
+            get {
+                return ((string)(this["DocArchiveFolder"]));
+            }
+            set {
+                this["DocArchiveFolder"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("smtp.gmail.com")]
+        public string EmailService {
+            get {
+                return ((string)(this["EmailService"]));
+            }
+            set {
+                this["EmailService"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("587")]
+        public string EmailServicePort {
+            get {
+                return ((string)(this["EmailServicePort"]));
+            }
+            set {
+                this["EmailServicePort"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Scan Filer <rob@robdobson.com>")]
+        public string EmailFrom {
+            get {
+                return ((string)(this["EmailFrom"]));
+            }
+            set {
+                this["EmailFrom"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Rob Dobson<rob@dobson.com>, Judy Wilson <judyw@marketry.co.uk>")]
+        public string EmailTo {
+            get {
+                return ((string)(this["EmailTo"]));
+            }
+            set {
+                this["EmailTo"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Admin\\ScanAdmin\\TestFileLocation")]
+        public string TestModeFileTo {
+            get {
+                return ((string)(this["TestModeFileTo"]));
+            }
+            set {
+                this["TestModeFileTo"] = value;
             }
         }
     }

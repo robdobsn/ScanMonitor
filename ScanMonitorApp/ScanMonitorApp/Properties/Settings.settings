@@ -3,10 +3,10 @@
   <Profiles />
   <Settings>
     <Setting Name="FolderToMonitor" Type="System.String" Scope="User">
-      <Value Profile="(Default)">c:\users\rob\documents\ScanTest\Monitor</Value>
+      <Value Profile="(Default)">\\SCAN2\Users\Rob\Documents\ScanSnap</Value>
     </Setting>
     <Setting Name="DocAdminImgFolderBase" Type="System.String" Scope="User">
-      <Value Profile="(Default)">c:\users\rob\documents\ScanTest\Thumbs</Value>
+      <Value Profile="(Default)">\\MACALLAN\Admin\ScanAdmin\ScannedDocImgs</Value>
     </Setting>
     <Setting Name="MaxPagesForImages" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">10</Value>
@@ -18,22 +18,22 @@
       <Value Profile="(Default)">ScanManager</Value>
     </Setting>
     <Setting Name="DbCollectionForDocInfo" Type="System.String" Scope="User">
-      <Value Profile="(Default)">ScanDocInfo</Value>
+      <Value Profile="(Default)">ScanDocInfoTEST</Value>
     </Setting>
     <Setting Name="DbCollectionForDocTypes" Type="System.String" Scope="User">
       <Value Profile="(Default)">DocTypes</Value>
     </Setting>
     <Setting Name="DbCollectionForDocPages" Type="System.String" Scope="User">
-      <Value Profile="(Default)">ScanDocPages</Value>
+      <Value Profile="(Default)">ScanDocPagesTEST</Value>
     </Setting>
     <Setting Name="DbCollectionForFiledDocs" Type="System.String" Scope="User">
-      <Value Profile="(Default)">FiledDocInfo</Value>
+      <Value Profile="(Default)">FiledDocInfoTEST</Value>
     </Setting>
     <Setting Name="PickThumbHeight" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">150</Value>
     </Setting>
     <Setting Name="PCtoRunMonitorOn" Type="System.String" Scope="User">
-      <Value Profile="(Default)">FRACTAL</Value>
+      <Value Profile="(Default)">SCAN2</Value>
     </Setting>
     <Setting Name="DefaultRenameTo" Type="System.String" Scope="User">
       <Value Profile="(Default)">[PREFIX] [Y-M-D] [SUBJECT]</Value>
@@ -42,16 +42,34 @@
       <Value Profile="(Default)">DocTypePathMacros</Value>
     </Setting>
     <Setting Name="DbConnectionString" Type="System.String" Scope="User">
-      <Value Profile="(Default)">mongodb://localhost/</Value>
+      <Value Profile="(Default)">mongodb://macallan/</Value>
     </Setting>
     <Setting Name="BasePathForFilingFolderSelection" Type="System.String" Scope="User">
-      <Value Profile="(Default)">c:\users\rob\documents\ScanTest\FilingBase</Value>
+      <Value Profile="(Default)">\\MACALLAN\Main\RobAndJudyPersonal</Value>
     </Setting>
     <Setting Name="OldRulesFile" Type="System.String" Scope="User">
-      <Value Profile="(Default)">c:\users\rob\documents\ScanTest\rules.xml</Value>
+      <Value Profile="(Default)">\\macallan\main\RobAndJudyPersonal\IT\Scanning\rules.xml</Value>
     </Setting>
     <Setting Name="OldScanLogFile" Type="System.String" Scope="User">
-      <Value Profile="(Default)">c:\users\rob\documents\ScanTest\ScanLog.log</Value>
+      <Value Profile="(Default)">\\N7700PRO\Archive\ScanAdmin\ScanLogs\ScanLog.log</Value>
+    </Setting>
+    <Setting Name="DocArchiveFolder" Type="System.String" Scope="User">
+      <Value Profile="(Default)">\\MACALLAN\Admin\ScanAdmin\ScanDocBackups</Value>
+    </Setting>
+    <Setting Name="EmailService" Type="System.String" Scope="User">
+      <Value Profile="(Default)">smtp.gmail.com</Value>
+    </Setting>
+    <Setting Name="EmailServicePort" Type="System.String" Scope="User">
+      <Value Profile="(Default)">587</Value>
+    </Setting>
+    <Setting Name="EmailFrom" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Scan Filer &lt;rob@robdobson.com&gt;</Value>
+    </Setting>
+    <Setting Name="EmailTo" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Rob Dobson&lt;rob@dobson.com&gt;, Judy Wilson &lt;judyw@marketry.co.uk&gt;</Value>
+    </Setting>
+    <Setting Name="TestModeFileTo" Type="System.String" Scope="User">
+      <Value Profile="(Default)">\\MACALLAN\Admin\ScanAdmin\TestFileLocation</Value>
     </Setting>
   </Settings>
 </SettingsFile>

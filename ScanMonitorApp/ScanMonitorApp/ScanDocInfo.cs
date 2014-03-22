@@ -28,22 +28,22 @@ namespace ScanMonitorApp
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public ScanDocInfo(string a_uniqname, int a_numPages, int a_numPagesWithText, DateTime a_createDate, string a_origFileName)
+        public ScanDocInfo(string a_uniqname, int a_numPages, int a_numPagesWithText, DateTime a_createDate, string a_origFileName, bool a_flagForHelpFiling)
         {
             uniqName = a_uniqname;
             numPages = a_numPages;
             numPagesWithText = a_numPagesWithText;
             createDate = a_createDate;
-            docTypeMatchResult = null;
             origFileName = a_origFileName;
+            flagForHelpFiling = a_flagForHelpFiling;
         }
         public ObjectId Id;
         public string uniqName { get; set; }
         public int numPages { get; set; }
         public int numPagesWithText { get; set; }
         public DateTime createDate { get; set; }
-        public DocTypeMatchResult docTypeMatchResult { get; set; }
         public string origFileName { get; set; }
+        public bool flagForHelpFiling { get; set; }
 
         public static string GetUniqNameForFile(string fileName, DateTime dt)
         {
@@ -112,28 +112,94 @@ namespace ScanMonitorApp
     {
         public enum DocFinalStatus
         {
-            STATUS_NONE, STATUS_DELETED
+            STATUS_NONE, STATUS_DELETED, STATUS_FILED
         }
-        public FiledDocInfo(string a_uniqName, string a_docTypeFiled, DateTime a_docDateFiled, string a_pathFiledTo, string a_filingResult, string a_filingErrorMsg, bool a_includeInXCheck, DocFinalStatus a_finalStatus)
+
+        public FiledDocInfo(string a_uniqName)
         {
             uniqName = a_uniqName;
-            docTypeFiled = a_docTypeFiled;
-            docDateFiled = a_docDateFiled;
-            pathFiledTo = a_pathFiledTo;
-            filingResult = a_filingResult;
-            filingErrorMsg = a_filingErrorMsg;
-            includeInXCheck = a_includeInXCheck;
-            finalStatus = a_finalStatus;
+            filedAs_docType = "";
+            filedAs_pathAndFileName = "";
+            filedAs_dateOfDoc = DateTime.MinValue;
+            filedAs_moneyInfo = "";
+            filedAs_followUpNeeded = "";
+            filedAs_addToCalendar = "";
+            filedAs_flagForRefilingInfo = "";
+            filedAs_eventName = "";
+            filedAs_eventDateTime = DateTime.MinValue;
+            filedAs_eventDuration = new TimeSpan();
+            filedAs_eventDescr = "";
+            filedAs_eventLocation = "";
+            filedAs_flagAttachFile = "";
+            includeInXCheck = false;
+            filedAt_dateAndTime = DateTime.Now;
+            filedAt_errorMsg = "";
+            filedAt_finalStatus = DocFinalStatus.STATUS_NONE;            
         }
+
+        public void SetDeletedInfo()
+        {
+            includeInXCheck = false;
+            filedAt_dateAndTime = DateTime.Now;
+            filedAt_errorMsg = "";
+            filedAt_finalStatus = DocFinalStatus.STATUS_DELETED;
+        }
+
+        public void SetDocFilingInfo(string a_filedAs_docType, string a_filedAs_pathAndFileName, DateTime a_filedAs_dateOfDoc,
+                            string a_filedAs_moneyInfo, string a_filedAs_followUpNeeded, string a_filedAs_addToCalendar,
+                            string a_filedAs_eventName, DateTime a_filedAs_eventDateTime, TimeSpan a_filedAs_eventDuration, string a_filedAs_eventDescr, string a_filedAs_eventLocation,
+                            string a_filedAs_flagAttachFile)
+        {
+            filedAs_docType = a_filedAs_docType;
+            filedAs_pathAndFileName = a_filedAs_pathAndFileName;
+            filedAs_dateOfDoc = a_filedAs_dateOfDoc;
+            filedAs_moneyInfo = a_filedAs_moneyInfo;
+            filedAs_followUpNeeded = a_filedAs_followUpNeeded;
+            filedAs_addToCalendar = a_filedAs_addToCalendar;
+            filedAs_flagAttachFile = a_filedAs_flagAttachFile;
+            filedAs_eventName = a_filedAs_eventName;
+            filedAs_eventDateTime = a_filedAs_eventDateTime;
+            filedAs_eventDuration = a_filedAs_eventDuration;
+            filedAs_eventDescr = a_filedAs_eventDescr;
+            filedAs_eventLocation = a_filedAs_eventLocation;
+        }
+
+        public void SetFiledAtInfo(bool a_includeInXCheck, DateTime a_filedAt_dateAndTime, string a_filedAt_errorMsg, DocFinalStatus a_filedAt_finalStatus)
+        {
+            includeInXCheck = a_includeInXCheck;
+            filedAt_dateAndTime = a_filedAt_dateAndTime;
+            filedAt_errorMsg = a_filedAt_errorMsg;
+            filedAt_finalStatus = a_filedAt_finalStatus;            
+        }
+
         public ObjectId Id;
+
+        // uniqname file
         public string uniqName { get; set; }
-        public string docTypeFiled { get; set; }
-        public DateTime docDateFiled { get; set; }
-        public string pathFiledTo { get; set; }
-        public string filingResult { get; set; }
-        public string filingErrorMsg { get; set;}
+
+        // Info set
+        public string filedAs_docType { get; set; }
+        public string filedAs_pathAndFileName { get; set; }
+        public DateTime filedAs_dateOfDoc { get; set; }
+        public string filedAs_moneyInfo { get; set; }
+        public string filedAs_followUpNeeded { get; set; }
+        public string filedAs_addToCalendar { get; set; }
+        public string filedAs_flagForRefilingInfo { get; set; }  // not currently used but left to avoid database errors on read older records
+        public string filedAs_eventName { get; set; }
+        public DateTime filedAs_eventDateTime { get; set; }
+        public TimeSpan filedAs_eventDuration { get; set; }
+        public string filedAs_eventDescr { get; set; }
+        public string filedAs_eventLocation { get; set; }
+        public string filedAs_flagAttachFile { get; set; }
+
+        // Flag relating to use of file in cross checking
         public bool includeInXCheck { get; set; }
-        public DocFinalStatus finalStatus { get; set; }
+
+        // Time and status of filing operation
+        public DateTime filedAt_dateAndTime { get; set; }
+        public string filedAt_errorMsg { get; set; }
+        public DocFinalStatus filedAt_finalStatus { get; set; }
+
     }
 
     public class ScanPages

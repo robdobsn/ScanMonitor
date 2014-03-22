@@ -21,6 +21,8 @@ namespace ScanMonitorApp
         const int MATCH_FACTOR_BUMP_FOR_PAGE2 = 10;
         const int MAX_TEXT_ELEMS_TO_JOIN = 10;
         const int MAX_SEP_CHARS_BETWEEN_DATE_ELEMS = 4;
+        const int MATCH_FACTOR_BUMP_FOR_EARLIEST_DATE = 40;
+        const int MATCH_FACTOR_BUMP_FOR_LATEST_DATE = 40;
 
         // TEST TEST
         const bool TEST_AGAINST_OLD_DATE_ALGORITHM = false;
@@ -75,29 +77,31 @@ namespace ScanMonitorApp
             bool bAtLeastOneExprSearched = false;
             string lastDateSearchTerm = "";
             double lastDateSearchMatchFactor = 0;
+            bool latestDateRequested = false;
+            bool earliestDateRequested = false;
             foreach (ExprParseTerm parseTerm in parseTerms)
             {
                 if (parseTerm.termType == ExprParseTerm.ExprParseTermType.exprTerm_Text)
                 {
                     if (lastDateSearchTerm != "")
                     {
-                        SearchForDateItem(scanPages, lastDateSearchTerm, new DocRectangle(0,0,100,100), lastDateSearchMatchFactor, datesResult);
+                        SearchForDateItem(scanPages, lastDateSearchTerm, new DocRectangle(0, 0, 100, 100), lastDateSearchMatchFactor, datesResult, ref latestDateRequested, ref earliestDateRequested);
                         bAtLeastOneExprSearched = true;
                     }
                     lastDateSearchTerm = dateExpr.Substring(parseTerm.stPos, parseTerm.termLen);
                     // Reset matchFactor for next search term
                     lastDateSearchMatchFactor = 0;
                 }
-                if (parseTerm.termType == ExprParseTerm.ExprParseTermType.exprTerm_Location)
+                else if (parseTerm.termType == ExprParseTerm.ExprParseTermType.exprTerm_Location)
                 {
                     string locStr = dateExpr.Substring(parseTerm.stPos, parseTerm.termLen);
                     DocRectangle lastDateSearchRect = new DocRectangle(locStr);
-                    SearchForDateItem(scanPages, lastDateSearchTerm, lastDateSearchRect, lastDateSearchMatchFactor, datesResult);
+                    SearchForDateItem(scanPages, lastDateSearchTerm, lastDateSearchRect, lastDateSearchMatchFactor, datesResult, ref latestDateRequested, ref earliestDateRequested);
                     lastDateSearchTerm = "";
                     lastDateSearchMatchFactor = 0;
                     bAtLeastOneExprSearched = true;
                 }
-                if (parseTerm.termType == ExprParseTerm.ExprParseTermType.exprTerm_MatchFactor)
+                else if (parseTerm.termType == ExprParseTerm.ExprParseTermType.exprTerm_MatchFactor)
                 {
                     if (dateExpr.Length > parseTerm.stPos + 1)
                     {
@@ -109,7 +113,30 @@ namespace ScanMonitorApp
 
             // There may be one last expression still to find - but be sure that at least one is searched for
             if ((lastDateSearchTerm != "") || (!bAtLeastOneExprSearched))
-                SearchForDateItem(scanPages, lastDateSearchTerm, new DocRectangle(0,0,100,100), lastDateSearchMatchFactor, datesResult);
+                SearchForDateItem(scanPages, lastDateSearchTerm, new DocRectangle(0, 0, 100, 100), lastDateSearchMatchFactor, datesResult, ref latestDateRequested, ref earliestDateRequested);
+
+            // If required check for the earliest and/or latest dates and bump their factors
+            DateTime earliestDate = DateTime.MaxValue;
+            DateTime latestDate = DateTime.MinValue;
+            int earliestIdx = -1;
+            int latestIdx = -1;
+            for (int dateIdx = 0; dateIdx < datesResult.Count; dateIdx++)
+            {
+                if (earliestDate > datesResult[dateIdx].dateTime)
+                {
+                    earliestDate = datesResult[dateIdx].dateTime;
+                    earliestIdx = dateIdx;
+                }
+                if (latestDate < datesResult[dateIdx].dateTime)
+                {
+                    latestDate = datesResult[dateIdx].dateTime;
+                    latestIdx = dateIdx;
+                }
+            }
+            if (earliestDateRequested && (earliestIdx != -1))
+                datesResult[earliestIdx].matchFactor += MATCH_FACTOR_BUMP_FOR_EARLIEST_DATE;
+            if (latestDateRequested && (latestIdx != -1))
+                datesResult[latestIdx].matchFactor += MATCH_FACTOR_BUMP_FOR_LATEST_DATE;
 
             // Find the best date index based on highest match factor
             bestDateIdx = 0;
@@ -126,13 +153,18 @@ namespace ScanMonitorApp
             return datesResult;
         }
 
-        public static void SearchForDateItem(ScanPages scanPages, string dateSearchTerm, DocRectangle dateDocRect, double matchFactor, List<ExtractedDate> datesResult, int limitToPageNumN = -1, bool ignoreWhitespace = false)
+        public static void SearchForDateItem(ScanPages scanPages, string dateSearchTerm, DocRectangle dateDocRect, double matchFactor, List<ExtractedDate> datesResult,
+                                    ref bool latestDateRequested, ref bool earliestDateRequested, int limitToPageNumN = -1, bool ignoreWhitespace = false)
         {
             Stopwatch stp = new Stopwatch();
             stp.Start();
 
             // Get date search info
             DateSrchInfo dateSrchInfo = GetDateSearchInfo(dateSearchTerm);
+            if (dateSrchInfo.bEarliestDate)
+                earliestDateRequested = true;
+            if (dateSrchInfo.bLatestDate)
+                latestDateRequested = true;
 
             // Find first and last pages to search
             int firstPageIdx = 0;
@@ -441,7 +473,7 @@ namespace ScanMonitorApp
                             numSepChars = 0;
 
                             // Move chIdx on to skip to next non letter
-                            while ((chIdx < s.Length) && (Char.IsLetter(s[chIdx])))
+                            while ((chIdx < s.Length-1) && (Char.IsLetter(s[chIdx+1])))
                                 chIdx++;
 
                             // Check for another valid month string in next few chars to detect ranges without a year
@@ -668,6 +700,8 @@ namespace ScanMonitorApp
             dateSrchInfo.bPlusOneMonth = (dateSearchTerm.IndexOf("~PlusOneMonth", StringComparison.OrdinalIgnoreCase) >= 0);
             dateSrchInfo.bJoinTextInRect = (dateSearchTerm.IndexOf("~join", StringComparison.OrdinalIgnoreCase) >= 0);
             dateSrchInfo.bNoDateRanges = (dateSearchTerm.IndexOf("~NoDateRanges", StringComparison.OrdinalIgnoreCase) >= 0);
+            dateSrchInfo.bLatestDate = (dateSearchTerm.IndexOf("~latest", StringComparison.OrdinalIgnoreCase) >= 0);
+            dateSrchInfo.bEarliestDate = (dateSearchTerm.IndexOf("~earliest", StringComparison.OrdinalIgnoreCase) >= 0);
 
             // Pattern str
             string patternStr = "";
@@ -753,6 +787,8 @@ namespace ScanMonitorApp
             public bool bPlusOneMonth = false;
             public bool bJoinTextInRect = false;
             public bool bNoDateRanges = false;
+            public bool bLatestDate = false;
+            public bool bEarliestDate = false;
         }
 
         private class DateElemSrch

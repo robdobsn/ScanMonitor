@@ -13,12 +13,6 @@ namespace ScanMonitorApp
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        private static List<TextSubst> textSubst = new List<TextSubst>
-                {
-                    new TextSubst(@"\RobAndJudyPersonal\Info\Manuals - ", @"\RobAndJudyPersonal\"),
-                    new TextSubst(@"\8 Dick Place\Self storage", @"\8 Dick Place\Removals & Storage\Self storage")
-                };
-
         // Test code
         public static void AddOldDocTypes(string filename, DocTypesMatcher docTypesMatcher)
         {
@@ -147,7 +141,7 @@ namespace ScanMonitorApp
                     }
                     ad.OrigFileName = fields[2];
                     ad.UniqName = uniqName;
-                    ad.DestFile = DoTextSubst(fields[3]);
+                    ad.DestFile = fields[3];
                     ad.ArchiveFile = fields[4];
                     if (TEST_ON_LOCAL_DATA)
                         ad.ArchiveFile = ad.ArchiveFile.Replace(@"\\N7700PRO\Archive\ScanAdmin\ScanBackups\", @"C:\Users\Rob\Dropbox\20140227 Train\ScanBackups\");
@@ -165,16 +159,18 @@ namespace ScanMonitorApp
                     // Process file
                     if (PROCESS_PDF_FILE)
                     {
-                        scanDocHandler.ProcessPdfFile(ad.ArchiveFile, uniqName, true, true, true, false, true, true);
-
-                        // Create filed info record
-                        if (CREATE_RECORD_IN_DB)
+                        if (scanDocHandler.ProcessPdfFile(ad.ArchiveFile, uniqName, true, true, true, false, true, true))
                         {
-                            DateTime docDateFiled = DateTime.ParseExact(ad.ProcDateAndTime, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-                            FiledDocInfo fdi = new FiledDocInfo(ad.UniqName, ad.DocType, docDateFiled, ad.DestFile.Replace('\\', '/'), ad.ProcStatus, ad.ProcMessage, true, FiledDocInfo.DocFinalStatus.STATUS_NONE);
-                            scanDocHandler.AddFiledDocRecToMongo(fdi);
+                            // Create filed info record
+                            if (CREATE_RECORD_IN_DB)
+                            {
+                                DateTime docDateFiled = DateTime.ParseExact(ad.ProcDateAndTime, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                                FiledDocInfo fdi = new FiledDocInfo(ad.UniqName);
+                                fdi.SetDocFilingInfo(ad.DocType, ad.DestFile.Replace('\\', '/'), docDateFiled, "", "", "", "", DateTime.MinValue, new TimeSpan(), "", "", "");
+                                fdi.SetFiledAtInfo(true, docDateFiled, ad.ProcStatus + ", " + ad.ProcMessage, FiledDocInfo.DocFinalStatus.STATUS_FILED);
+                                scanDocHandler.AddFiledDocRecToMongo(fdi);
+                            }
                         }
-
                     }
                 }
             }
@@ -207,15 +203,6 @@ namespace ScanMonitorApp
             //    if (File.Exists(destFile))
             //        auditListView.
             //}
-        }
-
-        private static string DoTextSubst(string inStr)
-        {
-            foreach (TextSubst ts in textSubst)
-            {
-                inStr = inStr.Replace(ts.origText, ts.newText);
-            }
-            return inStr;
         }
 
         private class OldAuditData
