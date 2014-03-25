@@ -512,13 +512,16 @@ namespace ScanMonitorApp
                     e.Cancel = true;
                     _docFilingStatusStr = "Cancelled by User";
                     worker.ReportProgress(0, _docFilingStatusStr);
-                    bResult = false;
-                    break;
+                    return;
                 }
                 else
                 {
                     // Attempt to perform the file operation
+                    _docFilingStatusStr = "Copying file ...";
+                    worker.ReportProgress(0, _docFilingStatusStr);
                     bResult = CopyAndMoveTheFile(i, args);
+                    _docFilingStatusStr = "File copied ...";
+                    worker.ReportProgress(0, _docFilingStatusStr);
                     if (bResult)
                     {
                         break;
@@ -536,22 +539,43 @@ namespace ScanMonitorApp
                 }
             }
 
+            // Check copy ok
+            if (!bResult)
+            {
+                _docFilingStatusStr = "Failed to copy (check log)";
+                worker.ReportProgress(0, _docFilingStatusStr);
+                return;
+            }
+
             // Complete the status information
             FiledDocInfo fdi = (FiledDocInfo)args[1]; 
-            FiledDocInfo.DocFinalStatus dfs = FiledDocInfo.DocFinalStatus.STATUS_NONE;
-            if (bResult)
-                dfs = FiledDocInfo.DocFinalStatus.STATUS_FILED;
+            FiledDocInfo.DocFinalStatus dfs = FiledDocInfo.DocFinalStatus.STATUS_FILED;
+            _docFilingStatusStr = "Updating db ...";
+            worker.ReportProgress(0, _docFilingStatusStr);
             fdi.SetFiledAtInfo(true, DateTime.Now, _docFilingStatusStr, dfs);
             e.Result = args;
 
             // Update database
-            AddOrUpdateFiledDocRecInDb(fdi);
+            bResult = AddOrUpdateFiledDocRecInDb(fdi);
+
+            // Check db update
+            if (!bResult)
+            {
+                _docFilingStatusStr = "Failed db update (check log)";
+                worker.ReportProgress(0, _docFilingStatusStr);
+                return;
+            }
+
+            _docFilingStatusStr = "Db updated ...";
+            worker.ReportProgress(0, _docFilingStatusStr);
 
             // Send email(s) as required
-            if ((fdi.filedAs_followUpNeeded != "") || (fdi.filedAs_addToCalendar != ""))
+            if ((fdi.filedAs_followUpNeeded.Trim() != "") || (fdi.filedAs_addToCalendar.Trim() != ""))
             {
                 try
                 {
+                    _docFilingStatusStr = "Sending emails ...";
+                    worker.ReportProgress(0, _docFilingStatusStr);
                     SendEmailsForFollowUpOrCalendar((FiledDocInfo)args[1], (string)args[2]);
                 }
                 catch (Exception excp)
@@ -559,8 +583,11 @@ namespace ScanMonitorApp
                     logger.Error("Failed sending mail {0}", excp.Message);
                     _docFilingStatusStr = "Ok but email sending failed";
                     worker.ReportProgress(0, _docFilingStatusStr);
+                    return;
                 }
             }
+            _docFilingStatusStr = "Completed filing OK";
+            worker.ReportProgress(0, _docFilingStatusStr);
         }
 
         private void SendEmailsForFollowUpOrCalendar(FiledDocInfo fdi, string emailPassword)
@@ -725,8 +752,6 @@ namespace ScanMonitorApp
             }
             else if (e.Result != null)
             {
-                if (_docFilingStatusStr.Trim() == "")
-                    _docFilingStatusStr = "Filed Ok";
                 _filingCompleteCallback(_docFilingStatusStr);
             }
         }

@@ -1,4 +1,5 @@
 ﻿using MahApps.Metro.Controls;
+using Microsoft.WindowsAPICodePack.Dialogs;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -45,7 +46,8 @@ namespace ScanMonitorApp
         private DateTime _lastDocFiledAsDateTime = DateTime.Now;
         private enum TouchFromPageText { TOUCH_NONE, TOUCH_DATE, TOUCH_SUFFIX, TOUCH_MONEY, TOUCH_EVENT_NAME, TOUCH_EVENT_DATE, TOUCH_EVENT_DESC, TOUCH_EVENT_LOCN }
         private TouchFromPageText _touchFromPageText = TouchFromPageText.TOUCH_NONE;
-        private System.Windows.Threading.DispatcherTimer _timerForNewDocumentCheck; 
+        private System.Windows.Threading.DispatcherTimer _timerForNewDocumentCheck;
+        private string _overrideFolderForFiling = "";
 
         #region Init
 
@@ -177,6 +179,10 @@ namespace ScanMonitorApp
             // Get the current doc type
             _curSelectedDocType = _docTypesMatcher.GetDocType(docTypeName);
 
+            // Reset the override folder
+            _overrideFolderForFiling = "";
+            btnMoveToUndo.IsEnabled = false;
+
             // Extract date info again and update latest match result
             int bestDateIdx = 0;
             List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(_curDocScanPages, 
@@ -278,6 +284,8 @@ namespace ScanMonitorApp
             }
             lblStatusBarFileName.Content = _curDocScanDocInfo.uniqName + " " + statusStr;
             lblStatusBarFileName.Foreground = foreColour;
+
+            ShowFilingPath();
         }
 
         private void SetEventVisibility(bool vis, bool calendarEntry)
@@ -301,6 +309,14 @@ namespace ScanMonitorApp
             lblEmailPassword.Visibility = vis ? System.Windows.Visibility.Visible : System.Windows.Visibility.Hidden;
             txtEmailPassword.Visibility = vis ? System.Windows.Visibility.Visible : System.Windows.Visibility.Hidden;
             chkAttachFile.Visibility = vis ? System.Windows.Visibility.Visible : System.Windows.Visibility.Hidden;
+        }
+
+        private void ShowFilingPath()
+        {
+            bool pathContainsMacros = false;
+            string destPath = GetFilingPath(ref pathContainsMacros);
+            lblMoveToName.Content = destPath;
+            lblMoveToName.ToolTip = destPath;
         }
 
         #endregion
@@ -675,6 +691,47 @@ namespace ScanMonitorApp
             ShowDocToBeFiled(_curDocToBeFiledIdxInList);
         }
 
+        private void btnShowMoveToFolder_Click(object sender, RoutedEventArgs e)
+        {
+            if (_curSelectedDocType == null)
+                return;
+
+            // Check what path to use
+            bool pathContainsMacros = false;
+            string destPath = GetFilingPath(ref pathContainsMacros);
+
+            CommonOpenFileDialog cofd = new CommonOpenFileDialog("Folder for filing");
+            cofd.IsFolderPicker = true;
+            cofd.Multiselect = false;
+            cofd.InitialDirectory = destPath;
+            cofd.DefaultDirectory = destPath;
+            cofd.EnsurePathExists = true;
+            CommonFileDialogResult result = cofd.ShowDialog(this);
+            if (result == CommonFileDialogResult.Ok)
+            {
+                string folderName = cofd.FileName;
+                // If the folder for this doctype was the base folder then accept the change
+                if (_curSelectedDocType.moveFileToPath.Trim() != Properties.Settings.Default.BasePathForFilingFolderSelection.Trim())
+                {
+                    // Ask the user if they are sure
+                    MessageDialog.MsgDlgRslt rslt = MessageDialog.Show("File to " + folderName + " ?\n" + "Are you sure?", "Yes", "No", "Cancel", btnShowMoveToFolder, this);
+                    if (rslt == MessageDialog.MsgDlgRslt.RSLT_YES)
+                    {
+                        _overrideFolderForFiling = folderName;
+                        btnMoveToUndo.IsEnabled = true;
+                    }
+                }
+            }
+            ShowFilingPath();
+        }
+
+        private void btnMoveToUndo_Click(object sender, RoutedEventArgs e)
+        {
+            _overrideFolderForFiling = "";
+            btnMoveToUndo.IsEnabled = false;
+            ShowFilingPath();
+        }
+
         #endregion
 
         #region Handle deletion of document
@@ -746,11 +803,12 @@ namespace ScanMonitorApp
             // Get follow up strings
             string followUpStr = (bool)chkFollowUpB.IsChecked ? chkFollowUpB.Tag.ToString() : " ";
             followUpStr = followUpStr + ((bool)chkFollowUpA.IsChecked ? chkFollowUpA.Tag.ToString() : "");
+            followUpStr = followUpStr.Trim();
             string addToCalendarStr = (bool)chkCalendarEntry.IsChecked ? "Calendar" : "";
             string flagAttachFile = (bool)chkAttachFile.IsChecked ? "Attached" : "";
 
             // Check if email is required but password not set
-            if ((followUpStr != "") || (addToCalendarStr != ""))
+            if ((followUpStr.Trim() != "") || (addToCalendarStr.Trim() != ""))
             {
                 if (txtEmailPassword.Password.Trim() == "")
                 {
@@ -1059,11 +1117,26 @@ namespace ScanMonitorApp
             #endregion
         }
 
+        private string GetFilingPath(ref bool pathContainsMacros)
+        {
+            pathContainsMacros = false;
+
+            // Check whether to use overridden path or not
+            string destPath = "";
+            if (_overrideFolderForFiling.Trim() != "")
+                destPath = _overrideFolderForFiling.Trim();
+            else
+                destPath = _docTypesMatcher.ComputeExpandedPath(_curSelectedDocType.moveFileToPath, GetDateFromRollers(), false, ref pathContainsMacros);
+
+
+            return destPath;
+        }
+
         private string FormFullPathAndFileNameForFiling()
         {
             // Get the fully expanded path
             bool pathContainsMacros = false;
-            string destPath = _docTypesMatcher.ComputeExpandedPath(_curSelectedDocType.moveFileToPath, GetDateFromRollers(), false, ref pathContainsMacros);
+            string destPath = GetFilingPath(ref pathContainsMacros);
 
             // Create folder if the path contains macros
             try
@@ -1124,6 +1197,7 @@ namespace ScanMonitorApp
         }
 
         #endregion
+
 
     }
 

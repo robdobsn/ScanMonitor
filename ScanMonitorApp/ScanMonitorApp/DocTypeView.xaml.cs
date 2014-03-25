@@ -1011,6 +1011,17 @@ namespace ScanMonitorApp
                         return;
                 }
 
+                // Ensure the path is valid
+                bool pathContainsMacros = false;
+                string testFolderToUse = _docTypesMatcher.ComputeExpandedPath(txtMoveTo.Text.Trim(), DateTime.Now, true, ref pathContainsMacros);
+                if (!Directory.Exists(testFolderToUse))
+                {
+                    MessageBoxButton btnMessageBox = MessageBoxButton.OK;
+                    MessageBoxImage icnMessageBox = MessageBoxImage.Information;
+                    MessageBoxResult rsltMessageBox = MessageBox.Show("The Move-To Folder doesn't exist", "Folder Problem", btnMessageBox, icnMessageBox);
+                    return;
+                }
+
                 // Change the existing record to indicate it has been renamed & make it disabled
                 _selectedDocType.isEnabled = false;
                 _selectedDocType.renamedTo = txtDocTypeName.Text;

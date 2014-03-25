@@ -69,7 +69,7 @@
       <Value Profile="(Default)">Rob Dobson&lt;rob@dobson.com&gt;, Judy Wilson &lt;judyw@marketry.co.uk&gt;</Value>
     </Setting>
     <Setting Name="TestModeFileTo" Type="System.String" Scope="User">
-      <Value Profile="(Default)">\\MACALLAN\Admin\ScanAdmin\TestFileLocation</Value>
+      <Value Profile="(Default)" />
     </Setting>
   </Settings>
 </SettingsFile>
