@@ -520,10 +520,10 @@ namespace ScanMonitorApp
                     _docFilingStatusStr = "Copying file ...";
                     worker.ReportProgress(0, _docFilingStatusStr);
                     bResult = CopyAndMoveTheFile(i, args);
-                    _docFilingStatusStr = "File copied ...";
-                    worker.ReportProgress(0, _docFilingStatusStr);
                     if (bResult)
                     {
+                        _docFilingStatusStr = "File copied ...";
+                        worker.ReportProgress(0, _docFilingStatusStr);
                         break;
                     }
                     else
@@ -531,7 +531,7 @@ namespace ScanMonitorApp
                         // Try again in a few secs
                         for (int timerCount = TIME_BETWEEN_RETRIES_SECS; timerCount > 0; timerCount--)
                         {
-                            string tryStr = string.Format(_docFilingStatusStr + "|Retry {0} (of {1}) in {2} seconds", i, MAX_FILE_PROCESS_RETRIES, timerCount);
+                            string tryStr = string.Format("Copying | Retry {0} (of {1}) in {2} seconds", i, MAX_FILE_PROCESS_RETRIES, timerCount);
                             worker.ReportProgress((i * 10), tryStr);
                             Thread.Sleep(1000);
                         }
@@ -588,6 +588,9 @@ namespace ScanMonitorApp
             }
             _docFilingStatusStr = "Completed filing OK";
             worker.ReportProgress(0, _docFilingStatusStr);
+
+            // This seems necessary - otherwise when refreshing display still shows old doc present!
+            Thread.Sleep(1000);
         }
 
         private void SendEmailsForFollowUpOrCalendar(FiledDocInfo fdi, string emailPassword)
@@ -697,17 +700,37 @@ namespace ScanMonitorApp
 
             // Try to perform the copy and move
             bool bResult = false;
+            bool bDelete = false;
             // Check for test mode
             if (Properties.Settings.Default.TestModeFileTo == "")
             {
-                bResult = CopyFile(sdi.origFileName, fdi.filedAs_pathAndFileName, ref _docFilingStatusStr);
+                if (File.Exists(sdi.origFileName))
+                {
+                    bResult = CopyFile(sdi.origFileName, fdi.filedAs_pathAndFileName, ref _docFilingStatusStr);
+                    bDelete = true;
+                }
+                else
+                {
+                    string archiveFileName = Path.Combine(Properties.Settings.Default.DocArchiveFolder, sdi.uniqName + ".pdf");
+                    if (File.Exists(archiveFileName))
+                    {
+                        bResult = CopyFile(archiveFileName, fdi.filedAs_pathAndFileName, ref _docFilingStatusStr);
+                    }
+                    else
+                    {
+                        logger.Info("Attempting to file {0} original source and archive both missing", sdi.uniqName);
+                        _docFilingStatusStr = "File missing " + archiveFileName;
+                        bResult = false;
+                    }
+                    bDelete = false;
+                }
             }
             else
             {
                 string toFile = Path.Combine(Properties.Settings.Default.TestModeFileTo, Path.GetFileName(fdi.filedAs_pathAndFileName));
                 bResult = CopyFile(sdi.origFileName, toFile, ref _docFilingStatusStr);
             }
-            if (bResult)
+            if (bResult && bDelete)
             {
                 // Delete the original file
                 try
@@ -726,7 +749,7 @@ namespace ScanMonitorApp
                     logger.Error("Failed to delete file {0} excp {1}", sdi.origFileName, e.Message);
                 }
             }
-            else
+            if (!bResult)
             {
                 _docFilingStatusStr = "COPY FAILED " + _docFilingStatusStr;
             }
@@ -835,10 +858,7 @@ namespace ScanMonitorApp
 
         private static string MakeValidFileName(string name)
         {
-            name = name.Replace(@"\r\n", " ");
-            string invalidChars = Regex.Escape(new string(Path.GetInvalidFileNameChars()));
-            string invalidReStr = string.Format(@"[{0}]+", invalidChars);
-            return Regex.Replace(name, invalidReStr, "_");
+            return Path.GetInvalidFileNameChars().Aggregate(name, (current, c) => current.Replace(c.ToString(), string.Empty));
         }
 
         public static string FormatFileNameFromMacros(string origName, string renameTo, DateTime fileAsDateTime, string prefix, string suffix, string docTypeName)

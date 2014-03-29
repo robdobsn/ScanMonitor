@@ -1123,11 +1123,13 @@ namespace ScanMonitorApp
 
             // Check whether to use overridden path or not
             string destPath = "";
-            if (_overrideFolderForFiling.Trim() != "")
-                destPath = _overrideFolderForFiling.Trim();
-            else
-                destPath = _docTypesMatcher.ComputeExpandedPath(_curSelectedDocType.moveFileToPath, GetDateFromRollers(), false, ref pathContainsMacros);
-
+            if (_curSelectedDocType != null)
+            {
+                if (_overrideFolderForFiling.Trim() != "")
+                    destPath = _overrideFolderForFiling.Trim();
+                else
+                    destPath = _docTypesMatcher.ComputeExpandedPath(_curSelectedDocType.moveFileToPath, GetDateFromRollers(), false, ref pathContainsMacros);
+            }
 
             return destPath;
         }

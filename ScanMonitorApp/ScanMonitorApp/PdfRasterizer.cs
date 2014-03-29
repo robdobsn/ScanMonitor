@@ -47,7 +47,7 @@ namespace ScanMonitorApp
                 numPagesToConvert = maxPages;
             for (int pageNumber = 1; pageNumber <= numPagesToConvert; pageNumber++)
             {
-                string pageFileName = GetFilenameOfImageOfPage(outputPath, uniqName, pageNumber, true);
+                string pageFileName = GetFilenameOfImageOfPage(outputPath, uniqName, pageNumber, true, "jpg");
                 try
                 {
                     System.Drawing.Image img = _rasterizer.GetPage(desired_x_dpi, desired_y_dpi, pageNumber);
@@ -56,7 +56,7 @@ namespace ScanMonitorApp
                         if (scanPages.pageRotations[pageNumber - 1] != 0)
                             img = RotateImageWithoutCrop(img, scanPages.pageRotations[pageNumber - 1]);
                     // Save to file
-                    img.Save(pageFileName, ImageFormat.Png);
+                    img.Save(pageFileName, ImageFormat.Jpeg);
                     imgFileNames.Add(pageFileName);
                 }
                 catch (Exception excp)
@@ -118,9 +118,17 @@ namespace ScanMonitorApp
             else return b;
         }
 
-        public static string GetFilenameOfImageOfPage(string baseFolderForImages, string uniqName, int pageNum, bool bCreateFolderIfReqd)
+        public static string GetFilenameOfImageOfPage(string baseFolderForImages, string uniqName, int pageNum, bool bCreateFolderIfReqd, string fileExtForced = "")
         {
-            return Path.Combine(ScanDocInfo.GetImageFolderForFile(baseFolderForImages, uniqName, bCreateFolderIfReqd), uniqName + "_" + pageNum.ToString() + ".png").Replace('\\', '/');
+            if (fileExtForced != "")
+                return Path.Combine(ScanDocInfo.GetImageFolderForFile(baseFolderForImages, uniqName, bCreateFolderIfReqd), uniqName + "_" + pageNum.ToString() + "." + fileExtForced).Replace('\\', '/');
+            string jpgPath = Path.Combine(ScanDocInfo.GetImageFolderForFile(baseFolderForImages, uniqName, bCreateFolderIfReqd), uniqName + "_" + pageNum.ToString() + ".jpg").Replace('\\', '/');
+            if (File.Exists(jpgPath))
+                return jpgPath;
+            string pngPath = Path.Combine(ScanDocInfo.GetImageFolderForFile(baseFolderForImages, uniqName, bCreateFolderIfReqd), uniqName + "_" + pageNum.ToString() + ".png").Replace('\\', '/');
+            if (File.Exists(pngPath))
+                return pngPath;
+            return jpgPath;
         }
 
         public static System.Drawing.Image GetImageOfPage(string fileName, int pageNum)
