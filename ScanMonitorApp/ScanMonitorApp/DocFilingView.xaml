@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
-        Title="Document Filing" Height="1055.718" Width="1861.264" Loaded="MetroWindow_Loaded">
+        Title="Document Filing" Height="1140.718" Width="1854.264" Loaded="MetroWindow_Loaded">
     <Grid>
         <Grid.Background>
             <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
@@ -126,7 +126,7 @@
             <CheckBox x:Name="chkFollowUpA" Content="Follow Up A" HorizontalAlignment="Left" Height="38" Margin="16,535,0,0" VerticalAlignment="Top" Width="174" FontSize="20" Foreground="#FF00AFF0" Unchecked="chkFollowUpA_Unchecked" Checked="chkFollowUpA_Checked"/>
             <CheckBox x:Name="chkFollowUpB" Content="Follow Up B" HorizontalAlignment="Left" Height="38" Margin="241,535,0,0" VerticalAlignment="Top" Width="174" FontSize="20" Foreground="#FF00AFF0" Checked="chkFollowUpB_Checked" Unchecked="chkFollowUpB_Unchecked"/>
             <CheckBox x:Name="chkCalendarEntry" Content="Add to Calendar" Height="38" Margin="0,535,239,0" VerticalAlignment="Top" FontSize="20" Foreground="#FF00AFF0" Checked="chkCalendarEntry_Checked" Unchecked="chkCalendarEntry_Unchecked" HorizontalAlignment="Right" Width="174"/>
-            <Grid x:Name="gridEmailFields" HorizontalAlignment="Left" Height="279" Margin="0,602,0,0" VerticalAlignment="Top" Width="907">
+            <Grid x:Name="gridEmailFields" HorizontalAlignment="Left" Height="279" Margin="0,602,-4,0" VerticalAlignment="Top" Width="907">
                 <Label x:Name="lblEventName" Content="Event" HorizontalAlignment="Left" Height="38" Margin="10,116,0,0" VerticalAlignment="Top" Width="114" FontSize="20"/>
                 <TextBox x:Name="txtEventName" Height="38" Margin="124,116,53,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="20" Background="#FF00AFF0" Foreground="White"/>
                 <Button x:Name="btnEventNameFromPageText" VerticalAlignment="Top" Height="38" Margin="0,116,10,0" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="38" Click="btnEventNameFromPageText_Click">
