@@ -40,6 +40,7 @@ namespace ScanMonitorApp
             btnCancel.Visibility = (cancelButtonText.Trim() != "") ? System.Windows.Visibility.Visible : System.Windows.Visibility.Hidden;
             _fromElem = fromElem;
             _fromWin = fromWin;
+            this.Owner = fromWin;
         }
 
         public static MsgDlgRslt Show(string message, string yesButtonText, string noButtonText, string cancelButtonText, UIElement fromElem, Window fromWin)
@@ -69,6 +70,8 @@ namespace ScanMonitorApp
 
         private void MetroWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            if (_fromElem != null)
+            {
             var positionTransform = _fromElem.TransformToAncestor(_fromWin);
             var areaPosition = positionTransform.Transform(new Point(0, 0));
             Application curApp = Application.Current;
@@ -76,6 +79,13 @@ namespace ScanMonitorApp
             this.Left = mainWindow.Left + areaPosition.X + 100 - this.ActualWidth;
             this.Top = mainWindow.Top + areaPosition.Y + 150;
         }
+            else
+            {
+                Left = _fromWin.Left + (_fromWin.ActualWidth - ActualWidth) / 2;
+                Top = _fromWin.Top + (_fromWin.ActualHeight - ActualHeight) / 2;
+            }
+        }
 
     }
 }
+

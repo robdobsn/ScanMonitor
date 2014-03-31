@@ -15,10 +15,7 @@
    xml:space="preserve"
    id="svg2"
    inkscape:version="0.48.4 r9939"
-   sodipodi:docname="appbar.transform.rotate.counterclockwise.gray.svg"
-   inkscape:export-filename="\\MACALLAN\Main\RobDev\Projects\HomeAutomation\ScanningAndFiling\ScanMonitor\ScanMonitorApp\ScanMonitorApp\res\appbar.transform.rotate.counterclockwise.gray.png"
-   inkscape:export-xdpi="180"
-   inkscape:export-ydpi="180"><metadata
+   sodipodi:docname="appbar.magnify.add.svg"><metadata
    id="metadata10"><rdf:RDF><cc:Work
        rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
          rdf:resource="http://purl.org/dc/dcmitype/StillImage" /><dc:title></dc:title></cc:Work></rdf:RDF></metadata><defs
@@ -37,9 +34,9 @@
    showgrid="false"
    inkscape:zoom="3.1052632"
    inkscape:cx="38"
-   inkscape:cy="38.161017"
-   inkscape:window-x="118"
-   inkscape:window-y="246"
+   inkscape:cy="38"
+   inkscape:window-x="233"
+   inkscape:window-y="520"
    inkscape:window-maximized="0"
    inkscape:current-layer="svg2" />
 	<path
@@ -47,7 +44,7 @@
    fill-opacity="1"
    stroke-width="0.2"
    stroke-linejoin="round"
-   d="M 19,57L 34,57L 34,42L 28.8076,47.1924C 26.4551,44.8399 25,41.5899 25,38C 25,30.8203 30.8203,25 38,25C 45.1797,25 51,30.8203 51,38C 51,42.6137 48.5965,46.6661 44.9734,48.9734L 49.2862,53.2862C 53.9658,49.8254 57,44.2671 57,38C 57,27.5066 48.4934,19 38,19C 27.5066,19 19,27.5066 19,38C 19,43.2467 21.1266,47.9967 24.565,51.435L 19,57 Z "
+   d="M 42.5,22C 49.4036,22 55,27.5964 55,34.5C 55,41.4036 49.4036,47 42.5,47C 40.1356,47 37.9245,46.3435 36,45.2426L 26.9749,54.2678C 25.8033,55.4393 23.9038,55.4393 22.7322,54.2678C 21.5607,53.0962 21.5607,51.1967 22.7322,50.0251L 31.7971,40.961C 30.6565,39.0755 30,36.8644 30,34.5C 30,27.5964 35.5964,22 42.5,22 Z M 42.5,26C 37.8056,26 34,29.8056 34,34.5C 34,39.1944 37.8056,43 42.5,43C 47.1944,43 51,39.1944 51,34.5C 51,29.8056 47.1944,26 42.5,26 Z M 41,29L 44,29L 44,33L 48,33L 48,36L 44,36L 44,40L 41,40L 41,36L 37,36L 37,33L 41,33L 41,29 Z "
    id="path4"
    style="fill:#868686;fill-opacity:1" />
 </svg>
