@@ -181,7 +181,10 @@
         <Button x:Name="btnViewDocTypes" Grid.Column="0"  Margin="0,0,104,3" FontSize="16" Click="btnViewDocTypes_Click" Height="50" VerticalAlignment="Bottom" Grid.Row="2" HorizontalAlignment="Right" Width="96" Style="{DynamicResource SquareButtonStyle}">
             <Image Source="res/appbar.book.png" Margin="3"/>
         </Button>
-
+        <Button x:Name="btnEditPdf" Grid.Column="0"  Margin="0,0,227,3" FontSize="16" Click="btnEditPdf_Click" Height="50" VerticalAlignment="Bottom" Grid.Row="2" HorizontalAlignment="Right" Width="96" Style="{DynamicResource SquareButtonStyle}">
+            <Image Source="res/appbar.page.edit.png" Margin="3"/>
+        </Button>
+        
         <Grid Grid.Column="1" Margin="5">
             <Button x:Name="btnPrevDoc" VerticalAlignment="Top" HorizontalAlignment="Left" Width="96" Height="60" FontSize="16" Margin="134,10,0,0" Click="btnPrevDoc_Click" Style="{DynamicResource SquareButtonStyle}">
                 <Image Source="res/appbar.chevron.left.png" Margin="3"></Image>

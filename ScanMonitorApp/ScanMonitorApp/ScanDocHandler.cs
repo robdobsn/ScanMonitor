@@ -21,6 +21,7 @@ namespace ScanMonitorApp
     {
         const int MAX_FILE_PROCESS_RETRIES = 3;
         const int TIME_BETWEEN_RETRIES_SECS = 5;
+        const int THUMBNAIL_POINTS_PER_INCH = 150;
 
         private static Logger logger = LogManager.GetCurrentClassLogger();
         public delegate void ReportStatus(string str);
@@ -826,8 +827,8 @@ namespace ScanMonitorApp
                 bool procImages = (!bDontOverwriteExistingImages) | (!File.Exists(PdfRasterizer.GetFilenameOfImageOfPage(_scanConfig._docAdminImgFolderBase, uniqName, 1, false)));
                 if (procImages)
                 {
-                    PdfRasterizer rs = new PdfRasterizer();
-                    List<string> imgFileNames = rs.Start(fileName, uniqName, scanPages, _scanConfig._docAdminImgFolderBase, _scanConfig._maxPagesForImages);
+                    PdfRasterizer rs = new PdfRasterizer(fileName, THUMBNAIL_POINTS_PER_INCH);
+                    List<string> imgFileNames = rs.GeneratePageFiles(uniqName, scanPages, _scanConfig._docAdminImgFolderBase, _scanConfig._maxPagesForImages);
                 }
             }
 

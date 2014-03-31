@@ -1,0 +1,104 @@
+﻿<Controls:MetroWindow x:Class="ScanMonitorApp.PdfEditorWindow"
+        xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:WpfExtensions="clr-namespace:WpfExtensions"
+        x:Name="RobsPDFEditor"
+        Title="PDF Editor" Height="750" Width="1200" Closing="RobsPDFEditor_Closing">
+    <Grid Background="LightGray">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="85"/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0" Background="#FF6A6A6A">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="114*"/>
+                <ColumnDefinition Width="35*"/>
+            </Grid.ColumnDefinitions>
+            <Button x:Name="btnOpenFile" HorizontalAlignment="Left" Height="51" Margin="17,17,0,0" VerticalContentAlignment="Center" VerticalAlignment="Top" Width="89" Style="{DynamicResource SquareButtonStyle}" Click="btnOpenFile_Click" FontSize="16">
+                <Image Source="res/appbar.folder.open.png" ></Image>
+            </Button>
+            <Button x:Name="btnAddFile" HorizontalAlignment="Left" Height="51" Margin="156,17,0,0" VerticalContentAlignment="Center" VerticalAlignment="Top" Width="89" Style="{DynamicResource SquareButtonStyle}" Click="btnAddFile_Click" FontSize="16" IsEnabled="False" >
+                <Image Source="res/appbar.folder.open.add.png" ></Image>
+            </Button>
+            <Button x:Name="btnSaveFile" HorizontalAlignment="Left" Height="51" Margin="300,17,0,0"  VerticalContentAlignment="Center" VerticalAlignment="Top" Width="89" Style="{DynamicResource SquareButtonStyle}" Click="btnSaveFile_Click" FontSize="16" IsEnabled="False" >
+                <Image Source="res/appbar.save.multiple.png" ></Image>
+            </Button>
+            <Button x:Name="btnReplaceFile" HorizontalAlignment="Left" Height="51" Margin="444,17,0,0"  VerticalContentAlignment="Center" VerticalAlignment="Top" Width="89" Style="{DynamicResource SquareButtonStyle}" Click="btnReplaceFile_Click" FontSize="16" IsEnabled="False" >
+                <Image Source="res/appbar.save.replace.png" ></Image>
+            </Button>
+            <Button x:Name="btnRotateAllACWFile" HorizontalAlignment="Left" Height="51" Margin="588,17,0,0" VerticalAlignment="Top" Width="89" Style="{DynamicResource SquareButtonStyle}" Click="btnRotateAllACWFile_Click" IsEnabled="False" >
+                <Image Source="res/appbar.transform.rotate.all.minus90.png" ></Image>
+            </Button>
+            <Button x:Name="btnRotateAllCWFile" HorizontalAlignment="Left" Height="51" Margin="732,17,0,0" VerticalAlignment="Top" Width="89" Style="{DynamicResource SquareButtonStyle}" Click="btnRotateAllCWFile_Click" IsEnabled="False">
+                <Image Source="res/appbar.transform.rotate.all.90.png" ></Image>
+            </Button>
+            <Grid Grid.Column="1" Margin="0,10,10,10">
+                <Label x:Name="curInFileInfo" FontSize="16" Margin="0,0,0,34" VerticalContentAlignment="Center" Foreground="White" >Input:</Label>
+                <Label x:Name="curOutFileInfo" FontSize="16" Margin="0,31,0,0" VerticalContentAlignment="Center" Foreground="White">Output:</Label>
+            </Grid>
+        </Grid>
+        <Popup x:Name="popupPageMagnify" AllowsTransparency="True" Placement="Relative" StaysOpen="False">
+            <Border BorderThickness="2" BorderBrush="Black">
+                <Image x:Name="popupPageMagnifyImage" Width="500"></Image>
+            </Border>
+        </Popup>
+        <ScrollViewer x:Name="PdfListViewer" Grid.Row="1"  HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden"
+                                      WpfExtensions:DragDropExtension.ScrollOnDragDrop="True"   MouseWheel="PdfListViewer_MouseWheel"             
+                      >
+            <ItemsControl x:Name="pageThumbs">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal">
+                        </StackPanel>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Width="540" MouseWheel="PdfListViewer_MouseWheel">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="60"/>
+                                <RowDefinition Height="500"/>
+                                <RowDefinition Height="40"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="500"/>
+                                <ColumnDefinition Width="40"/>
+                            </Grid.ColumnDefinitions>
+                            <Image x:Name="Rotate180Icon" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="1"  VerticalAlignment="Center" Height="32" Tag="{Binding TagStr}" Source="res/appbar.transform.rotate.180.gray.png" HorizontalAlignment="Center" Margin="0,0,300,0"  MouseDown="Rotate180Icon_MouseDown" ></Image>
+                            <Image x:Name="RotateACWIcon" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="1"  VerticalAlignment="Center" Height="24" Tag="{Binding TagStr}" Source="res/appbar.transform.rotate.minus90.gray.png" HorizontalAlignment="Center" Margin="0,0,150,0" MouseDown="RotateACWIcon_MouseDown" ></Image>
+                            <Image x:Name="RotateCWIcon" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="1"  VerticalAlignment="Center" Height="24" Tag="{Binding TagStr}" Source="res/appbar.transform.rotate.90.gray.png" HorizontalAlignment="Center" Margin="0,0,0,0" MouseDown="RotateCWIcon_MouseDown"></Image>
+                            <Image x:Name="DeleteIcon" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="1" HorizontalAlignment="Center" VerticalAlignment="Center" Source="{Binding DeleteIconImg}" Width="20" Tag="{Binding TagStr}" Margin="150,0,0,0" MouseDown="DeleteIcon_MouseDown"></Image>
+                            <Image x:Name="MagnifyIcon" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="1"  VerticalAlignment="Center" Height="24" Tag="{Binding TagStr}" Source="res/appbar.magnify.add.png" HorizontalAlignment="Center" Margin="300,0,0,0" MouseDown="MagnifyIcon_MouseDown"></Image>
+                            <Image x:Name="SplitIcon" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="1" Margin="0,0,0,0" HorizontalAlignment="Center" VerticalAlignment="Center" Source="{Binding SplitIconImg}" Width="20" Tag="{Binding TagStr}" MouseDown="SplitIcon_MouseDown"></Image>
+                            <Grid Background="LightGray" Grid.Row="1" Grid.Column="1" Grid.RowSpan="2" Tag="{Binding TagStr}" AllowDrop="True">
+                                <Rectangle x:Name="SplitLine" HorizontalAlignment="Center" Width="3" StrokeThickness="0" Fill="#FFDC0032" Visibility="{Binding SplitLineVisibility}"/>
+                            </Grid>
+                            <Grid Background="LightGray" Grid.Row="1" Tag="{Binding TagStr}" MouseMove="PageImage_MouseMove" AllowDrop="True" DragEnter="PageImage_DragEnter" DragLeave="PageImage_DragLeave" DragOver="PageImage_DragOver" Drop="PageImage_Drop" Width="500" Height="500" >
+                                <Image x:Name="PageImage" Source="{Binding ThumbBitmap}" Tag="{Binding TagStr}" Stretch="Uniform" RenderTransformOrigin="0.5,0.5" Width="500" Height="500" >
+                                    <Image.RenderTransform>
+                                        <TransformGroup>
+                                            <RotateTransform Angle="{Binding PageRotation}"/>
+                                        </TransformGroup>
+                                    </Image.RenderTransform>
+                                </Image>
+                            </Grid>
+                            <Grid Grid.Row="1" Grid.Column="0" Width="{Binding ThumbWidth}" Height="{Binding ThumbHeight}" Opacity=".75">
+                                <Line x:Name="DeleteStrike1" Visibility="{Binding PageDeleteVisibility}" X1="0" Y1="0" X2="200" Y2="200" Stroke="#FFDC0032" StrokeThickness="7" HorizontalAlignment="Center" VerticalAlignment="Center"></Line>
+                                <Line x:Name="DeleteStrike2" Visibility="{Binding PageDeleteVisibility}" X1="0" Y1="200" X2="200" Y2="0" Stroke="#FFDC0032" StrokeThickness="7" HorizontalAlignment="Center" VerticalAlignment="Center"></Line>
+                            </Grid>
+                            <Grid Grid.Row="2" Grid.Column="0" >
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition/>
+                                </Grid.ColumnDefinitions>
+                                <Label Grid.Column="0" Content="{Binding PageNumStr}" Foreground="White" Background="#FF354B53"  FontWeight="SemiBold" Opacity="0.80"></Label>
+                                <Label Grid.Column="1" HorizontalContentAlignment="Right" Content="{Binding NewDocPageInfoStr}" Foreground="White" Background="#FF354B53"  FontWeight="SemiBold" Opacity="0.80"></Label>
+                            </Grid>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</Controls:MetroWindow>

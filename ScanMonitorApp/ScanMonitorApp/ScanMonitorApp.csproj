@@ -128,15 +128,18 @@
     <Compile Include="DocTypeView.xaml.cs">
       <DependentUpon>DocTypeView.xaml</DependentUpon>
     </Compile>
+    <Compile Include="DragDropExtension.cs" />
     <Compile Include="LocationRectangleHandler.cs" />
     <Compile Include="MessageDialog.xaml.cs">
       <DependentUpon>MessageDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="MigrateFromOldApp.cs" />
     <Compile Include="OldXmlRulesManager.cs" />
+    <Compile Include="OutputFilenames.xaml.cs" />
     <Compile Include="PathSubstView.xaml.cs">
       <DependentUpon>PathSubstView.xaml</DependentUpon>
     </Compile>
+    <Compile Include="PdfEditorWindow.xaml.cs" />
     <Compile Include="PdfRasterizer.cs" />
     <Compile Include="PdfTextAndLocExtractor.cs" />
     <Compile Include="ScanDocInfo.cs" />
@@ -175,9 +178,17 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="OutputFilenames.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="PathSubstView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="PdfEditorWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
   </ItemGroup>
   <ItemGroup>
@@ -209,6 +220,7 @@
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
     <AppDesigner Include="Properties\" />
+    <None Include="res\appbar.transform.rotate.minus90.gray.svg" />
     <None Include="ScanMonitorApp_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
@@ -293,6 +305,30 @@
   <ItemGroup>
     <Resource Include="res\appbar.folder.png" />
     <Resource Include="res\appbar.undo.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="res\appbar.page.edit.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="res\appbar.delete.gray.png" />
+    <Resource Include="res\appbar.delete.red.png" />
+    <Resource Include="res\appbar.folder.open.add.png" />
+    <Resource Include="res\appbar.folder.open.png" />
+    <Resource Include="res\appbar.magnify.add.png" />
+    <Resource Include="res\appbar.save.multiple.png" />
+    <Resource Include="res\appbar.save.png" />
+    <Resource Include="res\appbar.save.replace.png" />
+    <Resource Include="res\appbar.slice.png" />
+    <Resource Include="res\appbar.transform.rotate.180.gray.png" />
+    <Resource Include="res\appbar.transform.rotate.90.gray.png" />
+    <Resource Include="res\appbar.transform.rotate.all.90.png" />
+    <Resource Include="res\appbar.transform.rotate.all.minus90.png" />
+    <Resource Include="res\appbar.transform.rotate.clockwise.gray.png" />
+    <Resource Include="res\appbar.transform.rotate.counterclockwise.gray.png" />
+    <Resource Include="res\appbar.transform.rotate.minus90.gray.png" />
+    <Resource Include="res\scissors.png" />
+    <Resource Include="res\scissorsgray.png" />
+    <Resource Include="res\scissorsred.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -732,6 +732,26 @@ namespace ScanMonitorApp
             ShowFilingPath();
         }
 
+        private void btnEditPdf_Click(object sender, RoutedEventArgs e)
+        {
+            if (_curDocScanDocInfo == null)
+                return;
+
+            // Check not already busy filing a doc
+            if (_scanDocHandler.IsBusy())
+                return;
+
+            PdfEditorWindow pew = new PdfEditorWindow();
+            pew.OpenEmbeddedPdfEditor(_curDocScanDocInfo.origFileName, HandlePdfEditSaveComplete);
+            pew.ShowDialog();
+        }
+
+        private void HandlePdfEditSaveComplete(string originalFileName, List<string> savedFileNames)
+        {
+            foreach (string s in savedFileNames)
+                Console.WriteLine("Saved " + s);
+        }
+
         #endregion
 
         #region Handle deletion of document
