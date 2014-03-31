@@ -269,6 +269,12 @@ namespace ScanMonitorApp
                         btnProcessDoc.IsEnabled = false;
                         btnDeleteDoc.IsEnabled = false;
                         break;
+                    case FiledDocInfo.DocFinalStatus.STATUS_DELETED_AFTER_EDIT:
+                        statusStr = "DELETED AFTER EDIT";
+                        foreColour = Brushes.Red;
+                        btnProcessDoc.IsEnabled = false;
+                        btnDeleteDoc.IsEnabled = false;
+                        break;
                     case FiledDocInfo.DocFinalStatus.STATUS_FILED:
                         statusStr = "FILED";
                         foreColour = Brushes.Red;
@@ -748,8 +754,24 @@ namespace ScanMonitorApp
 
         private void HandlePdfEditSaveComplete(string originalFileName, List<string> savedFileNames)
         {
-            foreach (string s in savedFileNames)
-                Console.WriteLine("Saved " + s);
+            // New files should be picked up by the folder watcher
+
+            // So all we have to do is delete the original
+            bool deletedOk = _scanDocHandler.DeleteFile(_curDocScanDocInfo.uniqName, _curFiledDocInfo, _curDocScanDocInfo.origFileName, true);
+            if (!deletedOk)
+            {
+                lblStatusBarProcStatus.Content = "Failed to remove original file";
+                lblStatusBarProcStatus.Foreground = Brushes.Red;
+            }
+            else
+            {
+                lblStatusBarProcStatus.Content = "Ok";
+                lblStatusBarProcStatus.Foreground = Brushes.Black;
+            }
+
+            // Goto a file if there is one
+            CheckForNewDocs();
+            ShowDocToBeFiled(_curDocToBeFiledIdxInList);
         }
 
         #endregion
@@ -770,7 +792,7 @@ namespace ScanMonitorApp
             if (rslt == MessageDialog.MsgDlgRslt.RSLT_YES)
             {
                 // Delete file
-                bool deletedOk = _scanDocHandler.DeleteFile(_curDocScanDocInfo.uniqName, _curFiledDocInfo, _curDocScanDocInfo.origFileName);
+                bool deletedOk = _scanDocHandler.DeleteFile(_curDocScanDocInfo.uniqName, _curFiledDocInfo, _curDocScanDocInfo.origFileName, false);
                 if (!deletedOk)
                 {
                     lblStatusBarProcStatus.Content = "Failed to delete file";
