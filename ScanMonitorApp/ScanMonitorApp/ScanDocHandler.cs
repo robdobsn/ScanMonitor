@@ -372,7 +372,7 @@ namespace ScanMonitorApp
 
         #region Delete File
 
-        public bool DeleteFile(string uniqName, FiledDocInfo fdi, string fullSourceName)
+        public bool DeleteFile(string uniqName, FiledDocInfo fdi, string fullSourceName, bool dueToFileEditing)
         {
             // Delete the physical file
             bool fileDeleteOk = false;
@@ -409,7 +409,7 @@ namespace ScanMonitorApp
             // Record the deletion in the filed docs database
             if (fdi == null)
                 fdi = new FiledDocInfo(uniqName);
-            fdi.SetDeletedInfo();
+            fdi.SetDeletedInfo(dueToFileEditing);
 
             return AddOrUpdateFiledDocRecInDb(fdi);
         }
