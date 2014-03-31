@@ -112,7 +112,7 @@ namespace ScanMonitorApp
     {
         public enum DocFinalStatus
         {
-            STATUS_NONE, STATUS_DELETED, STATUS_FILED
+            STATUS_NONE, STATUS_DELETED, STATUS_FILED, STATUS_DELETED_AFTER_EDIT
         }
 
         public FiledDocInfo(string a_uniqName)
@@ -137,12 +137,12 @@ namespace ScanMonitorApp
             filedAt_finalStatus = DocFinalStatus.STATUS_NONE;            
         }
 
-        public void SetDeletedInfo()
+        public void SetDeletedInfo(bool deletedDueToFileEditing)
         {
             includeInXCheck = false;
             filedAt_dateAndTime = DateTime.Now;
             filedAt_errorMsg = "";
-            filedAt_finalStatus = DocFinalStatus.STATUS_DELETED;
+            filedAt_finalStatus = deletedDueToFileEditing ? DocFinalStatus.STATUS_DELETED_AFTER_EDIT : DocFinalStatus.STATUS_DELETED;
         }
 
         public void SetDocFilingInfo(string a_filedAs_docType, string a_filedAs_pathAndFileName, DateTime a_filedAs_dateOfDoc,
