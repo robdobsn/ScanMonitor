@@ -348,23 +348,16 @@ namespace ScanMonitorApp
             List<string> unfiledDocs = scannedDocUniqNames.Except(filedDocUniqNames).ToList();
 
             stopWatch.Stop();
-            //Console.WriteLine("GetList Elapsed : {0}ms, recs {1}", stopWatch.ElapsedMilliseconds, unfiledDocs.Count);
+            logger.Info("GetList Elapsed : {0}ms, recs {1}", stopWatch.ElapsedMilliseconds, unfiledDocs.Count);
             return unfiledDocs;
         }
 
         public int GetCountOfUnfiledDocs()
         {
-            Stopwatch stopWatch = new Stopwatch();
-            stopWatch.Start();
-
             MongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
             long scannedCount = collection_sdinfo.Count();
             MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
             long filedCount = collection_fdinfo.Count();
-
-            stopWatch.Stop();
-            //Console.WriteLine("GetCount Elapsed : {0}ms, recs {1}", stopWatch.ElapsedMilliseconds, scannedCount - filedCount);
-
             return (int)(scannedCount - filedCount);
         }
 
@@ -385,7 +378,6 @@ namespace ScanMonitorApp
                     if (!File.Exists(fullSourceName))
                     {
                         logger.Error("Trying to delete non-existent file {0}", fullSourceName);
-                        return true;
                     }
 
                     if (Properties.Settings.Default.TestModeFileTo == "")

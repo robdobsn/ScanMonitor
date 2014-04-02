@@ -18,7 +18,7 @@ namespace ScanMonitorApp
     class PdfRasterizer
     {
         private GhostscriptVersionInfo _lastInstalledVersion = null;
-        private GhostscriptRasterizer _rasterizer = new GhostscriptRasterizer();
+        private static GhostscriptRasterizer _rasterizer = new GhostscriptRasterizer();
         private Dictionary<int, System.Drawing.Image> _pageCache = new Dictionary<int, System.Drawing.Image>();
         private string _inputPdfPath;
         private List<int> _pageRotationInfo = new List<int>();

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -21,6 +22,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace ScanMonitorApp
 {
@@ -82,7 +84,7 @@ namespace ScanMonitorApp
             if (txtDestFileSuffix.Text.Trim() == "")
                 if (NewDocsReady())
                 {
-                    CheckForNewDocs();
+                    CheckForNewDocs(true);
                     ShowDocToBeFiled(_docsToBeFiledUniqNames.Count - 1);
                 }
         }
@@ -96,9 +98,9 @@ namespace ScanMonitorApp
             _docsToBeFiledUniqNames = _scanDocHandler.GetListOfUnfiledDocUniqNames();
         }
 
-        private void CheckForNewDocs()
+        private void CheckForNewDocs(bool assumeChanges)
         {
-            if (_docsToBeFiledUniqNames.Count != _scanDocHandler.GetCountOfUnfiledDocs())
+            if (assumeChanges || (_docsToBeFiledUniqNames.Count != _scanDocHandler.GetCountOfUnfiledDocs()))
             {
                 GetListOfDocsToFile();
             }
@@ -181,7 +183,8 @@ namespace ScanMonitorApp
 
             // Reset the override folder
             _overrideFolderForFiling = "";
-            btnMoveToUndo.IsEnabled = false;
+            if (btnMoveToUndo.IsEnabled != false)
+                btnMoveToUndo.IsEnabled = false;
 
             // Extract date info again and update latest match result
             int bestDateIdx = 0;
@@ -195,17 +198,25 @@ namespace ScanMonitorApp
                 _latestMatchResult.docDate = DateTime.MinValue;
 
             // Show doc type
-            lblDocTypeName.Content = (_curSelectedDocType == null) ? "" : _curSelectedDocType.docTypeName;
+            string docTypeNameStr = (_curSelectedDocType == null) ? "" : _curSelectedDocType.docTypeName;
+            if (lblDocTypeName.Content != docTypeNameStr)
+                lblDocTypeName.Content = docTypeNameStr;
 
             // Field enables
-            txtDestFilePrefix.IsEnabled = false;
-            btnChangePrefix.IsEnabled = true;
-            txtDestFilePrefix.Text = (_curSelectedDocType == null) ? "" : _curSelectedDocType.GetFileNamePrefix();
-            txtDestFileSuffix.IsEnabled = false;
-            txtDestFileSuffix.Text = "";
-            txtDestFileSuffix.IsEnabled = true;
-            txtMoneySum.Text = "";
-            txtMoneySum.IsEnabled = true;
+            SetFieldEnable(txtDestFilePrefix, false);
+            SetFieldEnable(btnChangePrefix, true);
+            string destFilePrefixStr = (_curSelectedDocType == null) ? "" : _curSelectedDocType.GetFileNamePrefix();
+            if (txtDestFilePrefix.Text != destFilePrefixStr)
+                txtDestFilePrefix.Text = destFilePrefixStr;
+            if (txtDestFileSuffix.Text != "")
+            {
+                txtDestFileSuffix.IsEnabled = false;
+                txtDestFileSuffix.Text = "";
+                txtDestFileSuffix.IsEnabled = true;
+            }
+            if (txtMoneySum.Text != "")
+                txtMoneySum.Text = "";
+            SetFieldEnable(txtMoneySum, true);
             chkFollowUpA.IsChecked = false;
             chkFollowUpB.IsChecked = false;
             chkCalendarEntry.IsChecked = false;
@@ -213,7 +224,8 @@ namespace ScanMonitorApp
 
             // Display email addresses
             List<MailAddress> mailTo = ScanDocHandler.GetEmailToAddresses();
-            chkFollowUpA.Visibility = System.Windows.Visibility.Hidden;
+            if (chkFollowUpA.Visibility != System.Windows.Visibility.Hidden)
+                chkFollowUpA.Visibility = System.Windows.Visibility.Hidden;
             if (mailTo.Count > 0)
             {
                 string[] nameSplit = mailTo[0].DisplayName.Split(' ');
@@ -224,7 +236,8 @@ namespace ScanMonitorApp
                     chkFollowUpA.Visibility = System.Windows.Visibility.Visible;
                 }
             }
-            chkFollowUpB.Visibility = System.Windows.Visibility.Hidden;
+            if (chkFollowUpB.Visibility != System.Windows.Visibility.Hidden)
+                chkFollowUpB.Visibility = System.Windows.Visibility.Hidden;
             if (mailTo.Count > 1)
             {
                 string[] nameSplit = mailTo[1].DisplayName.Split(' ');
@@ -238,11 +251,11 @@ namespace ScanMonitorApp
 
             // Visibility of event fields
             SetEventVisibility(false, false);
-            lblEventDuration.Text = "1 Hour";
-            txtEventName.Text = (txtDestFileSuffix.Text.Trim() != "") ? txtDestFileSuffix.Text.Trim() : txtDestFilePrefix.Text.Trim();
-            txtEventLocn.Text = "";
-            txtEventDesc.Text = "";
-            txtEventTime.Text = "08:00";
+            SetFieldText(lblEventDuration, "1 Hour");
+            SetFieldText(txtEventName, (txtDestFileSuffix.Text.Trim() != "") ? txtDestFileSuffix.Text.Trim() : txtDestFilePrefix.Text.Trim());
+            SetFieldText(txtEventLocn, "");
+            SetFieldText(txtEventDesc, "");
+            SetFieldText(txtEventTime, "08:00");
             chkAttachFile.IsChecked = true;
 
             // Set doc date
@@ -252,13 +265,13 @@ namespace ScanMonitorApp
             SetDateRollers(dateToUse.Year, dateToUse.Month, dateToUse.Day);
 
             // Show File number in list
-            lblStatusBarFileNo.Content = (_curDocToBeFiledIdxInList + 1).ToString() + " / " + _docsToBeFiledUniqNames.Count.ToString();
+            SetLabelContent(lblStatusBarFileNo, (_curDocToBeFiledIdxInList + 1).ToString() + " / " + _docsToBeFiledUniqNames.Count.ToString());
 
             // Show status of filing
             string statusStr = "Unfiled";
             Brush foreColour = Brushes.Black;
-            btnDeleteDoc.IsEnabled = true;
-            btnProcessDoc.IsEnabled = true;
+            SetFieldEnable(btnDeleteDoc, true);
+            SetFieldEnable(btnProcessDoc, true);
             if (_curFiledDocInfo != null)
             {
                 switch (_curFiledDocInfo.filedAt_finalStatus)
@@ -266,20 +279,20 @@ namespace ScanMonitorApp
                     case FiledDocInfo.DocFinalStatus.STATUS_DELETED:
                         statusStr = "DELETED";
                         foreColour = Brushes.Red;
-                        btnProcessDoc.IsEnabled = false;
-                        btnDeleteDoc.IsEnabled = false;
+                        SetFieldEnable(btnProcessDoc, false);
+                        SetFieldEnable(btnDeleteDoc, false);
                         break;
                     case FiledDocInfo.DocFinalStatus.STATUS_DELETED_AFTER_EDIT:
                         statusStr = "DELETED AFTER EDIT";
                         foreColour = Brushes.Red;
-                        btnProcessDoc.IsEnabled = false;
-                        btnDeleteDoc.IsEnabled = false;
+                        SetFieldEnable(btnProcessDoc, false);
+                        SetFieldEnable(btnDeleteDoc, false);
                         break;
                     case FiledDocInfo.DocFinalStatus.STATUS_FILED:
                         statusStr = "FILED";
                         foreColour = Brushes.Red;
-                        btnProcessDoc.IsEnabled = false;
-                        btnDeleteDoc.IsEnabled = false;
+                        SetFieldEnable(btnProcessDoc, false);
+                        SetFieldEnable(btnDeleteDoc, false);
                         break;
                 }
             }
@@ -288,10 +301,27 @@ namespace ScanMonitorApp
                 statusStr = "FLAGGED";
                 foreColour = Brushes.Red;
             }
-            lblStatusBarFileName.Content = _curDocScanDocInfo.uniqName + " " + statusStr;
+            SetLabelContent(lblStatusBarFileName, _curDocScanDocInfo.uniqName + " " + statusStr);
             lblStatusBarFileName.Foreground = foreColour;
-
             ShowFilingPath();
+        }
+
+        private void SetFieldEnable(UIElement el, bool en)
+        {
+            if (el.IsEnabled != en)
+                el.IsEnabled = en;
+        }
+
+        private void SetFieldText(TextBox tb, string s)
+        {
+            if (tb.Text != s)
+                tb.Text = s;
+        }
+
+        private void SetLabelContent(Label lb, string s)
+        {
+            if (lb.Content != s)
+                lb.Content = s;
         }
 
         private void SetEventVisibility(bool vis, bool calendarEntry)
@@ -321,7 +351,7 @@ namespace ScanMonitorApp
         {
             bool pathContainsMacros = false;
             string destPath = GetFilingPath(ref pathContainsMacros);
-            lblMoveToName.Content = destPath;
+            SetLabelContent(lblMoveToName, destPath);
             lblMoveToName.ToolTip = destPath;
         }
 
@@ -352,7 +382,8 @@ namespace ScanMonitorApp
             // Display image
             try
             {
-                imageDocToFile.Source = new BitmapImage(new Uri("File:" + imgFileName));
+                BitmapImage bi = new BitmapImage(new Uri("File:" + imgFileName));
+                //imageDocToFile.Source = bi;
                 _curDocDisplay_pageNum = pageNum;
             }
             catch (Exception excp)
@@ -373,25 +404,41 @@ namespace ScanMonitorApp
 
         private void btnFirstDoc_Click(object sender, RoutedEventArgs e)
         {
-            CheckForNewDocs();
+            CheckForNewDocs(false);
             ShowDocToBeFiled(0);
         }
 
         private void btnPrevDoc_Click(object sender, RoutedEventArgs e)
         {
-            CheckForNewDocs();
+            CheckForNewDocs(false);
             ShowDocToBeFiled(_curDocToBeFiledIdxInList - 1);
         }
 
         private void btnNextDoc_Click(object sender, RoutedEventArgs e)
         {
-            CheckForNewDocs();
+#if PERFORMANCE_CHECK
+            DateTime dtDebug = DateTime.Now;
+            Stopwatch stopWatch1 = new Stopwatch();
+            stopWatch1.Start();
+#endif
+            CheckForNewDocs(false);
+#if PERFORMANCE_CHECK
+            stopWatch1.Stop();
+            Stopwatch stopWatch2 = new Stopwatch();
+            stopWatch2.Start();
+#endif
             ShowDocToBeFiled(_curDocToBeFiledIdxInList + 1);
+#if PERFORMANCE_CHECK
+            stopWatch2.Stop();
+            DateTime dtEndDebug = DateTime.Now;
+            Dispatcher.BeginInvoke(new Action(() => logger.Info("DisplayUpdate: {0}ms", (DateTime.Now-dtDebug).TotalMilliseconds)), DispatcherPriority.ContextIdle, null);
+            logger.Info("CheckForNewDocs : {0}ms, ShowDocToBeFiled : {0}ms, DateTime CrossCheck {0}ms", stopWatch1.ElapsedMilliseconds, stopWatch2.ElapsedMilliseconds, (dtEndDebug - dtDebug).TotalMilliseconds);
+#endif
         }
 
         private void btnLastDoc_Click(object sender, RoutedEventArgs e)
         {
-            CheckForNewDocs();
+            CheckForNewDocs(false);
             ShowDocToBeFiled(_docsToBeFiledUniqNames.Count - 1);
         }
 
@@ -414,7 +461,7 @@ namespace ScanMonitorApp
             DocTypeView dtv = new DocTypeView(_scanDocHandler, _docTypesMatcher);
             dtv.ShowDocTypeList((_curSelectedDocType == null) ? "" : _curSelectedDocType.docTypeName, _curDocScanDocInfo, _curDocScanPages);
             dtv.ShowDialog();
-            CheckForNewDocs();
+            CheckForNewDocs(true);
             ShowDocToBeFiled(_curDocToBeFiledIdxInList);
         }
 
@@ -693,7 +740,7 @@ namespace ScanMonitorApp
             _scanDocHandler.AddOrUpdateScanDocRecInDb(_curDocScanDocInfo);
 
             // Re-show
-            CheckForNewDocs();
+            CheckForNewDocs(true);
             ShowDocToBeFiled(_curDocToBeFiledIdxInList);
         }
 
@@ -770,7 +817,7 @@ namespace ScanMonitorApp
             }
 
             // Goto a file if there is one
-            CheckForNewDocs();
+            CheckForNewDocs(true);
             ShowDocToBeFiled(_curDocToBeFiledIdxInList);
         }
 
@@ -805,7 +852,7 @@ namespace ScanMonitorApp
                 }
 
                 // Goto a file if there is one
-                CheckForNewDocs();
+                CheckForNewDocs(true);
                 ShowDocToBeFiled(_curDocToBeFiledIdxInList);
             }
         }
@@ -1091,7 +1138,11 @@ namespace ScanMonitorApp
         private void DisplayDestFileName()
         {
             if ((_curDocScanDocInfo != null) && (_curSelectedDocType != null))
-                lblDestFileName.Content = ScanDocHandler.FormatFileNameFromMacros(_curDocScanDocInfo.origFileName, _curSelectedDocType.renameFileTo, GetDateFromRollers(), txtDestFilePrefix.Text, txtDestFileSuffix.Text, _curSelectedDocType.docTypeName);
+            {
+                string dfn = ScanDocHandler.FormatFileNameFromMacros(_curDocScanDocInfo.origFileName, _curSelectedDocType.renameFileTo, GetDateFromRollers(), txtDestFilePrefix.Text, txtDestFileSuffix.Text, _curSelectedDocType.docTypeName);
+                if (lblDestFileName.Content != dfn) 
+                    lblDestFileName.Content = dfn;
+            }
         }
 
         private DateTime GetDateFromRollers()
@@ -1123,11 +1174,14 @@ namespace ScanMonitorApp
             if (day < 1)
                 day = 1;
             DateTime dt = new DateTime(year, mon, day);
-            lblDayVal.Text = day.ToString();
-            lblMonthVal.Text = dt.ToString("MMMM");
-            lblYearVal.Text = dt.Year.ToString();
+            if (lblDayVal.Text != day.ToString())
+                lblDayVal.Text = day.ToString();
+            if (lblMonthVal.Text != dt.ToString("MMMM"))
+                lblMonthVal.Text = dt.ToString("MMMM");
+            if (lblYearVal.Text != dt.Year.ToString())
+                lblYearVal.Text = dt.Year.ToString();
 
-            // Show dest file name
+            // Show dest file name (which can change based on date)
             DisplayDestFileName();
         }
 
@@ -1203,7 +1257,7 @@ namespace ScanMonitorApp
         {
             lblStatusBarProcStatus.Content = str;
             // Show next document
-            CheckForNewDocs();
+            CheckForNewDocs(true);
             ShowDocToBeFiled(_curDocToBeFiledIdxInList);
         }
 
