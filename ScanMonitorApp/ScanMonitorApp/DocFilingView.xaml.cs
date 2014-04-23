@@ -383,7 +383,7 @@ namespace ScanMonitorApp
             try
             {
                 BitmapImage bi = new BitmapImage(new Uri("File:" + imgFileName));
-                //imageDocToFile.Source = bi;
+                imageDocToFile.Source = bi;
                 _curDocDisplay_pageNum = pageNum;
             }
             catch (Exception excp)
