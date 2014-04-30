@@ -204,24 +204,8 @@ namespace ScanMonitorApp
 
         private void butViewAuditData_Click(object sender, RoutedEventArgs e)
         {
-            // Configure open file dialog box
-            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
-            dlg.InitialDirectory = @"\\N7700PRO\Archive\ScanAdmin\ScanLogs\";
-            dlg.FileName = @"\\N7700PRO\Archive\ScanAdmin\ScanLogs\ScanLog.log";
-            dlg.DefaultExt = ".log"; // Default file extension
-            dlg.Filter = "Log documents (.log)|*.log"; // Filter files by extension 
-
-            // Show open file dialog box
-            Nullable<bool> result = dlg.ShowDialog();
-
-            // Process open file dialog box results 
-            if (result == true)
-            {
-                // Open document 
-                string filename = dlg.FileName;
-                AuditView av = new AuditView(_scanDocHandler, _docTypesMatcher);
-                av.ShowDialog();
-            }
+            AuditView av = new AuditView(_scanDocHandler, _docTypesMatcher);
+            av.ShowDialog();
         }
 
         private void butViewDocTypes_Click(object sender, RoutedEventArgs e)

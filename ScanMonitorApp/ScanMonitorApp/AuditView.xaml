@@ -1,7 +1,7 @@
 ﻿<Window x:Class="ScanMonitorApp.AuditView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="AuditView" Height="562" Width="833" 
+        Title="AuditView" Height="747" Width="1378" 
         >
     <Grid RenderTransformOrigin="0.498,0.734">
         <Grid.ColumnDefinitions>
@@ -9,22 +9,14 @@
             <ColumnDefinition />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="393*"/>
-            <RowDefinition Height="139*" />
+            <RowDefinition Height="113*"/>
+            <RowDefinition Height="126*" />
         </Grid.RowDefinitions>
-        <ListView x:Name="auditListView" Margin="10" SelectionChanged="auditListView_SelectionChanged" Grid.Row="0" Grid.Column="0">
+        <ListView x:Name="auditListView" Margin="10,59,10,10" SelectionChanged="auditListView_SelectionChanged" Grid.Row="0" Grid.Column="0">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="Uniq Name" DisplayMemberBinding="{Binding UniqName}"/>
-                    <GridViewColumn Header="DestOk" DisplayMemberBinding="{Binding DestOk}"/>
-                    <GridViewColumn Header="ArcvOk" DisplayMemberBinding="{Binding ArcvOk}"/>
-                    <GridViewColumn Header="Doc Type" DisplayMemberBinding="{Binding DocType}"/>
-                    <GridViewColumn Header="Proc" DisplayMemberBinding="{Binding ProcStatus}"/>
-                    <GridViewColumn Header="Dest File" DisplayMemberBinding="{Binding DestFile}"/>
-                    <GridViewColumn Header="Archive File" DisplayMemberBinding="{Binding ArchiveFile}"/>
-                    <GridViewColumn Header="Orig File" DisplayMemberBinding="{Binding OrigFileName}"/>
-                    <GridViewColumn Header="Proc'ed" DisplayMemberBinding="{Binding ProcDateAndTime}"/>
-                    <GridViewColumn Header="Proc Msg" DisplayMemberBinding="{Binding ProcMessage}"/>
+                    <GridViewColumn Header="Status" DisplayMemberBinding="{Binding FinalStatus}"/>
                 </GridView>
             </ListView.View>
         </ListView>
@@ -32,15 +24,23 @@
         <Image x:Name="auditFileImage" Margin="10" Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"/>
         <GridSplitter Grid.Column="1" Margin="0,0,413,0" Width="0"/>
         <Grid x:Name="auditFileInfoGrid" Margin="10,10,10,0" Grid.Column="0" Grid.Row="1">
-            <Label Content="OrigDocType" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="114" RenderTransformOrigin="0.488,0.429"/>
-            <TextBox x:Name="txtOrigDocTypeName" HorizontalAlignment="Left" Height="18" Margin="119,0,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="263"/>
-            <Label Content="OrigExpression" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="114" RenderTransformOrigin="0.488,0.429" Margin="0,26,0,0"/>
-            <TextBox x:Name="txtOrigExpression" HorizontalAlignment="Left" Height="36" Margin="119,26,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="263"/>
-            <Label Content="NewDocType" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="114" RenderTransformOrigin="0.488,0.429" Margin="0,62,0,0"/>
-            <TextBox x:Name="txtNewDocTypeName" HorizontalAlignment="Left" Height="18" Margin="119,62,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="263"/>
-            <Label Content="NewExpression" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="114" RenderTransformOrigin="0.488,0.429" Margin="0,88,0,0"/>
-            <TextBox x:Name="txtNewExpression" HorizontalAlignment="Left" Height="36" Margin="119,88,0,-5" TextWrapping="Wrap" VerticalAlignment="Top" Width="263"/>
+            <Label Content="ScanDocInfo" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="84" RenderTransformOrigin="0.488,0.429"/>
+            <Label Content="FiledDocInfo" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="79" RenderTransformOrigin="0.488,0.429" Margin="0,108,0,0"/>
+            <Label Content="PageText" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="74" RenderTransformOrigin="0.488,0.429" Margin="0,287,0,0"/>
+            <TextBox x:Name="txtScanDocInfo" Height="108" Margin="84,0,0,0" TextWrapping="Wrap" VerticalAlignment="Top"/>
+            <TextBox x:Name="txtFiledDocInfo" Height="180" Margin="84,113,0,0" TextWrapping="Wrap" VerticalAlignment="Top"/>
+            <TextBox x:Name="txtPageText" Margin="84,298,0,0" TextWrapping="Wrap"/>
         </Grid>
+        <TextBox x:Name="txtStart" HorizontalAlignment="Left" Height="31" Margin="281,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="56"/>
+        <TextBox x:Name="txtEnd" HorizontalAlignment="Left" Height="31" Margin="342,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="56"/>
+        <Button x:Name="btnGo" Content="Go" HorizontalAlignment="Left" Height="31" Margin="403,10,0,0" VerticalAlignment="Top" Width="57" Click="btnGo_Click"/>
+        <Button x:Name="btnPrev" Content="Prev" HorizontalAlignment="Left" Height="31" Margin="465,11,0,0" VerticalAlignment="Top" Width="58" Click="btnPrev_Click"/>
+        <Button x:Name="btnNext" Content="Next" HorizontalAlignment="Left" Height="31" Margin="528,11,0,0" VerticalAlignment="Top" Width="58" Click="btnNext_Click"/>
+        <ProgressBar x:Name="progBar" HorizontalAlignment="Left" Height="8" Margin="9,46,0,0" VerticalAlignment="Top" Width="577"/>
+        <Label x:Name="lblTotalsInfo" Content="" HorizontalAlignment="Left" Height="31" Margin="10,10,0,0" VerticalAlignment="Top" Width="266"/>
+        <Button x:Name="btnOpenOrig" Content="Original" HorizontalAlignment="Left" Height="31" Margin="10,39,0,0" Grid.Row="1" VerticalAlignment="Top" Width="78" Click="btnOpenOrig_Click"/>
+        <Button x:Name="btnOpenArchive" Content="Archive" HorizontalAlignment="Left" Height="31" Margin="10,75,0,0" Grid.Row="1" VerticalAlignment="Top" Width="78" Click="btnOpenArchive_Click"/>
+        <Button x:Name="btnOpenFiled" Content="Filed" HorizontalAlignment="Left" Height="31" Margin="10,145,0,0" Grid.Row="1" VerticalAlignment="Top" Width="78" Click="btnOpenFiled_Click"/>
 
     </Grid>
 </Window>

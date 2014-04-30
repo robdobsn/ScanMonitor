@@ -24,8 +24,8 @@
                 <GridView>
                     <GridViewColumn Header="On" DisplayMemberBinding="{Binding isEnabled}" Width="30"/>
                     <GridViewColumn Header="Doc Type" DisplayMemberBinding="{Binding docTypeName}" Width="Auto"/>
-                    <GridViewColumn Header="Match Expression" DisplayMemberBinding="{Binding matchExpression}" Width="Auto"/>
                     <GridViewColumn Header="Previous Name" DisplayMemberBinding="{Binding previousName}" Width="Auto"/>
+                    <GridViewColumn Header="Match Expression" DisplayMemberBinding="{Binding matchExpression}" Width="Auto"/>
                     <GridViewColumn Header="Move To" DisplayMemberBinding="{Binding moveFileToPath}" Width="Auto"/>
                     <GridViewColumn Header="Rename To" DisplayMemberBinding="{Binding renameFileTo}" Width="Auto"/>
                 </GridView>
@@ -98,6 +98,14 @@
             <Button x:Name="btnListAll" Content="List All" HorizontalAlignment="Left" Height="25" Margin="10,30,0,0" VerticalAlignment="Top" Width="137" Click="btnListAll_Click"/>
             <Button x:Name="btnListNextSet" Content="Next Set" HorizontalAlignment="Left" Height="25" Margin="10,193,0,0" VerticalAlignment="Top" Width="137" Click="btnListNextSet_Click"/>
             <ListView x:Name="listMatchResults" Margin="152,0,10,10" SelectionChanged="listMatchResults_SelectionChanged">
+                <ListView.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem x:Name="listViewCtxtInfo" Header="Info" Click="listViewCtxtInfo_Click"/>
+                        <MenuItem x:Name="listViewCtxtOriginal" Header="Original" Click="listViewCtxtOriginal_Click"/>
+                        <MenuItem x:Name="listViewCtxtArchive" Header="Archive" Click="listViewCtxtArchive_Click"/>
+                        <MenuItem x:Name="listViewCtxtFiled" Header="Filed" Click="listViewCtxtFiled_Click"/>
+                    </ContextMenu>
+                </ListView.ContextMenu>
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">
                         <Setter Property="Height" Value="20" />

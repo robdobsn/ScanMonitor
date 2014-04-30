@@ -199,7 +199,7 @@ namespace ScanMonitorApp
 
             // Show doc type
             string docTypeNameStr = (_curSelectedDocType == null) ? "" : _curSelectedDocType.docTypeName;
-            if (lblDocTypeName.Content != docTypeNameStr)
+            if (((string)lblDocTypeName.Content) != docTypeNameStr)
                 lblDocTypeName.Content = docTypeNameStr;
 
             // Field enables
@@ -320,7 +320,7 @@ namespace ScanMonitorApp
 
         private void SetLabelContent(Label lb, string s)
         {
-            if (lb.Content != s)
+            if (((string)lb.Content) != s)
                 lb.Content = s;
         }
 
@@ -853,7 +853,7 @@ namespace ScanMonitorApp
 
                 // Goto a file if there is one
                 CheckForNewDocs(true);
-                ShowDocToBeFiled(_curDocToBeFiledIdxInList);
+                ShowDocToBeFiled(_curDocToBeFiledIdxInList-1);
             }
         }
 
@@ -1140,7 +1140,7 @@ namespace ScanMonitorApp
             if ((_curDocScanDocInfo != null) && (_curSelectedDocType != null))
             {
                 string dfn = ScanDocHandler.FormatFileNameFromMacros(_curDocScanDocInfo.origFileName, _curSelectedDocType.renameFileTo, GetDateFromRollers(), txtDestFilePrefix.Text, txtDestFileSuffix.Text, _curSelectedDocType.docTypeName);
-                if (lblDestFileName.Content != dfn) 
+                if (((string)lblDestFileName.Content) != dfn) 
                     lblDestFileName.Content = dfn;
             }
         }
@@ -1258,7 +1258,7 @@ namespace ScanMonitorApp
             lblStatusBarProcStatus.Content = str;
             // Show next document
             CheckForNewDocs(true);
-            ShowDocToBeFiled(_curDocToBeFiledIdxInList);
+            ShowDocToBeFiled(_curDocToBeFiledIdxInList-1);
         }
 
         private static DateTime GetEventDateAndTime(DateTime dateFromPicker, string timeField)

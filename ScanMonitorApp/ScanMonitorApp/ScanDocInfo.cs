@@ -115,6 +115,18 @@ namespace ScanMonitorApp
             STATUS_NONE, STATUS_DELETED, STATUS_FILED, STATUS_DELETED_AFTER_EDIT
         }
 
+        public static string GetFinalStatusStr(DocFinalStatus stat)
+        {
+            switch(stat)
+            {
+                case DocFinalStatus.STATUS_NONE: return "None";
+                case DocFinalStatus.STATUS_DELETED: return "Deleted";
+                case DocFinalStatus.STATUS_FILED: return "Filed";
+                case DocFinalStatus.STATUS_DELETED_AFTER_EDIT: return "DeletedAfterEdit";
+            }
+            return "Unknown";
+        }
+
         public FiledDocInfo(string a_uniqName)
         {
             uniqName = a_uniqName;

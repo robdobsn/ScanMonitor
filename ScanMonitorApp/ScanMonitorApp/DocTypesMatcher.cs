@@ -138,7 +138,7 @@ namespace ScanMonitorApp
             try
             {
                 MongoCollection<DocType> collection_docTypes = GetDocTypesCollection();
-                collection_docTypes.Save(docType, SafeMode.True);
+                collection_docTypes.Save(docType);
                 // Log it
                 logger.Info("Added/updated doctype record for {0}", docType.docTypeName);
             }
@@ -537,7 +537,7 @@ namespace ScanMonitorApp
             try
             {
                 MongoCollection<PathSubstMacro> collection_pathSubst = GetPathSubstCollection();
-                collection_pathSubst.Save(pathSubstMacro, SafeMode.True);
+                collection_pathSubst.Save(pathSubstMacro);
                 // Log it
                 logger.Info("Added/updated pathSubstMacro record for {0}", pathSubstMacro.origText);
             }

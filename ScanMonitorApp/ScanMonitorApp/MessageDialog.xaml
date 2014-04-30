@@ -4,9 +4,9 @@
         xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
         Title="Information" Height="255" Width="583" Loaded="MetroWindow_Loaded">
     <Grid>
-        <Button x:Name="btnYes" Content="Yes" HorizontalAlignment="Left" Height="60" Margin="75,138,0,0" VerticalAlignment="Top" Width="106" Click="btnYes_Click" FontSize="24"  Style="{DynamicResource SquareButtonStyle}"/>
-        <Button x:Name="btnNo" Content="No" HorizontalAlignment="Left" Height="60" Margin="224,138,0,0" VerticalAlignment="Top" Width="106" Click="btnNo_Click" FontSize="24" Style="{DynamicResource SquareButtonStyle}"/>
-        <Button x:Name="btnCancel" Content="Cancel" HorizontalAlignment="Left" Height="60" Margin="374,138,0,0" VerticalAlignment="Top" Width="106" Click="btnCancel_Click" FontSize="24" Style="{DynamicResource SquareButtonStyle}" IsCancel="True"/>
+        <Button x:Name="btnYes" Content="Yes" HorizontalAlignment="Left" Margin="75,0,0,27" Width="106" Click="btnYes_Click" FontSize="24"  Style="{DynamicResource SquareButtonStyle}" Height="60" VerticalAlignment="Bottom"/>
+        <Button x:Name="btnNo" Content="No" HorizontalAlignment="Left" Margin="224,0,0,27" Width="106" Click="btnNo_Click" FontSize="24" Style="{DynamicResource SquareButtonStyle}" Height="60" VerticalAlignment="Bottom"/>
+        <Button x:Name="btnCancel" Content="Cancel" HorizontalAlignment="Left" Margin="374,0,0,27" Width="106" Click="btnCancel_Click" FontSize="24" Style="{DynamicResource SquareButtonStyle}" IsCancel="True" Height="60" VerticalAlignment="Bottom"/>
         <Border BorderBrush="{x:Null}" Margin="0,10,0,92">
             <TextBlock x:Name="txtMessage" TextWrapping="Wrap" Text="Message" TextAlignment="Center" VerticalAlignment="Center" FontSize="18"/>
         </Border>

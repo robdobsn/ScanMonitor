@@ -125,7 +125,7 @@ namespace ScanMonitorApp
                     string[] fields = line.Split('\t');
                     if ((fields[6] != "OK") || ((fields[5] == "TEST") || (fields[5] == "DELETED")))
                         continue;
-                    AuditData ad = new AuditData();
+                    NewAuditData ad = new NewAuditData();
                     string uniqName = ScanDocInfo.GetUniqNameForFile(fields[4], fields[0]);
                     if (uniqNamesTest.ContainsKey(uniqName))
                     {
@@ -206,6 +206,20 @@ namespace ScanMonitorApp
         }
 
         private class OldAuditData
+        {
+            public string UniqName { get; set; }
+            public string DestOk { get; set; }
+            public string ArcvOk { get; set; }
+            public string DocType { get; set; }
+            public string ProcStatus { get; set; }
+            public string DestFile { get; set; }
+            public string ArchiveFile { get; set; }
+            public string OrigFileName { get; set; }
+            public string ProcDateAndTime { get; set; }
+            public string ProcMessage { get; set; }
+        }
+
+        public class NewAuditData
         {
             public string UniqName { get; set; }
             public string DestOk { get; set; }

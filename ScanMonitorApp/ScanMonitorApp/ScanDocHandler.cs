@@ -205,7 +205,7 @@ namespace ScanMonitorApp
             try
             {
                 MongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
-                collection_sdinfo.Save(scanDocInfo, SafeMode.True);
+                collection_sdinfo.Save(scanDocInfo);
                 // Log it
                 logger.Info("Added/updated scandocinfo record for {0}", scanDocInfo.uniqName);
             }
@@ -307,7 +307,7 @@ namespace ScanMonitorApp
             try
             {
                 MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
-                collection_fdinfo.Save(filedDocInfo, SafeMode.True);
+                collection_fdinfo.Save(filedDocInfo);
                 // Log it
                 logger.Info("Added/updated fileddoc record for {0}", filedDocInfo.uniqName);
             }
@@ -545,7 +545,7 @@ namespace ScanMonitorApp
             FiledDocInfo.DocFinalStatus dfs = FiledDocInfo.DocFinalStatus.STATUS_FILED;
             _docFilingStatusStr = "Updating db ...";
             worker.ReportProgress(0, _docFilingStatusStr);
-            fdi.SetFiledAtInfo(true, DateTime.Now, _docFilingStatusStr, dfs);
+            fdi.SetFiledAtInfo(true, DateTime.Now, "OK", dfs);
             e.Result = args;
 
             // Update database
@@ -582,8 +582,6 @@ namespace ScanMonitorApp
             _docFilingStatusStr = "Completed filing OK";
             worker.ReportProgress(0, _docFilingStatusStr);
 
-            // This seems necessary - otherwise when refreshing display still shows old doc present!
-            Thread.Sleep(1000);
         }
 
         private void SendEmailsForFollowUpOrCalendar(FiledDocInfo fdi, string emailPassword)
@@ -905,6 +903,62 @@ namespace ScanMonitorApp
                 emailTo.Add(emai);
             }
             return emailTo;
+        }
+
+        public static string GetScanDocInfoText(ScanDocInfo scanDocInfo)
+        {
+            string scanDocStr = "UniqName:\t" + scanDocInfo.uniqName;
+            scanDocStr += "\n" + "Pages:\t\t" + scanDocInfo.numPages.ToString();
+            scanDocStr += "\n" + "PagesWithText:\t" + scanDocInfo.numPagesWithText.ToString();
+            scanDocStr += "\n" + "CreateDate:\t" + scanDocInfo.createDate.ToShortDateString() + " " + scanDocInfo.createDate.ToShortTimeString();
+            scanDocStr += "\n" + "OrigFileName:\t" + scanDocInfo.origFileName;
+            scanDocStr += "\n" + "FlagForHelp:\t" + (scanDocInfo.flagForHelpFiling ? "YES" : "NO");
+            return scanDocStr;
+        }
+
+        public static string GetFiledDocInfoText(FiledDocInfo filedDocInfo)
+        {
+            string filedDocStr = "Unfiled";
+            if (filedDocInfo != null)
+            {
+                filedDocStr = "UniqName:\t" + filedDocInfo.uniqName;
+                filedDocStr += "\n" + "FiledAt:\t\t" + filedDocInfo.filedAt_dateAndTime.ToShortDateString() + " " + filedDocInfo.filedAt_dateAndTime.ToShortTimeString();
+                filedDocStr += "\n" + "FinalStatus:\t" + filedDocInfo.filedAt_finalStatus;
+                filedDocStr += "\n" + "ErrorMessage:\t" + filedDocInfo.filedAt_errorMsg;
+                if (filedDocInfo.filedAs_pathAndFileName != "")
+                {
+                    string tmpStr = "";
+                    try
+                    {
+                        tmpStr += "\n" + "FiledToName:\t" + System.IO.Path.GetFileName(filedDocInfo.filedAs_pathAndFileName);
+                        tmpStr += "\n" + "FiledToPath:\t" + System.IO.Path.GetDirectoryName(filedDocInfo.filedAs_pathAndFileName);
+                        filedDocStr += tmpStr;
+                    }
+                    finally
+                    {
+                    }
+                }
+                if (filedDocInfo.filedAt_finalStatus == FiledDocInfo.DocFinalStatus.STATUS_FILED)
+                {
+                    filedDocStr += "\n" + "FiledDocType:\t" + filedDocInfo.filedAs_docType;
+                    filedDocStr += "\n" + "FiledDocDate:\t" + filedDocInfo.filedAs_dateOfDoc.ToShortDateString() + " " + filedDocInfo.filedAs_dateOfDoc.ToShortTimeString();
+                    filedDocStr += "\n" + "FiledMoney:\t" + filedDocInfo.filedAs_moneyInfo;
+                }
+                filedDocStr += "\n" + "FlagRefiling:\t" + filedDocInfo.filedAs_flagForRefilingInfo;
+                filedDocStr += "\n" + "IncludeInXCheck:\t" + (filedDocInfo.includeInXCheck ? "YES" : "NO");
+                filedDocStr += "\n" + "FollowUp:\t" + filedDocInfo.filedAs_followUpNeeded;
+                filedDocStr += "\n" + "AddToCal:\t" + filedDocInfo.filedAs_addToCalendar;
+                if (filedDocInfo.filedAs_addToCalendar != "")
+                {
+                    filedDocStr += "\n" + "EventName:\t" + filedDocInfo.filedAs_eventName;
+                    filedDocStr += "\n" + "EventDateTime:\t" + filedDocInfo.filedAs_eventDateTime.ToShortDateString() + " " + filedDocInfo.filedAs_eventDateTime.ToShortTimeString();
+                    filedDocStr += "\n" + "EventDuration:\t" + filedDocInfo.filedAs_eventDuration.ToString();
+                    filedDocStr += "\n" + "EventDescr:\t" + filedDocInfo.filedAs_eventDescr;
+                    filedDocStr += "\n" + "EventLocn:\t" + filedDocInfo.filedAs_eventLocation;
+                    filedDocStr += "\n" + "AttachFile:\t" + filedDocInfo.filedAs_flagAttachFile;
+                }
+            }
+            return filedDocStr;
         }
 
         #endregion

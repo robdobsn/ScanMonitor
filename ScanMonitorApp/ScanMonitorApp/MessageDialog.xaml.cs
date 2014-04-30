@@ -32,6 +32,12 @@ namespace ScanMonitorApp
         {
             InitializeComponent();
             txtMessage.Text = message;
+            if (message.Length > 100)
+            {
+                txtMessage.FontSize = 12;
+                txtMessage.TextAlignment = System.Windows.TextAlignment.Left;
+                this.Height = this.Height + 300;
+            }
             btnYes.Content = yesButtonText;
             btnYes.Visibility = (yesButtonText.Trim() != "") ? System.Windows.Visibility.Visible : System.Windows.Visibility.Hidden;
             btnNo.Content = noButtonText;

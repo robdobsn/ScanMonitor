@@ -52,6 +52,8 @@ namespace ScanMonitorApp
         private LocationRectangleHandler locRectHandler;
         private int _lastFindNumFound = 0;
         private int _lastFindStartPos = 0;
+        // Cache scan and filing info
+        private Dictionary<string, ScanDocAllInfo> _cacheScanDocAllInfo = new Dictionary<string, ScanDocAllInfo>();
 
         public DocTypeView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher)
         {
@@ -196,6 +198,8 @@ namespace ScanMonitorApp
                 else
                 {
                     DocType chkDocType = GetDocTypeFromForm(new DocType());
+                    if (_selectedDocType != null)
+                        chkDocType.previousName = _selectedDocType.previousName;
                     chkDocType.isEnabled = true;
                     object[] args = { chkDocType, fromResultIdx };
                     _bwThread.RunWorkerAsync(args);
@@ -308,12 +312,13 @@ namespace ScanMonitorApp
                 nEndIdx = sdiList.Count - 1;
             for (int nDocIdx = nStartIdx; nDocIdx <= nEndIdx; nDocIdx++)
             {
-                ScanDocInfo sdi = sdiList[nDocIdx];
                 if ((worker.CancellationPending == true))
                 {
                     e.Cancel = true;
                     break;
                 }
+
+                ScanDocInfo sdi = sdiList[nDocIdx];
 
                 // Check if all docs required
                 DocCompareRslt rslt = new DocCompareRslt();
@@ -380,19 +385,57 @@ namespace ScanMonitorApp
             e.Result = mdResult;
         }
 
+        private bool TestForMatchesButShouldnt(string filedDocType, DocType docTypeToMatch)
+        {
+            bool matchesButShouldnt = (filedDocType != docTypeToMatch.docTypeName);
+
+            // Iterate through some renames to check if doc has been renamed from a matching type
+            int renameLevels = 0;
+            string testName = docTypeToMatch.previousName;
+            while (renameLevels < 3)
+            {
+                if (testName == "")
+                    break;
+                if (filedDocType == testName)
+                {
+                    matchesButShouldnt = false;
+                    break;
+                }
+                DocType dt = _docTypesMatcher.GetDocType(testName);
+                if (dt == null)
+                    break;
+                testName = dt.previousName;
+                renameLevels++;
+            }
+
+            return matchesButShouldnt;
+        }
+
         private DocCompareRslt CheckIfDocMatches(ScanDocInfo sdi, DocType docTypeToMatch)
         {
             DocCompareRslt compRslt = new DocCompareRslt();
-            ScanPages scanPages = _scanDocHandler.GetScanPages(sdi.uniqName);
-            // See if doc has been filed - result maybe null
-            FiledDocInfo fdi = _scanDocHandler.GetFiledDocInfo(sdi.uniqName);
+            ScanPages scanPages = null;
+            FiledDocInfo fdi = null;
+            if (_cacheScanDocAllInfo.ContainsKey(sdi.uniqName))
+            {
+                scanPages = _cacheScanDocAllInfo[sdi.uniqName].scanPages;
+                fdi = _cacheScanDocAllInfo[sdi.uniqName].filedDocInfo;
+            }
+            else
+            {
+                scanPages = _scanDocHandler.GetScanPages(sdi.uniqName);
+                // See if doc has been filed - result maybe null
+                fdi = _scanDocHandler.GetFiledDocInfo(sdi.uniqName);
+                ScanDocAllInfo sdAllInfo = new ScanDocAllInfo(sdi, scanPages, fdi);
+                _cacheScanDocAllInfo.Add(sdi.uniqName, sdAllInfo);
+            }
 
             // Check for a match
             DocTypeMatchResult matchResult = _docTypesMatcher.CheckIfDocMatches(scanPages, docTypeToMatch, false, null);
             if (matchResult.matchCertaintyPercent == 100)
             {
                 compRslt.bMatches = true;
-                compRslt.bMatchesButShouldnt = (fdi != null) && (fdi.filedAs_docType != docTypeToMatch.docTypeName);
+                compRslt.bMatchesButShouldnt = (fdi != null) && TestForMatchesButShouldnt(fdi.filedAs_docType, docTypeToMatch);
                 compRslt.uniqName = sdi.uniqName;
                 compRslt.docTypeFiled = (fdi == null) ? "" : fdi.filedAs_docType;
                 compRslt.matchStatus = (fdi == null) ? "NOT-FILED" : (compRslt.bMatchesButShouldnt ? "MATCH-BUT-SHOULDN'T" : "OK");
@@ -1412,6 +1455,73 @@ namespace ScanMonitorApp
 
             }
             return false;
+        }
+
+        private void ShowFileInExplorer(string fileName)
+        {
+            ProcessStartInfo psi = new ProcessStartInfo();
+            psi.FileName = "explorer";
+            psi.UseShellExecute = true;
+            psi.WindowStyle = ProcessWindowStyle.Normal;
+            psi.Arguments = string.Format("/e,/select,\"{0}\"", fileName);
+            Process.Start(psi);
+        }
+
+        private void listViewCtxtOriginal_Click(object sender, RoutedEventArgs e)
+        {
+            DocCompareRslt selectedRow = listMatchResults.SelectedItem as DocCompareRslt;
+            if (selectedRow != null)
+            {
+                string uniqName = selectedRow.uniqName;
+                ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(uniqName);
+                ShowFileInExplorer(scanDocAllInfo.scanDocInfo.origFileName.Replace("/", @"\"));
+            }
+        }
+
+        private void listViewCtxtArchive_Click(object sender, RoutedEventArgs e)
+        {
+            DocCompareRslt selectedRow = listMatchResults.SelectedItem as DocCompareRslt;
+            if (selectedRow != null)
+            {
+                string uniqName = selectedRow.uniqName;
+                string imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, uniqName, 1, false);
+                try
+                {
+                    ShowFileInExplorer(imgFileName.Replace("/", @"\"));
+                }
+                finally
+                {
+
+                }
+            }
+
+        }
+
+        private void listViewCtxtFiled_Click(object sender, RoutedEventArgs e)
+        {
+            DocCompareRslt selectedRow = listMatchResults.SelectedItem as DocCompareRslt;
+            if (selectedRow != null)
+            {
+                string uniqName = selectedRow.uniqName;
+                ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(uniqName);
+                if (scanDocAllInfo.filedDocInfo != null)
+                    ShowFileInExplorer(scanDocAllInfo.filedDocInfo.filedAs_pathAndFileName.Replace("/", @"\"));
+            }
+        }
+
+        private void listViewCtxtInfo_Click(object sender, RoutedEventArgs e)
+        {
+            DocCompareRslt selectedRow = listMatchResults.SelectedItem as DocCompareRslt;
+            if (selectedRow != null)
+            {
+                // Doc info
+                ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(selectedRow.uniqName);
+
+                string infoStr = "ScanDocInfo\n-----------\n" + ScanDocHandler.GetScanDocInfoText(scanDocAllInfo.scanDocInfo);
+                infoStr += "\n\nFiledDocInfo\n------------\n" + ScanDocHandler.GetFiledDocInfoText(scanDocAllInfo.filedDocInfo);
+                MessageDialog msgDlg = new MessageDialog(infoStr, "OK", "", "", null, this);
+                msgDlg.ShowDialog();
+            }
         }
 
     }
