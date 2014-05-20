@@ -142,6 +142,7 @@
     <Compile Include="PdfEditorWindow.xaml.cs" />
     <Compile Include="PdfRasterizer.cs" />
     <Compile Include="PdfTextAndLocExtractor.cs" />
+    <Compile Include="ScanDocInfoCache.cs" />
     <Compile Include="ScanDocInfo.cs" />
     <Compile Include="ScanDocHandler.cs" />
     <Compile Include="ScanFileMonitor.cs" />
@@ -330,6 +331,9 @@
     <Resource Include="res\scissors.png" />
     <Resource Include="res\scissorsgray.png" />
     <Resource Include="res\scissorsred.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="res\appbar.list.gear.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
