@@ -36,7 +36,7 @@ namespace ScanMonitorApp
         public static BitmapImage deleteIconOff;
         public static BitmapImage deleteIconOn;
         const int THUMBNAIL_HEIGHT = 600;
-        const int POINTS_PER_INCH = 50;
+        const int POINTS_PER_INCH = 80;
         private PdfRasterizer _pdfRasterizer;
         private BackgroundWorker _bwThreadForPages;
         private List<string> _curFileNames = new List<string>();
@@ -281,7 +281,7 @@ namespace ScanMonitorApp
 
             CommonOpenFileDialog cofd = new CommonOpenFileDialog("Select PDF file");
             cofd.Multiselect = false;
-            cofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            cofd.InitialDirectory = Properties.Settings.Default.DocArchiveFolder;
             cofd.Filters.Add(new CommonFileDialogFilter("PDF File", ".pdf"));
             CommonFileDialogResult result = cofd.ShowDialog(this);
             if (result == CommonFileDialogResult.Ok)
@@ -295,7 +295,7 @@ namespace ScanMonitorApp
 
             CommonOpenFileDialog cofd = new CommonOpenFileDialog("Select PDF file");
             cofd.Multiselect = false;
-            cofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            cofd.InitialDirectory = Properties.Settings.Default.DocArchiveFolder;
             cofd.Filters.Add(new CommonFileDialogFilter("PDF File", ".pdf"));
             CommonFileDialogResult result = cofd.ShowDialog(this);
             if (result == CommonFileDialogResult.Ok)
@@ -939,6 +939,34 @@ namespace ScanMonitorApp
         }
 
         #endregion
+
+        private void MovePageCommand_Click(object sender, RoutedEventArgs e)
+        {
+            PDFMovePageDialog movePageDlg = new PDFMovePageDialog();
+            movePageDlg.ShowDialog();
+            if (movePageDlg.DialogResult.HasValue && movePageDlg.DialogResult.Value)
+            {
+                int destPageNum = 0;
+                if (Int32.TryParse(movePageDlg.txtMovePageTo.Text, out destPageNum))
+                {
+                    int destPageIdx = destPageNum - 1;
+                    if ((destPageIdx < 0) || (destPageIdx >= _pdfPageList.Count))
+                        return;
+                    // Get source page
+                    MenuItem mi = sender as MenuItem;
+                    ContextMenu cm = mi.Parent as ContextMenu;
+                    string tag = cm.Tag.ToString();
+                    int sourcePageIdx = FindTagInPageList(tag);
+                    if (sourcePageIdx < 0)
+                        return;
+                    // Update the list
+                    _pdfPageList.Move(sourcePageIdx, destPageIdx);
+                    RewritePageNumbers();
+                    UpdateWindowTitle(true);
+                }
+            }
+
+        }
 
     }
 }

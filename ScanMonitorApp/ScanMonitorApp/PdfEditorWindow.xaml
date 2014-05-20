@@ -91,6 +91,11 @@
                                             <RotateTransform Angle="{Binding PageRotation}"/>
                                         </TransformGroup>
                                     </Image.RenderTransform>
+                                    <Image.ContextMenu>
+                                        <ContextMenu Tag="{Binding TagStr}">
+                                            <MenuItem x:Name="MovePageCommand" Header="Move Page" Click="MovePageCommand_Click"/>
+                                        </ContextMenu>
+                                    </Image.ContextMenu>
                                 </Image>
                             </Grid>
                             <Grid Grid.Row="1" Grid.Column="0" Width="{Binding ThumbWidth}" Height="{Binding ThumbHeight}" Opacity=".75">

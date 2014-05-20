@@ -140,6 +140,9 @@
       <DependentUpon>PathSubstView.xaml</DependentUpon>
     </Compile>
     <Compile Include="PdfEditorWindow.xaml.cs" />
+    <Compile Include="PDFMovePageDialog.xaml.cs">
+      <DependentUpon>PDFMovePageDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="PdfRasterizer.cs" />
     <Compile Include="PdfTextAndLocExtractor.cs" />
     <Compile Include="ScanDocInfoCache.cs" />
@@ -190,6 +193,10 @@
     <Page Include="PdfEditorWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
+    </Page>
+    <Page Include="PDFMovePageDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>

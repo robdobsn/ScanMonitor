@@ -218,7 +218,7 @@ namespace ScanMonitorApp
             stp2.Start();
 
             // TEST TEST TEST
-            if (TEST_AGAINST_OLD_DATE_ALGORITHM)
+#if TEST_AGAINST_OLD_DATE_ALGORITHM
             {
                 List<ExtractedDate> testDatesResult = new List<ExtractedDate>();
                 SearchForDateItem2(scanPages, dateSearchTerm, dateDocRect, matchFactor, testDatesResult, limitToPageNumN);
@@ -259,6 +259,7 @@ namespace ScanMonitorApp
                     }
                 }
             }
+#endif
         }
 
         private static void SearchWithinString(string inStr, DocRectangle textBounds, string dateSearchTerm, DateSrchInfo dateSrchInfo, double matchFactor, int pageIdx, List<ExtractedDate> datesResult, bool ignoreWhitespace)

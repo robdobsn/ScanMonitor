@@ -1,0 +1,12 @@
+﻿<Controls:MetroWindow x:Class="ScanMonitorApp.PDFMovePageDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
+        Title="Move Page" Height="234" Width="383" ResizeMode="NoResize" Loaded="MetroWindow_Loaded">
+    <Grid Margin="0,0,2,4">
+        <Button x:Name="btnYes" Content="Ok" HorizontalAlignment="Left" Margin="35,0,0,26" Width="146" FontSize="24" Click="btnYes_Click" Style="{DynamicResource SquareButtonStyle}" Height="60" VerticalAlignment="Bottom" IsDefault="True"/>
+        <Button x:Name="btnCancel" Content="Cancel" HorizontalAlignment="Left" Margin="210,0,0,26" Width="140" FontSize="24" Style="{DynamicResource SquareButtonStyle}" IsCancel="True" Height="60" VerticalAlignment="Bottom"/>
+        <Label Content="Move page to" HorizontalAlignment="Left" Height="48" Margin="53,42,0,0" VerticalAlignment="Top" Width="146" FontSize="20"/>
+        <TextBox x:Name="txtMovePageTo" Height="48" Margin="204,42,63,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" FontSize="22"/>
+    </Grid>
+</Controls:MetroWindow>
