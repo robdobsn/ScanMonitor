@@ -258,16 +258,6 @@ namespace ScanMonitorApp
             }
         }
 
-        private void ShowFileInExplorer(string fileName)
-        {
-            ProcessStartInfo psi = new ProcessStartInfo();
-            psi.FileName = "explorer";
-            psi.UseShellExecute = true;
-            psi.WindowStyle = ProcessWindowStyle.Normal;
-            psi.Arguments = string.Format("/e,/select,\"{0}\"", fileName);
-            Process.Start(psi);
-        }
-
         private void btnOpenOrig_Click(object sender, RoutedEventArgs e)
         {
             AuditData selectedRow = auditListView.SelectedItem as AuditData;
@@ -275,7 +265,7 @@ namespace ScanMonitorApp
             {
                 string uniqName = selectedRow.UniqName;
                 ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(uniqName);
-                ShowFileInExplorer(scanDocAllInfo.scanDocInfo.origFileName.Replace("/", @"\"));
+                ScanDocHandler.ShowFileInExplorer(scanDocAllInfo.scanDocInfo.origFileName.Replace("/", @"\"));
             }
         }
 
@@ -288,7 +278,7 @@ namespace ScanMonitorApp
                 string imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, uniqName, 1, false);
                 try
                 {
-                    ShowFileInExplorer(imgFileName.Replace("/", @"\"));
+                    ScanDocHandler.ShowFileInExplorer(imgFileName.Replace("/", @"\"));
                 }
                 finally
                 {
@@ -305,7 +295,7 @@ namespace ScanMonitorApp
                 string uniqName = selectedRow.UniqName;
                 ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(uniqName);
                 if (scanDocAllInfo.filedDocInfo != null)
-                    ShowFileInExplorer(scanDocAllInfo.filedDocInfo.filedAs_pathAndFileName.Replace("/", @"\"));
+                    ScanDocHandler.ShowFileInExplorer(scanDocAllInfo.filedDocInfo.filedAs_pathAndFileName.Replace("/", @"\"));
             }
         }
 
