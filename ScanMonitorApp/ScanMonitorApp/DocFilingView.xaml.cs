@@ -168,6 +168,15 @@ namespace ScanMonitorApp
             _listOfPossibleDocMatches.Clear();
             foreach(DocTypeMatchResult res in possMatches)
                 _listOfPossibleDocMatches.Add(res);
+
+            // Add list of previously used doctypes
+            List<string> lastUsedDocTypes = _scanDocHandler.GetLastNDocTypesUsed(10);
+            foreach (string s in lastUsedDocTypes)
+            {
+                DocTypeMatchResult mr = new DocTypeMatchResult();
+                mr.docTypeName = s;
+                _listOfPossibleDocMatches.Add(mr);
+            }
                 
             // Display image of first page
             DisplayScannedDocImage(1);
@@ -667,6 +676,19 @@ namespace ScanMonitorApp
             menuEventDurationList.IsOpen = true;
         }
 
+        private void lblMoveToCtxt_Click(object sender, RoutedEventArgs e)
+        {
+            string filePath = lblMoveToName.Content.ToString();
+            try
+            {
+                ScanDocHandler.ShowFileInExplorer(filePath.Replace("/", @"\"), false);
+            }
+            finally
+            {
+
+            }
+        }
+
         private void FillDurationMenu()
         {
             List<TimeSpan> tss = new List<TimeSpan>();
@@ -819,6 +841,12 @@ namespace ScanMonitorApp
             // Goto a file if there is one
             CheckForNewDocs(true);
             ShowDocToBeFiled(_curDocToBeFiledIdxInList);
+        }
+
+        private void btnAuditTrail_Click(object sender, RoutedEventArgs e)
+        {
+            AuditView av = new AuditView(_scanDocHandler, _docTypesMatcher);
+            av.ShowDialog();
         }
 
         #endregion
@@ -1142,6 +1170,10 @@ namespace ScanMonitorApp
                 string dfn = ScanDocHandler.FormatFileNameFromMacros(_curDocScanDocInfo.origFileName, _curSelectedDocType.renameFileTo, GetDateFromRollers(), txtDestFilePrefix.Text, txtDestFileSuffix.Text, _curSelectedDocType.docTypeName);
                 if (((string)lblDestFileName.Content) != dfn) 
                     lblDestFileName.Content = dfn;
+            }
+            else
+            {
+                lblDestFileName.Content = "";
             }
         }
 

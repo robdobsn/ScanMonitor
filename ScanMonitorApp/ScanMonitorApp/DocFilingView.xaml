@@ -68,6 +68,20 @@
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
+                                <GridViewColumn>
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Label Content="{Binding matchCertaintyPercent}" Tag="{Binding docTypeName}" FontSize="30" Background="LightBlue" Margin="2" MouseDown="btnSelectDocType_Click"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn>
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Label Content="{Binding matchFactor}" Tag="{Binding docTypeName}" FontSize="30" Margin="2" Background="LightCyan" MouseDown="btnSelectDocType_Click"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                             </GridView>
                         </ListView.View>
                     </ListView>
@@ -138,7 +152,7 @@
             <Label x:Name="lblDestFileNameLabel" Content="File Name" HorizontalAlignment="Left" Height="38" Margin="10,460,0,0" VerticalAlignment="Top" Width="107" FontSize="20"/>
             <Label x:Name="lblDestFileName" Content="" Height="38" Margin="124,460,10,0" VerticalAlignment="Top" FontSize="20" Background="#FFF2F2F2"/>
             <Label x:Name="lblMoveToLabel" Content="File Folder" HorizontalAlignment="Left" Height="50" Margin="10,506,0,0" VerticalAlignment="Top" VerticalContentAlignment="Center" Width="107" FontSize="20"/>
-            <Label x:Name="lblMoveToName" Content="" Height="50" Margin="124,506,140,0" VerticalAlignment="Top" VerticalContentAlignment="Center" FontSize="20" Background="#FFF2F2F2" ToolTip="">
+            <Label x:Name="lblMoveToName" Content="" Height="50" Margin="124,506,140,0" VerticalAlignment="Top" VerticalContentAlignment="Center" FontSize="20" Background="#FFF2F2F2" ToolTip="" MouseDown="lblMoveToCtxt_Click">
             </Label>
             <Button x:Name="btnMoveToUndo" VerticalAlignment="Top" Height="50" Margin="0,506,10,0" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="50" Click="btnMoveToUndo_Click">
                 <Image Source="res/appbar.undo.png" Stretch="Fill" Width="25" Height="25"/>
@@ -201,10 +215,10 @@
         <Button x:Name="btnNextPage" Grid.Column="0" Margin="283,0,0,2" Grid.Row="2" HorizontalAlignment="Left" Width="108" FontSize="16" Click="btnNextPage_Click" Height="50" VerticalAlignment="Bottom" Style="{DynamicResource SquareButtonStyle}">
             <Image Source="appbar.page.arrow.png" Margin="3"/>
         </Button>
-        <Button x:Name="btnViewDocTypes" Grid.Column="0"  Margin="0,0,104,3" FontSize="16" Click="btnViewDocTypes_Click" Height="50" VerticalAlignment="Bottom" Grid.Row="2" HorizontalAlignment="Right" Width="96" Style="{DynamicResource SquareButtonStyle}">
+        <Button x:Name="btnViewDocTypes" Grid.Column="0"  Margin="0,0,70,3" FontSize="16" Click="btnViewDocTypes_Click" Height="50" VerticalAlignment="Bottom" Grid.Row="2" HorizontalAlignment="Right" Width="96" Style="{DynamicResource SquareButtonStyle}">
             <Image Source="res/appbar.book.png" Margin="3"/>
         </Button>
-        <Button x:Name="btnEditPdf" Grid.Column="0"  Margin="0,0,227,3" FontSize="16" Click="btnEditPdf_Click" Height="50" VerticalAlignment="Bottom" Grid.Row="2" HorizontalAlignment="Right" Width="96" Style="{DynamicResource SquareButtonStyle}">
+        <Button x:Name="btnEditPdf" Grid.Column="0"  Margin="0,0,193,3" FontSize="16" Click="btnEditPdf_Click" Height="50" VerticalAlignment="Bottom" Grid.Row="2" HorizontalAlignment="Right" Width="96" Style="{DynamicResource SquareButtonStyle}">
             <Image Source="res/appbar.page.edit.png" Margin="3"/>
         </Button>
 
@@ -274,5 +288,8 @@
 
         </Grid>
         <Label x:Name="lblPageNum" Content="Label" Margin="135,0,0,3" Grid.Row="2" FontSize="30" HorizontalAlignment="Left" Width="131" Height="49" VerticalAlignment="Bottom" HorizontalContentAlignment="Center" />
+        <Button x:Name="btnAuditTrail" Grid.Column="0"  Margin="0,0,310,3" FontSize="16" Click="btnAuditTrail_Click" Height="50" VerticalAlignment="Bottom" Grid.Row="2" HorizontalAlignment="Right" Width="96" Style="{DynamicResource SquareButtonStyle}">
+            <Image Source="res/appbar.list.gear.png" Margin="3"/>
+        </Button>
     </Grid>
 </Controls:MetroWindow>
