@@ -7,6 +7,7 @@ using NLog;
 using MongoDB.Driver;
 using System.IO;
 using MongoDB.Driver.Builders;
+using MongoDB.Driver.Linq;
 using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
@@ -34,6 +35,8 @@ namespace ScanMonitorApp
         private ReportStatus _docFilingReportStatus;
         private ReportStatus _filingCompleteCallback;
         private string _docFilingStatusStr = "";
+        // Cache used only to speed up doc-type checking - circumvents database multiuser so don't rely on results! 100%
+        private ScanDocInfoCache _scanDocInfoCache = null;
 
         #region Init
 
@@ -42,6 +45,7 @@ namespace ScanMonitorApp
             _reportStatusFn = reportStatusFn;
             _docTypesMatcher = docTypesMatcher;
             _scanConfig = scanConfig;
+            _scanDocInfoCache = new ScanDocInfoCache(this);
 
             // Init the background worker used for processing docs
             _fileProcessBkgndWorker.WorkerSupportsCancellation = true;
@@ -117,6 +121,11 @@ namespace ScanMonitorApp
             return new ScanDocAllInfo(scanDoc, scanPages, filedDocInfo);
         }
 
+        public ScanDocAllInfo GetScanDocAllInfoCached(string uniqName)
+        {
+            return _scanDocInfoCache.GetScanDocAllInfo(uniqName);
+        }
+
         #endregion
 
         #region ScanDocInfo Collection Handling
@@ -165,6 +174,9 @@ namespace ScanMonitorApp
                 collection_sdinfo.Insert(scanDocInfo);
                 // Log it
                 logger.Info("Added scandocinfo record for {0}", scanDocInfo.uniqName);
+
+                // Update cache
+                _scanDocInfoCache.UpdateDocInfo(scanDocInfo.uniqName);
             }
             catch (Exception excp)
             {
@@ -208,6 +220,8 @@ namespace ScanMonitorApp
                 collection_sdinfo.Save(scanDocInfo);
                 // Log it
                 logger.Info("Added/updated scandocinfo record for {0}", scanDocInfo.uniqName);
+                // Update cache
+                _scanDocInfoCache.UpdateDocInfo(scanDocInfo.uniqName);
             }
             catch (Exception excp)
             {
@@ -291,6 +305,8 @@ namespace ScanMonitorApp
                 bOk = rslt.Ok;
                 // Log it
                 logger.Info("Added fileddoc record for {0}", filedDocInfo.uniqName);
+                // Update cache
+                _scanDocInfoCache.UpdateDocInfo(filedDocInfo.uniqName);
             }
             catch (Exception excp)
             {
@@ -310,6 +326,8 @@ namespace ScanMonitorApp
                 collection_fdinfo.Save(filedDocInfo);
                 // Log it
                 logger.Info("Added/updated fileddoc record for {0}", filedDocInfo.uniqName);
+                // Update cache
+                _scanDocInfoCache.UpdateDocInfo(filedDocInfo.uniqName);
             }
             catch (Exception excp)
             {
@@ -319,6 +337,23 @@ namespace ScanMonitorApp
                 return false;
             }
             return true;
+        }
+
+        public List<string> GetLastNDocTypesUsed(int numToReturn)
+        {
+            List<string> docTypesList = new List<string>();
+            try
+            {
+                MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
+                List<string> partres = (from fd in collection_fdinfo.AsQueryable<FiledDocInfo>() orderby fd.filedAt_dateAndTime descending select (string)fd.filedAs_docType).Take<string>(200).ToList<string>();
+                partres = partres.Select(s => s).Distinct<string>().ToList<string>();
+                docTypesList = partres.Take(numToReturn).ToList<string>();
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Cannot get list of last used doctypes {0}", excp.Message);
+            }
+            return docTypesList;
         }
 
         #endregion
@@ -378,9 +413,9 @@ namespace ScanMonitorApp
                     if (!File.Exists(fullSourceName))
                     {
                         logger.Error("Trying to delete non-existent file {0}", fullSourceName);
+                        fileDeleteOk = true;
                     }
-
-                    if (Properties.Settings.Default.TestModeFileTo == "")
+                    else if (Properties.Settings.Default.TestModeFileTo == "")
                     {
                         File.Delete(fullSourceName);
                     }
@@ -959,6 +994,16 @@ namespace ScanMonitorApp
                 }
             }
             return filedDocStr;
+        }
+
+        public static void ShowFileInExplorer(string fileName, bool selParent = true)
+        {
+            ProcessStartInfo psi = new ProcessStartInfo();
+            psi.FileName = "explorer";
+            psi.UseShellExecute = true;
+            psi.WindowStyle = ProcessWindowStyle.Normal;
+            psi.Arguments = string.Format("/e,{1}\"{0}\"", fileName, selParent ? "/select," : "");
+            Process.Start(psi);
         }
 
         #endregion
