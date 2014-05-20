@@ -59,7 +59,7 @@ namespace ScanMonitorApp
 
             try
             {
-                _rasterizer.Open(inputPdfPath, _lastInstalledVersion, false);
+                _rasterizer.Open(inputPdfPath.Replace("/",@"\"), _lastInstalledVersion, false);
             }
             catch (Exception excp)
             {
