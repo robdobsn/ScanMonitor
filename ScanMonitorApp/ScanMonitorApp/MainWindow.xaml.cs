@@ -46,10 +46,12 @@ namespace ScanMonitorApp
             );
 
         private static Logger logger = LogManager.GetCurrentClassLogger();
-        private System.Windows.Forms.NotifyIcon _notifyIcon;
         private DocTypesMatcher _docTypesMatcher;
         private ScanFileMonitor _scanFileMonitor = null;
         private ScanDocHandler _scanDocHandler;
+
+#if USE_NOTIFY_ICON
+        private System.Windows.Forms.NotifyIcon _notifyIcon;
 
         private void InitNotifyIcon()
         {
@@ -106,11 +108,6 @@ namespace ScanMonitorApp
             base.OnStateChanged(e);
         }
 
-        public void ExitApp(object sender, EventArgs e)
-        {
-            System.Windows.Application.Current.Shutdown();
-        }
-
         private void BringWindowToFront()
         {
             this.Show();
@@ -130,7 +127,30 @@ namespace ScanMonitorApp
         {
             this.Hide();
         }
-        
+#else
+        private void InitNotifyIcon()
+        {
+        }
+
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            base.OnClosing(e);
+            Properties.Settings.Default.Save();
+            if (_scanFileMonitor != null)
+                _scanFileMonitor.Stop();
+        }
+
+        private void Window_Closed(object sender, EventArgs e)
+        {
+        }
+#endif
+
+        public void ExitApp(object sender, EventArgs e)
+        {
+            System.Windows.Application.Current.Shutdown();
+        }
+
+
         public void AddToStatusText(string str)
         {
             const int MAX_LINES_IN_STATUS = 20;
@@ -278,6 +298,12 @@ namespace ScanMonitorApp
         {
             PathSubstView ptv = new PathSubstView(_docTypesMatcher);
             ptv.ShowDialog();
+        }
+
+        private void MetroWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            DocFilingView dfv = new DocFilingView(_scanDocHandler, _docTypesMatcher);
+            dfv.ShowDialog();
         }
 
     }
