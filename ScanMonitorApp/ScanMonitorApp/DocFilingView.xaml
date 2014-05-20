@@ -11,8 +11,7 @@
                 </Grid>
             </Border>
             <ControlTemplate.Triggers>
-                <Trigger Property="IsMouseOver"
-                                 Value="True">
+                <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="BorderBrush" Value="Black" />
                     <Setter Property="Background" Value="LightGray" />
                 </Trigger>
@@ -48,7 +47,12 @@
             <TextBlock x:Name="imageDocToFileToolText" Background="Azure" FontSize="15" IsEnabled="False" IsHitTestVisible="False">ToolText</TextBlock>
         </Popup>
         <Grid x:Name="docToFileInfoGrid" Margin="10,10,10,0" Grid.Column="1" Grid.Row="1" Grid.RowSpan="2">
-            <Label x:Name="lblDocType" Content="Type" HorizontalAlignment="Left" Height="45" Margin="10,19,0,0" VerticalAlignment="Top" Width="107" FontSize="20"/>
+            <Button x:Name="btnDocTypeSel" Content="Type" Height="54" Margin="10,10,0,0" VerticalAlignment="Top" FontSize="22" HorizontalContentAlignment="Left" HorizontalAlignment="Left" Width="107" Style="{DynamicResource SquareButtonStyle}" Click="btnDocTypeSel_Click">
+                <Button.ContextMenu>
+                    <ContextMenu x:Name="btnDocTypeSelContextMenu" FontSize="16" HorizontalAlignment="Right">
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
             <Label x:Name="lblDocTypeName" Height="54" Margin="124,10,140,0" VerticalAlignment="Top"  FontSize="30" Background="#FF00AFF0" Foreground="White" Content=""/>
             <Popup x:Name="popupDocTypeResult" AllowsTransparency="True" Placement="Relative" PlacementTarget="{Binding ElementName=btnOtherDocTypes}" IsEnabled="False" StaysOpen="False">
                 <Border BorderThickness="2" BorderBrush="Black">
@@ -124,9 +128,9 @@
                     </ScrollViewer>
                 </Border>
             </Popup>
-            <Label x:Name="lblDocDate" Content="Date" HorizontalAlignment="Left" Height="38" Margin="10,155,0,0" VerticalAlignment="Top" Width="107" FontSize="20"/>
-            <Label x:Name="lblDestFilePrefix" Content="Prefix" HorizontalAlignment="Left" Height="50" Margin="10,277,0,0" VerticalAlignment="Top" VerticalContentAlignment="Center" Width="107" FontSize="20"/>
-            <Label x:Name="lblDestFileSuffix" Content="Subject" HorizontalAlignment="Left" Height="50" Margin="10,342,0,0" VerticalAlignment="Top" VerticalContentAlignment="Center" Width="114" FontSize="20"/>
+            <Label x:Name="lblDocDate" Content="date" HorizontalAlignment="Left" Height="38" Margin="10,155,0,0" VerticalAlignment="Top" Width="107" FontSize="20"/>
+            <Label x:Name="lblDestFilePrefix" Content="prefix" HorizontalAlignment="Left" Height="50" Margin="10,277,0,0" VerticalAlignment="Top" VerticalContentAlignment="Center" Width="107" FontSize="20"/>
+            <Label x:Name="lblDestFileSuffix" Content="subject" HorizontalAlignment="Left" Height="50" Margin="10,342,0,0" VerticalAlignment="Top" VerticalContentAlignment="Center" Width="114" FontSize="20"/>
             <TextBox x:Name="txtDestFilePrefix" IsEnabled="False" Height="50" Margin="124,277,140,0" TextWrapping="Wrap" VerticalAlignment="Top" VerticalContentAlignment="Center" FontSize="20" TextChanged="txtDestFilePrefix_TextChanged" Background="#FF00AFF0" Foreground="White"/>
             <Button x:Name="btnChangePrefix" VerticalAlignment="Top" Height="50" Margin="0,277,10,0" Click="btnChangePrefix_Click" FontSize="18" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="50">
                 <Image Source="res/appbar.edit.png" Stretch="Fill" />
@@ -141,7 +145,7 @@
             <Button x:Name="btnSuffixFromPageText" VerticalAlignment="Top" Height="50" Margin="0,342,10,0" Click="btnSuffixFromPageText_Click" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="50">
                 <Image Source="res/appbar.social.amazon.appstore.png" Stretch="Fill" Width="25" Height="25"/>
             </Button>
-            <Label x:Name="lblMoneySum" Content="Cost/£/$" HorizontalAlignment="Left" Height="48" Margin="10,403,0,0" VerticalAlignment="Top" VerticalContentAlignment="Center" Width="107" FontSize="20"/>
+            <Label x:Name="lblMoneySum" Content="cost/£/$" HorizontalAlignment="Left" Height="48" Margin="10,403,0,0" VerticalAlignment="Top" VerticalContentAlignment="Center" Width="107" FontSize="20"/>
             <TextBox x:Name="txtMoneySum" Height="48" Margin="124,403,140,0" TextWrapping="Wrap" VerticalAlignment="Top" VerticalContentAlignment="Center" FontSize="20" Background="#FF00AFF0" Foreground="White"/>
             <Button x:Name="btnMoneySumErase" VerticalAlignment="Top" Height="50" Margin="0,403,73,0" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="50" Click="btnMoneySumErase_Click">
                 <Image Source="res/appbar.close.png" Stretch="Fill" Width="25" Height="25"/>
@@ -149,9 +153,9 @@
             <Button x:Name="btnMoneySumFromPageText" VerticalAlignment="Top" Height="50" Margin="0,403,10,0" Click="btnMoneySumFromPageText_Click" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="50">
                 <Image Source="res/appbar.social.amazon.appstore.png" Stretch="Fill" Width="25" Height="25"/>
             </Button>
-            <Label x:Name="lblDestFileNameLabel" Content="File Name" HorizontalAlignment="Left" Height="38" Margin="10,460,0,0" VerticalAlignment="Top" Width="107" FontSize="20"/>
+            <Label x:Name="lblDestFileNameLabel" Content="file name" HorizontalAlignment="Left" Height="38" Margin="10,460,0,0" VerticalAlignment="Top" Width="107" FontSize="20"/>
             <Label x:Name="lblDestFileName" Content="" Height="38" Margin="124,460,10,0" VerticalAlignment="Top" FontSize="20" Background="#FFF2F2F2"/>
-            <Label x:Name="lblMoveToLabel" Content="File Folder" HorizontalAlignment="Left" Height="50" Margin="10,506,0,0" VerticalAlignment="Top" VerticalContentAlignment="Center" Width="107" FontSize="20"/>
+            <Label x:Name="lblMoveToLabel" Content="file folder" HorizontalAlignment="Left" Height="50" Margin="10,506,0,0" VerticalAlignment="Top" VerticalContentAlignment="Center" Width="107" FontSize="20"/>
             <Label x:Name="lblMoveToName" Content="" Height="50" Margin="124,506,140,0" VerticalAlignment="Top" VerticalContentAlignment="Center" FontSize="20" Background="#FFF2F2F2" ToolTip="" MouseDown="lblMoveToCtxt_Click">
             </Label>
             <Button x:Name="btnMoveToUndo" VerticalAlignment="Top" Height="50" Margin="0,506,10,0" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="50" Click="btnMoveToUndo_Click">
@@ -160,16 +164,16 @@
             <Button x:Name="btnShowMoveToFolder" VerticalAlignment="Top" Height="50" Margin="0,506,70,0" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="50" FontSize="20" Click="btnShowMoveToFolder_Click">
                 <Image Source="res/appbar.folder.png" Stretch="Fill" Width="25" Height="25"/>
             </Button>
-            <CheckBox x:Name="chkFollowUpA" Content="Follow Up A" HorizontalAlignment="Left" Height="38" Margin="16,562,0,0" VerticalAlignment="Top" Width="174" FontSize="20" Foreground="#FF00AFF0" Unchecked="chkFollowUpA_Unchecked" Checked="chkFollowUpA_Checked"/>
-            <CheckBox x:Name="chkFollowUpB" Content="Follow Up B" HorizontalAlignment="Left" Height="38" Margin="192,562,0,0" VerticalAlignment="Top" Width="174" FontSize="20" Foreground="#FF00AFF0" Checked="chkFollowUpB_Checked" Unchecked="chkFollowUpB_Unchecked"/>
-            <CheckBox x:Name="chkCalendarEntry" Content="Add to Calendar" Height="38" Margin="371,562,0,0" VerticalAlignment="Top" FontSize="20" Foreground="#FF00AFF0" Checked="chkCalendarEntry_Checked" Unchecked="chkCalendarEntry_Unchecked" HorizontalAlignment="Left" Width="174"/>
+            <CheckBox x:Name="chkFollowUpA" Content="follow up A" HorizontalAlignment="Left" Height="38" Margin="16,562,0,0" VerticalAlignment="Top" Width="174" FontSize="20" Foreground="#FF00AFF0" Unchecked="chkFollowUpA_Unchecked" Checked="chkFollowUpA_Checked"/>
+            <CheckBox x:Name="chkFollowUpB" Content="follow up B" HorizontalAlignment="Left" Height="38" Margin="192,562,0,0" VerticalAlignment="Top" Width="174" FontSize="20" Foreground="#FF00AFF0" Checked="chkFollowUpB_Checked" Unchecked="chkFollowUpB_Unchecked"/>
+            <CheckBox x:Name="chkCalendarEntry" Content="add to calendar" Height="38" Margin="371,562,0,0" VerticalAlignment="Top" FontSize="20" Foreground="#FF00AFF0" Checked="chkCalendarEntry_Checked" Unchecked="chkCalendarEntry_Unchecked" HorizontalAlignment="Left" Width="174"/>
             <Grid x:Name="gridEmailFields" HorizontalAlignment="Left" Height="279" Margin="0,622,-4,0" VerticalAlignment="Top" Width="907">
-                <Label x:Name="lblEventName" Content="Event" HorizontalAlignment="Left" Height="38" Margin="10,116,0,0" VerticalAlignment="Top" Width="114" FontSize="20"/>
+                <Label x:Name="lblEventName" Content="event" HorizontalAlignment="Left" Height="38" Margin="10,116,0,0" VerticalAlignment="Top" Width="114" FontSize="20"/>
                 <TextBox x:Name="txtEventName" Height="38" Margin="124,116,53,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="20" Background="#FF00AFF0" Foreground="White"/>
                 <Button x:Name="btnEventNameFromPageText" VerticalAlignment="Top" Height="38" Margin="0,116,10,0" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="38" Click="btnEventNameFromPageText_Click">
                     <Image Source="res/appbar.social.amazon.appstore.png" Stretch="Fill" Width="25" Height="25"/>
                 </Button>
-                <Label x:Name="lblEventDate" Content="Event Date" HorizontalAlignment="Left" Height="38" Margin="10,62,0,0" VerticalAlignment="Top" Width="114" FontSize="20"/>
+                <Label x:Name="lblEventDate" Content="event date" HorizontalAlignment="Left" Height="38" Margin="10,62,0,0" VerticalAlignment="Top" Width="114" FontSize="20"/>
                 <DatePicker x:Name="datePickerEventDate" Height="38" Margin="124,59,482,0" VerticalAlignment="Top" FirstDayOfWeek="Monday" SelectedDateFormat="Long" FontSize="20" Background="#FF00AFF0" Foreground="White"/>
                 <Button x:Name="btnEventDateFromPageText" VerticalAlignment="Top" Height="38" Margin="439,59,0,0" Style="{DynamicResource SquareButtonStyle}" Click="btnEventDateFromPageText_Click" HorizontalAlignment="Left" Width="38">
                     <Image Source="res/appbar.social.amazon.appstore.png" Stretch="Fill" Width="25" Height="25"/>
@@ -191,12 +195,12 @@
                 <Button x:Name="btnEventDuration" Height="38" Margin="0,59,10,0" VerticalAlignment="Top" FontSize="16" HorizontalAlignment="Right" Width="38" Style="{DynamicResource SquareButtonStyle}" Click="btnEventDuration_Click">
                     <Image Source="appbar.arrow.down.png"/>
                 </Button>
-                <Label x:Name="lblEventDesc" Content="Location" HorizontalAlignment="Left" Height="38" Margin="10,170,0,0" VerticalAlignment="Top" Width="114" FontSize="20"/>
+                <Label x:Name="lblEventDesc" Content="location" HorizontalAlignment="Left" Height="38" Margin="10,170,0,0" VerticalAlignment="Top" Width="114" FontSize="20"/>
                 <TextBox x:Name="txtEventDesc" Height="38" Margin="124,170,53,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="20" Background="#FF00AFF0" Foreground="White"/>
                 <Button x:Name="btnEventDescFromPageText" VerticalAlignment="Top" Height="38" Margin="0,170,10,0" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="38" Click="btnEventDescFromPageText_Click">
                     <Image Source="res/appbar.social.amazon.appstore.png" Stretch="Fill" Width="25" Height="25"/>
                 </Button>
-                <Label x:Name="lblEventLocn" Content="Description" HorizontalAlignment="Left" Height="38" Margin="10,226,0,0" VerticalAlignment="Top" Width="114" FontSize="20"/>
+                <Label x:Name="lblEventLocn" Content="description" HorizontalAlignment="Left" Height="38" Margin="10,226,0,0" VerticalAlignment="Top" Width="114" FontSize="20"/>
                 <TextBox x:Name="txtEventLocn" Height="38" Margin="124,226,53,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="20" Background="#FF00AFF0" Foreground="White"/>
                 <Button x:Name="btnEventLocnFromPageText" VerticalAlignment="Top" Height="38" Margin="0,226,10,0" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="38" Click="btnEventLocnFromPageText_Click">
                     <Image Source="res/appbar.social.amazon.appstore.png" Stretch="Fill" Width="25" Height="25"/>
@@ -204,7 +208,7 @@
                 <Label x:Name="lblEmailPassword" Content="Password" HorizontalAlignment="Left" Height="38" Margin="10,0,0,0" VerticalAlignment="Top" Width="114" FontSize="20"/>
                 <PasswordBox  x:Name="txtEmailPassword" Height="38" Margin="124,0,482,0" VerticalAlignment="Top" FontSize="20" Background="#FF00AFF0" Foreground="White"/>
 
-                <CheckBox x:Name="chkAttachFile" Content="Attach Doc to Email/Event" Height="38" Margin="498,0,0,0" VerticalAlignment="Top" FontSize="20" Foreground="#FF00AFF0" HorizontalAlignment="Left" Width="291"/>
+                <CheckBox x:Name="chkAttachFile" Content="attach doc to email/event" Height="38" Margin="498,0,0,0" VerticalAlignment="Top" FontSize="20" Foreground="#FF00AFF0" HorizontalAlignment="Left" Width="291"/>
 
             </Grid>
 

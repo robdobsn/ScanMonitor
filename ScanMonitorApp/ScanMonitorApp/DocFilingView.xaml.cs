@@ -1328,6 +1328,64 @@ namespace ScanMonitorApp
 
         #endregion
 
+        private void btnDocTypeSel_Click(object sender, RoutedEventArgs e)
+        {
+            // Clear menu
+            btnDocTypeSelContextMenu.Items.Clear();
+
+            // Reload menu
+            List<string> docTypeStrings = new List<string>();
+            List<DocType> docTypeList = _docTypesMatcher.ListDocTypes();
+            foreach (DocType dt in docTypeList)
+            {
+                if (!dt.isEnabled)
+                    continue;
+                docTypeStrings.Add(dt.docTypeName);
+            }
+            docTypeStrings.Sort();
+            string curHead = "";
+            MenuItem curMenuItem = null;
+            foreach (string docTypeString in docTypeStrings)
+            {
+                string[] elemsS = docTypeString.Split('-');
+                if (elemsS.Length <= 0)
+                    continue;
+                string hdrStr = elemsS[0].Trim();
+                if (curHead.ToLower() != hdrStr.ToLower())
+                {
+                    if (curMenuItem != null)
+                        btnDocTypeSelContextMenu.Items.Add(curMenuItem);
+                    curMenuItem = new MenuItem();
+                    curMenuItem.Header = hdrStr;
+                    curHead = hdrStr;
+                }
+                MenuItem subItem = new MenuItem();
+                if (elemsS.Length < 2)
+                    subItem.Header = hdrStr;
+                else
+                    subItem.Header = elemsS[1].Trim();
+                subItem.Tag = docTypeString;
+                subItem.Click += DocTypeSubMenuItem_Click;
+                curMenuItem.Items.Add(subItem);
+            }
+            if (curMenuItem != null)
+                if (curMenuItem.Items.Count > 0)
+                    btnDocTypeSelContextMenu.Items.Add(curMenuItem);
+
+            // Show menu
+            if (!btnDocTypeSel.ContextMenu.IsOpen)
+                btnDocTypeSel.ContextMenu.IsOpen = true;
+        }
+
+        private void DocTypeSubMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            MenuItem menuItem = sender as MenuItem;
+            ContextMenu contextMenu = menuItem.CommandParameter as ContextMenu;
+            btnDocTypeSel.ContextMenu.IsOpen = false;
+            object tag = menuItem.Tag;
+            if (tag.GetType() == typeof(string))
+                ShowDocumentTypeAndDate((string)tag);
+        }
 
     }
 
