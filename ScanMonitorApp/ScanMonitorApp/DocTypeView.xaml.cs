@@ -52,8 +52,6 @@ namespace ScanMonitorApp
         private LocationRectangleHandler locRectHandler;
         private int _lastFindNumFound = 0;
         private int _lastFindStartPos = 0;
-        // Cache scan and filing info
-        private Dictionary<string, ScanDocAllInfo> _cacheScanDocAllInfo = new Dictionary<string, ScanDocAllInfo>();
 
         public DocTypeView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher)
         {
@@ -414,42 +412,28 @@ namespace ScanMonitorApp
         private DocCompareRslt CheckIfDocMatches(ScanDocInfo sdi, DocType docTypeToMatch)
         {
             DocCompareRslt compRslt = new DocCompareRslt();
-            ScanPages scanPages = null;
-            FiledDocInfo fdi = null;
-            if (_cacheScanDocAllInfo.ContainsKey(sdi.uniqName))
-            {
-                scanPages = _cacheScanDocAllInfo[sdi.uniqName].scanPages;
-                fdi = _cacheScanDocAllInfo[sdi.uniqName].filedDocInfo;
-            }
-            else
-            {
-                scanPages = _scanDocHandler.GetScanPages(sdi.uniqName);
-                // See if doc has been filed - result maybe null
-                fdi = _scanDocHandler.GetFiledDocInfo(sdi.uniqName);
-                ScanDocAllInfo sdAllInfo = new ScanDocAllInfo(sdi, scanPages, fdi);
-                _cacheScanDocAllInfo.Add(sdi.uniqName, sdAllInfo);
-            }
+            ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfoCached(sdi.uniqName);
 
             // Check for a match
-            DocTypeMatchResult matchResult = _docTypesMatcher.CheckIfDocMatches(scanPages, docTypeToMatch, false, null);
+            DocTypeMatchResult matchResult = _docTypesMatcher.CheckIfDocMatches(scanDocAllInfo.scanPages, docTypeToMatch, false, null);
             if (matchResult.matchCertaintyPercent == 100)
             {
                 compRslt.bMatches = true;
-                compRslt.bMatchesButShouldnt = (fdi != null) && TestForMatchesButShouldnt(fdi.filedAs_docType, docTypeToMatch);
+                compRslt.bMatchesButShouldnt = (scanDocAllInfo.filedDocInfo != null) && TestForMatchesButShouldnt(scanDocAllInfo.filedDocInfo.filedAs_docType, docTypeToMatch);
                 compRslt.uniqName = sdi.uniqName;
-                compRslt.docTypeFiled = (fdi == null) ? "" : fdi.filedAs_docType;
-                compRslt.matchStatus = (fdi == null) ? "NOT-FILED" : (compRslt.bMatchesButShouldnt ? "MATCH-BUT-SHOULDN'T" : "OK");
-                compRslt.scanPages = scanPages;
+                compRslt.docTypeFiled = (scanDocAllInfo.filedDocInfo == null) ? "" : scanDocAllInfo.filedDocInfo.filedAs_docType;
+                compRslt.matchStatus = (scanDocAllInfo.filedDocInfo == null) ? "NOT-FILED" : (compRslt.bMatchesButShouldnt ? "MATCH-BUT-SHOULDN'T" : "OK");
+                compRslt.scanPages = scanDocAllInfo.scanPages;
             }
             else
             {
-                compRslt.bDoesntMatchButShould = (fdi != null) && (fdi.filedAs_docType == docTypeToMatch.docTypeName);
+                compRslt.bDoesntMatchButShould = (scanDocAllInfo.filedDocInfo != null) && (scanDocAllInfo.filedDocInfo.filedAs_docType == docTypeToMatch.docTypeName);
                 if (compRslt.bDoesntMatchButShould)
                 {
                     compRslt.uniqName = sdi.uniqName;
-                    compRslt.docTypeFiled = (fdi == null) ? "" : fdi.filedAs_docType;
+                    compRslt.docTypeFiled = (scanDocAllInfo.filedDocInfo == null) ? "" : scanDocAllInfo.filedDocInfo.filedAs_docType;
                     compRslt.matchStatus = "SHOULD-BUT-DOESN'T";
-                    compRslt.scanPages = scanPages;
+                    compRslt.scanPages = scanDocAllInfo.scanPages;
                 }
             }
             compRslt.matchFactorStr = matchResult.matchCertaintyPercent.ToString() + " + " + matchResult.matchFactor.ToString() + "%";
@@ -1457,16 +1441,6 @@ namespace ScanMonitorApp
             return false;
         }
 
-        private void ShowFileInExplorer(string fileName)
-        {
-            ProcessStartInfo psi = new ProcessStartInfo();
-            psi.FileName = "explorer";
-            psi.UseShellExecute = true;
-            psi.WindowStyle = ProcessWindowStyle.Normal;
-            psi.Arguments = string.Format("/e,/select,\"{0}\"", fileName);
-            Process.Start(psi);
-        }
-
         private void listViewCtxtOriginal_Click(object sender, RoutedEventArgs e)
         {
             DocCompareRslt selectedRow = listMatchResults.SelectedItem as DocCompareRslt;
@@ -1474,7 +1448,7 @@ namespace ScanMonitorApp
             {
                 string uniqName = selectedRow.uniqName;
                 ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(uniqName);
-                ShowFileInExplorer(scanDocAllInfo.scanDocInfo.origFileName.Replace("/", @"\"));
+                ScanDocHandler.ShowFileInExplorer(scanDocAllInfo.scanDocInfo.origFileName.Replace("/", @"\"));
             }
         }
 
@@ -1487,7 +1461,7 @@ namespace ScanMonitorApp
                 string imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, uniqName, 1, false);
                 try
                 {
-                    ShowFileInExplorer(imgFileName.Replace("/", @"\"));
+                    ScanDocHandler.ShowFileInExplorer(imgFileName.Replace("/", @"\"));
                 }
                 finally
                 {
@@ -1505,7 +1479,7 @@ namespace ScanMonitorApp
                 string uniqName = selectedRow.uniqName;
                 ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(uniqName);
                 if (scanDocAllInfo.filedDocInfo != null)
-                    ShowFileInExplorer(scanDocAllInfo.filedDocInfo.filedAs_pathAndFileName.Replace("/", @"\"));
+                    ScanDocHandler.ShowFileInExplorer(scanDocAllInfo.filedDocInfo.filedAs_pathAndFileName.Replace("/", @"\"));
             }
         }
 
