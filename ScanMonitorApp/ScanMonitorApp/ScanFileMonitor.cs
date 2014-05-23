@@ -250,7 +250,7 @@ namespace ScanMonitorApp
                 _requestDocProcessingForNewFile = false;
 
                 // Wait a while to avoid thrashing constantly
-                for (int i = 0; i < 600; i++ )
+                for (int i = 0; i < Properties.Settings.Default.FolderMonitorSeconds; i++)
                 {
                     // Check for cancellation
                     if ((worker.CancellationPending == true))

@@ -34,7 +34,7 @@ namespace ScanMonitorApp
         private const bool TEST_MODE = false;
         BackgroundWorker _bwThread;
 
-        private List<string> foldersToMonitor = new List<string> { Properties.Settings.Default.FolderToMonitor };
+//        private List<string> foldersToMonitor = new List<string> { Properties.Settings.Default.FoldersToMonitor };
 
         private ScanDocHandlerConfig _scanDocHandlerConfig = new ScanDocHandlerConfig(Properties.Settings.Default.DocAdminImgFolderBase,
             Properties.Settings.Default.MaxPagesForImages,
@@ -190,6 +190,24 @@ namespace ScanMonitorApp
             if (Properties.Settings.Default.PCtoRunMonitorOn.Trim() == System.Environment.MachineName.Trim())
             {
                 _scanFileMonitor = new ScanFileMonitor(AddToStatusText, _scanDocHandler);
+                string[] foldersToMonitorArray = Properties.Settings.Default.FoldersToMonitor.Split(';');
+                List<string> foldersToMonitor = new List<string>();
+                foreach (string folder in foldersToMonitorArray)
+                {
+                    try
+                    {
+                        if (System.IO.Directory.Exists(folder))
+                        {
+                            foldersToMonitor.Add(folder);
+                            continue;
+                        }
+                    }
+                    catch (Exception excp)
+                    {
+                        logger.Error("Watch folder {0} exception {1}", folder, excp);
+                    }
+                    AddToStatusText("Watch folder not found " + folder);
+                }
                 _scanFileMonitor.Start(foldersToMonitor, TEST_MODE);
                 statusRunningMonitor.Content += " and is Running Folder Monitor";
             }

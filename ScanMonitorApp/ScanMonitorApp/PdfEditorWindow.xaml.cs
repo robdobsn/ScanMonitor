@@ -593,38 +593,48 @@ namespace ScanMonitorApp
             BackgroundWorker worker = sender as BackgroundWorker;
             _pdfRasterizer = new ScanMonitorApp.PdfRasterizer(_curFileNames[_curBackgroundLoadingFileIdx], POINTS_PER_INCH);
 
-            int startNewPageNum = 1;
-            int startNewFileNum = 1;
-            int pageTotal = 0;
-            GetFileAndPageOfLastOutDoc(out startNewFileNum, out startNewPageNum, out pageTotal);
-
-            for (int i = 0; i < _pdfRasterizer.NumPages(); i++)
+            try
             {
-                if ((worker.CancellationPending == true))
+                int startNewPageNum = 1;
+                int startNewFileNum = 1;
+                int pageTotal = 0;
+                GetFileAndPageOfLastOutDoc(out startNewFileNum, out startNewPageNum, out pageTotal);
+
+                // Extract page images
+                for (int i = 0; i < _pdfRasterizer.NumPages(); i++)
                 {
-                    e.Cancel = true;
-                    break;
+                    if ((worker.CancellationPending == true))
+                    {
+                        e.Cancel = true;
+                        break;
+                    }
+
+                    System.Drawing.Image pageImg = _pdfRasterizer.GetPageImage(i + 1, false);
+
+                    this.Dispatcher.BeginInvoke((Action)delegate()
+                    {
+                        BitmapImage bitmap = ConvertToBitmap(pageImg);
+                        PdfPageInfo pgInfo = new PdfPageInfo();
+                        pgInfo.PageNum = i + 1;
+                        pgInfo.FileIndex = _curBackgroundLoadingFileIdx;
+                        pgInfo.ThumbBitmap = bitmap;
+                        pgInfo.SplitAfter = false;
+                        pgInfo.DeletePage = false;
+                        pgInfo.PageRotation = 0;
+                        pgInfo.ShowFileNum = (_curBackgroundLoadingFileIdx > 0);
+                        pgInfo.NewDocPageNum = i + startNewPageNum;
+                        pgInfo.NewDocFileNum = startNewFileNum;
+                        _pdfPageList.Add(pgInfo);
+                    });
+                    Thread.Sleep(50);
+                    (sender as BackgroundWorker).ReportProgress(i * 100 / _pdfRasterizer.NumPages(), null);
                 }
-
-                System.Drawing.Image pageImg = _pdfRasterizer.GetPageImage(i + 1);
-
-                this.Dispatcher.BeginInvoke((Action)delegate()
-                {
-                    BitmapImage bitmap = ConvertToBitmap(pageImg);
-                    PdfPageInfo pgInfo = new PdfPageInfo();
-                    pgInfo.PageNum = i + 1;
-                    pgInfo.FileIndex = _curBackgroundLoadingFileIdx;
-                    pgInfo.ThumbBitmap = bitmap;
-                    pgInfo.SplitAfter = false;
-                    pgInfo.DeletePage = false;
-                    pgInfo.PageRotation = 0;
-                    pgInfo.ShowFileNum = (_curBackgroundLoadingFileIdx > 0);
-                    pgInfo.NewDocPageNum = i + startNewPageNum;
-                    pgInfo.NewDocFileNum = startNewFileNum;
-                    _pdfPageList.Add(pgInfo);
-                });
-                Thread.Sleep(50);
-                (sender as BackgroundWorker).ReportProgress(i * 100 / _pdfRasterizer.NumPages(), null);
+            }
+            finally
+            {
+                // Close file
+                _pdfRasterizer.Close();
+                _pdfRasterizer = null;
             }
         }
 
@@ -757,13 +767,21 @@ namespace ScanMonitorApp
             if (img == null)
                 return new BitmapImage();
 
-            MemoryStream ms = new MemoryStream();
-            img.Save(ms, System.Drawing.Imaging.ImageFormat.Jpeg);
-            System.Windows.Media.Imaging.BitmapImage bImg = new System.Windows.Media.Imaging.BitmapImage();
-            bImg.BeginInit();
-            bImg.StreamSource = new MemoryStream(ms.ToArray());
-            bImg.EndInit();
-            return bImg;
+            try
+            {
+                MemoryStream ms = new MemoryStream();
+                img.Save(ms, System.Drawing.Imaging.ImageFormat.Jpeg);
+                System.Windows.Media.Imaging.BitmapImage bImg = new System.Windows.Media.Imaging.BitmapImage();
+                bImg.BeginInit();
+                bImg.StreamSource = new MemoryStream(ms.ToArray());
+                bImg.EndInit();
+                return bImg;
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Failed to convert bitmap {0}", excp.Message);
+            }
+            return new BitmapImage();
         }
 
         private string GetElementTag(object sender)
@@ -798,14 +816,20 @@ namespace ScanMonitorApp
                     if (ppi.NewDocFileNum != fileNum)
                         ppi.NewDocFileNum = fileNum;
                 }
-                if (ppi.DeletePage)
-                    continue;
-                pageNum++;
-                pageTotal++;
-                if (ppi.SplitAfter && pageIdx != _pdfPageList.Count-1)
+                if (ppi.SplitAfter && pageIdx != _pdfPageList.Count - 1)
                 {
                     fileNum++;
                     pageNum = 1;
+                    if (!ppi.DeletePage)
+                        pageTotal++;
+                }
+                else
+                {
+                    if (!ppi.DeletePage)
+                    {
+                        pageNum++;
+                        pageTotal++;
+                    }
                 }
             }
         }

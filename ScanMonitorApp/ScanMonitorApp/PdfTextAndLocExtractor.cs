@@ -371,10 +371,13 @@ namespace ScanMonitorApp
 
                         // Check through found text to see if the page seems to be rotated
                         int[] rotCounts = new int[] { 0, 0, 0, 0 };
-                        foreach (LocationTextExtractionStrategyEx.TextInfo txtInfo in pageInfo)
+                        if (pageInfo.Count > 2)
                         {
-                            int thisRotation = GetTextRotation(txtInfo.TopLeft, txtInfo.BottomRight);
-                            rotCounts[(thisRotation / 90) % 4]++;
+                            foreach (LocationTextExtractionStrategyEx.TextInfo txtInfo in pageInfo)
+                            {
+                                int thisRotation = GetTextRotation(txtInfo.TopLeft, txtInfo.BottomRight);
+                                rotCounts[(thisRotation / 90) % 4]++;
+                            }
                         }
                         int maxRot = 0;
                         int maxRotCount = 0;

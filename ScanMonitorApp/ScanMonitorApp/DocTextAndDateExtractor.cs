@@ -70,7 +70,10 @@ namespace ScanMonitorApp
 
         public static List<ExtractedDate> ExtractDatesFromDoc(ScanPages scanPages, string dateExpr, out int bestDateIdx)
         {
+            bestDateIdx = 0;
             List<ExtractedDate> datesResult = new List<ExtractedDate>();
+            if (scanPages == null)
+                return datesResult;
 
             // Extract location rectangles from doctype
             List<ExprParseTerm> parseTerms = DocTypesMatcher.ParseDocMatchExpression(dateExpr, 0);
@@ -156,9 +159,6 @@ namespace ScanMonitorApp
         public static void SearchForDateItem(ScanPages scanPages, string dateSearchTerm, DocRectangle dateDocRect, double matchFactor, List<ExtractedDate> datesResult,
                                     ref bool latestDateRequested, ref bool earliestDateRequested, int limitToPageNumN = -1, bool ignoreWhitespace = false)
         {
-            Stopwatch stp = new Stopwatch();
-            stp.Start();
-
             // Get date search info
             DateSrchInfo dateSrchInfo = GetDateSearchInfo(dateSearchTerm);
             if (dateSrchInfo.bEarliestDate)
@@ -213,9 +213,6 @@ namespace ScanMonitorApp
                 if (dateSrchInfo.bJoinTextInRect)
                     SearchWithinString(joinedText, dateDocRect, dateSearchTerm, dateSrchInfo, matchFactorForThisPage, pageIdx, datesResult, ignoreWhitespace);
             }
-            stp.Stop();
-            Stopwatch stp2 = new Stopwatch();
-            stp2.Start();
 
             // TEST TEST TEST
 #if TEST_AGAINST_OLD_DATE_ALGORITHM

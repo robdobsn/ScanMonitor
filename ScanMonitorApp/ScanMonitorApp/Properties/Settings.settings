@@ -2,8 +2,8 @@
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="ScanMonitorApp.Properties" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
-    <Setting Name="FolderToMonitor" Type="System.String" Scope="User">
-      <Value Profile="(Default)">\\SCAN2\Users\Rob\Documents\ScanSnap</Value>
+    <Setting Name="FoldersToMonitor" Type="System.String" Scope="User">
+      <Value Profile="(Default)">\\SCAN2\Users\Rob\Documents\ScanSnap;\\SCAN1\Users\Rob\Documents\ScanSnap</Value>
     </Setting>
     <Setting Name="DocAdminImgFolderBase" Type="System.String" Scope="User">
       <Value Profile="(Default)">\\MACALLAN\Admin\ScanAdmin\ScannedDocImgs</Value>
@@ -18,16 +18,16 @@
       <Value Profile="(Default)">ScanManager</Value>
     </Setting>
     <Setting Name="DbCollectionForDocInfo" Type="System.String" Scope="User">
-      <Value Profile="(Default)">ScanDocInfoTEST</Value>
+      <Value Profile="(Default)">ScanDocInfo</Value>
     </Setting>
     <Setting Name="DbCollectionForDocTypes" Type="System.String" Scope="User">
       <Value Profile="(Default)">DocTypes</Value>
     </Setting>
     <Setting Name="DbCollectionForDocPages" Type="System.String" Scope="User">
-      <Value Profile="(Default)">ScanDocPagesTEST</Value>
+      <Value Profile="(Default)">ScanDocPages</Value>
     </Setting>
     <Setting Name="DbCollectionForFiledDocs" Type="System.String" Scope="User">
-      <Value Profile="(Default)">FiledDocInfoTEST</Value>
+      <Value Profile="(Default)">FiledDocInfo</Value>
     </Setting>
     <Setting Name="PickThumbHeight" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">150</Value>
@@ -70,6 +70,12 @@
     </Setting>
     <Setting Name="TestModeFileTo" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="FolderMonitorSeconds" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">60</Value>
+    </Setting>
+    <Setting Name="UnfiledDocCheckSeconds" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">10</Value>
     </Setting>
   </Settings>
 </SettingsFile>

@@ -60,10 +60,22 @@ namespace ScanMonitorApp
             DocTypeMatchResult bestMatchResult = new DocTypeMatchResult();
             var collection_doctypes = GetDocTypesCollection();
             MongoCursor<DocType> foundSdf = collection_doctypes.FindAll();
+#if TEST_PERF_GETMATCHINGDOCTYPE
+            Stopwatch stopWatch1 = new Stopwatch();
+            Stopwatch stopWatch2 = new Stopwatch();
+#endif
             foreach (DocType doctype in foundSdf)
             {
+#if TEST_PERF_GETMATCHINGDOCTYPE
+                stopWatch1.Start();
+#endif
                 // Check if document matches
                 DocTypeMatchResult matchResult = CheckIfDocMatches(scanPages, doctype, false, null);
+
+#if TEST_PERF_GETMATCHINGDOCTYPE
+                stopWatch1.Stop();
+                stopWatch2.Start();
+#endif
 
                 // Find the best match
                 bool bThisIsBestMatch = false;
@@ -85,7 +97,14 @@ namespace ScanMonitorApp
                     if ((matchResult.matchCertaintyPercent > 0) || (matchResult.matchFactor > 0))
                         listOfPossibleMatches.Add(matchResult);
 
+#if TEST_PERF_GETMATCHINGDOCTYPE
+                stopWatch2.Stop();
+#endif
             }
+#if TEST_PERF_GETMATCHINGDOCTYPE
+            logger.Info("T1 : {0}ms, T2 : {1}ms", stopWatch1.ElapsedMilliseconds, stopWatch2.ElapsedMilliseconds);
+#endif
+
 
             // If no exact match get date info from entire doc
             if (bestMatchResult.matchCertaintyPercent != 100)
@@ -200,10 +219,10 @@ namespace ScanMonitorApp
         {
             int curExpressionIdx = 0;
             StringTok st = new StringTok(matchExpression);
-            return EvalMatch(st, scanPages, ref matchFactorTotal, ref curExpressionIdx, matchingTextLocs);
+            return EvalMatch(matchExpression, st, scanPages, ref matchFactorTotal, ref curExpressionIdx, matchingTextLocs);
         }
 
-        private bool EvalMatch(StringTok st, ScanPages scanPages, ref double matchFactorTotal, ref int curExpressionIdx, List<DocMatchingTextLoc> matchingTextLocs)
+        private bool EvalMatch(string matchExpression, StringTok st, ScanPages scanPages, ref double matchFactorTotal, ref int curExpressionIdx, List<DocMatchingTextLoc> matchingTextLocs)
         {
             bool result = false;
             string token = "";
@@ -212,6 +231,12 @@ namespace ScanMonitorApp
             DocRectangle docRectPercent = new DocRectangle(0, 0, 100, 100);
             int docRectValIdx = 0;
             double matchFactorForTerm = 0;
+
+#if TEST_PERF_EVALMATCH
+            Stopwatch stopWatch1 = new Stopwatch();
+            stopWatch1.Start();
+#endif
+
             while((token = st.GetNextToken()) != null)
             {
                 if (token.Trim() == "")
@@ -220,7 +245,7 @@ namespace ScanMonitorApp
                     return result;
                 else if (token == "(")
                 {
-                    bool tmpRslt = EvalMatch(st, scanPages, ref matchFactorTotal, ref curExpressionIdx, matchingTextLocs);
+                    bool tmpRslt = EvalMatch(matchExpression, st, scanPages, ref matchFactorTotal, ref curExpressionIdx, matchingTextLocs);
                     if (opIsInverse)
                         tmpRslt = !tmpRslt;
                     if (curOpIsOr)
@@ -284,7 +309,8 @@ namespace ScanMonitorApp
                     }
 
                     // Process the match string using the location rectangle
-                    if (stringToMatch.Trim().Length >= 0)
+                    // The check for curOpIsOr || result is to avoid unnecessary work if the expression is already false and we're doing a AND
+                    if ((stringToMatch.Trim().Length >= 0) && (curOpIsOr || result))
                     {
                         bool tmpRslt = MatchString(stringToMatch, docRectPercent, scanPages, curExpressionIdx, matchingTextLocs);
                         if (opIsInverse)
@@ -307,12 +333,22 @@ namespace ScanMonitorApp
                     curExpressionIdx++;
                 }
             }
+
+#if TEST_PERF_EVALMATCH
+            stopWatch1.Stop();
+            logger.Info("EvalMatch : {0:0.00} uS, expr {1}", stopWatch1.ElapsedTicks * 1000000.0 / Stopwatch.Frequency, matchExpression);
+#endif
             return result;
         }
 
         private bool MatchString(string str, DocRectangle docRectPercent, ScanPages scanPages, int exprIdx, List<DocMatchingTextLoc> matchingTextLocs)
         {
+#if TEST_PERF_MATCHSTRING
+            Stopwatch stopWatch1 = new Stopwatch();
+            stopWatch1.Start();
+#endif
             bool result = false;
+            int elemCount = 0;
             for (int pageIdx = 0; pageIdx < scanPages.scanPagesText.Count; pageIdx++)
             {
                 List<ScanTextElem> scanPageText = scanPages.scanPagesText[pageIdx];
@@ -344,8 +380,13 @@ namespace ScanMonitorApp
                             }
                         }
                     }
+                    elemCount++;
                 }
             }
+#if TEST_PERF_MATCHSTRING
+            stopWatch1.Stop();
+            logger.Info("CheckForNewDocs : {0:0.00} uS, count {1}", stopWatch1.ElapsedTicks * 1000000.0 / Stopwatch.Frequency, elemCount);
+#endif
             return result;
         }
 

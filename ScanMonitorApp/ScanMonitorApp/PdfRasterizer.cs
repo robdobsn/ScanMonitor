@@ -70,12 +70,17 @@ namespace ScanMonitorApp
 
         }
 
+        public void Close()
+        {
+            _rasterizer.Close();
+        }
+
         public int NumPages()
         {
             return _pageRotationInfo.Count;
         }
 
-        public System.Drawing.Image GetPageImage(int pageNum)
+        public System.Drawing.Image GetPageImage(int pageNum, bool rotateBasedOnText)
         {
             // Return from cache if available
             if (_pageCache.ContainsKey(pageNum))
@@ -87,10 +92,13 @@ namespace ScanMonitorApp
             {
                 img = _rasterizer.GetPage(_pointsPerInch, _pointsPerInch, pageNum);
                 // Rotate image as required
-                int pageIdx = pageNum - 1;
-                if (pageIdx < _pageRotationInfo.Count)
-                    if (_pageRotationInfo[pageIdx] != 0)
-                        img = RotateImageWithoutCrop(img, _pageRotationInfo[pageIdx]);
+                if (rotateBasedOnText)
+                {
+                    int pageIdx = pageNum - 1;
+                    if (pageIdx < _pageRotationInfo.Count)
+                        if (_pageRotationInfo[pageIdx] != 0)
+                            img = RotateImageWithoutCrop(img, _pageRotationInfo[pageIdx]);
+                    }
                 _pageCache.Add(pageNum, img);
             }
             catch (Exception excp)
@@ -101,7 +109,7 @@ namespace ScanMonitorApp
             return img;
         }
 
-        public List<string> GeneratePageFiles(string uniqName, ScanPages scanPages, string outputPath, int maxPages)
+        public List<string> GeneratePageFiles(string uniqName, ScanPages scanPages, string outputPath, int maxPages, bool rotateBasedOnText)
         {
             List<string> imgFileNames = new List<string>();
 
@@ -121,9 +129,12 @@ namespace ScanMonitorApp
                 {
                     System.Drawing.Image img = _rasterizer.GetPage(_pointsPerInch, _pointsPerInch, pageNumber);
                     // Rotate image as required
-                    if (pageNumber - 1 < scanPages.pageRotations.Count)
-                        if (scanPages.pageRotations[pageNumber - 1] != 0)
-                            img = RotateImageWithoutCrop(img, scanPages.pageRotations[pageNumber - 1]);
+                    if (rotateBasedOnText)
+                    {
+                        if (pageNumber - 1 < scanPages.pageRotations.Count)
+                            if (scanPages.pageRotations[pageNumber - 1] != 0)
+                                img = RotateImageWithoutCrop(img, scanPages.pageRotations[pageNumber - 1]);
+                    }
                     // Save to file
                     img.Save(pageFileName, ImageFormat.Jpeg);
                     imgFileNames.Add(pageFileName);

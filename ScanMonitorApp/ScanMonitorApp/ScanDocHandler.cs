@@ -37,6 +37,7 @@ namespace ScanMonitorApp
         private string _docFilingStatusStr = "";
         // Cache used only to speed up doc-type checking - circumvents database multiuser so don't rely on results! 100%
         private ScanDocInfoCache _scanDocInfoCache = null;
+        private List<string> _lastNDocTypesFiled = new List<string>();
 
         #region Init
 
@@ -76,6 +77,14 @@ namespace ScanMonitorApp
                 logger.Error(excpStr);
                 _reportStatusFn(excpStr);
             }
+
+            // Setup indexes
+            MongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
+            collection_sdinfo.EnsureIndex(new IndexKeysBuilder().Ascending("uniqName"), IndexOptions.SetUnique(true));
+            MongoCollection<ScanPages> collection_spages = GetDocPagesCollection();
+            collection_spages.EnsureIndex(new IndexKeysBuilder().Ascending("uniqName"), IndexOptions.SetUnique(true));
+            MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
+            collection_fdinfo.EnsureIndex(new IndexKeysBuilder().Ascending("uniqName"), IndexOptions.SetUnique(true));
         }
 
         public bool CheckMongoConnection()
@@ -130,7 +139,7 @@ namespace ScanMonitorApp
 
         #region ScanDocInfo Collection Handling
 
-        private MongoCollection<ScanDocInfo> GetDocInfoCollection()
+        public MongoCollection<ScanDocInfo> GetDocInfoCollection()
         {
             var server = _dbClient.GetServer();
             var database = server.GetDatabase(_scanConfig._dbNameForDocs); // the name of the database
@@ -273,7 +282,7 @@ namespace ScanMonitorApp
 
         #region FiledDocs Collection Handling
 
-        private MongoCollection<FiledDocInfo> GetFiledDocsCollection()
+        public MongoCollection<FiledDocInfo> GetFiledDocsCollection()
         {
             var server = _dbClient.GetServer();
             var database = server.GetDatabase(_scanConfig._dbNameForDocs); // the name of the database
@@ -341,17 +350,26 @@ namespace ScanMonitorApp
 
         public List<string> GetLastNDocTypesUsed(int numToReturn)
         {
+            // Use cached copy if it isn't empty
             List<string> docTypesList = new List<string>();
-            try
+            if (_lastNDocTypesFiled.Count == 0)
             {
-                MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
-                List<string> partres = (from fd in collection_fdinfo.AsQueryable<FiledDocInfo>() orderby fd.filedAt_dateAndTime descending select (string)fd.filedAs_docType).Take<string>(200).ToList<string>();
-                partres = partres.Select(s => s).Distinct<string>().ToList<string>();
-                docTypesList = partres.Take(numToReturn).ToList<string>();
+                try
+                {
+                    MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
+                    List<string> partres = (from fd in collection_fdinfo.AsQueryable<FiledDocInfo>() orderby fd.filedAt_dateAndTime descending select (string)fd.filedAs_docType).Take<string>(200).ToList<string>();
+                    partres = partres.Select(s => s).Distinct<string>().ToList<string>();
+                    docTypesList = partres.Take(numToReturn).ToList<string>();
+                }
+                catch (Exception excp)
+                {
+                    logger.Error("Cannot get list of last used doctypes {0}", excp.Message);
+                }
+                _lastNDocTypesFiled = docTypesList;
             }
-            catch (Exception excp)
+            else
             {
-                logger.Error("Cannot get list of last used doctypes {0}", excp.Message);
+                docTypesList = _lastNDocTypesFiled.Take(numToReturn).ToList<string>();
             }
             return docTypesList;
         }
@@ -362,38 +380,25 @@ namespace ScanMonitorApp
 
         public List<string> GetListOfUnfiledDocUniqNames()
         {
-            Stopwatch stopWatch = new Stopwatch();
-            stopWatch.Start();
-
-            // Get doc uniq names for scanned docs
-            MongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
-            MongoCursor<ScanDocInfo> scannedDocs = collection_sdinfo.FindAll();
-            List<string> scannedDocUniqNames = new List<string>();
-            foreach (ScanDocInfo sdi in scannedDocs)
-                scannedDocUniqNames.Add(sdi.uniqName);
-
-            // Get doc uniq names for filed docs
-            MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
-            MongoCursor<FiledDocInfo> filedDocs = collection_fdinfo.FindAll();
-            List<string> filedDocUniqNames = new List<string>();
-            foreach (FiledDocInfo fdi in filedDocs)
-                filedDocUniqNames.Add(fdi.uniqName);
-
-            // Create list of unfiled doc uniq names
-            List<string> unfiledDocs = scannedDocUniqNames.Except(filedDocUniqNames).ToList();
-
-            stopWatch.Stop();
-            logger.Info("GetList Elapsed : {0}ms, recs {1}", stopWatch.ElapsedMilliseconds, unfiledDocs.Count);
-            return unfiledDocs;
+            return _scanDocInfoCache.GetListOfUnfiledDocUniqNames();
         }
 
         public int GetCountOfUnfiledDocs()
         {
-            MongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
-            long scannedCount = collection_sdinfo.Count();
-            MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
-            long filedCount = collection_fdinfo.Count();
-            return (int)(scannedCount - filedCount);
+            return _scanDocInfoCache.GetCountOfUnfiledDocs();
+        }
+
+        public string GetUniqNameOfDocToBeFiled(int docIdx)
+        {
+            return _scanDocInfoCache.GetUniqNameOfDocToBeFiled(docIdx);
+        }
+
+        public void RemoveDocFromUnfiledCache(string uniqName, string docTypeFiledAs)
+        {
+            _scanDocInfoCache.RemoveDocFromUnfiledCache(uniqName);
+            // Add to last N doc types list
+            _lastNDocTypesFiled.Remove(docTypeFiledAs);
+            _lastNDocTypesFiled.Insert(0, docTypeFiledAs);
         }
 
         #endregion
@@ -617,6 +622,8 @@ namespace ScanMonitorApp
             _docFilingStatusStr = "Completed filing OK";
             worker.ReportProgress(0, _docFilingStatusStr);
 
+            // Update the doc list cache
+            RemoveDocFromUnfiledCache(fdi.uniqName, fdi.filedAs_docType);
         }
 
         private void SendEmailsForFollowUpOrCalendar(FiledDocInfo fdi, string emailPassword)
@@ -853,7 +860,15 @@ namespace ScanMonitorApp
                 if (procImages)
                 {
                     PdfRasterizer rs = new PdfRasterizer(fileName, THUMBNAIL_POINTS_PER_INCH);
-                    List<string> imgFileNames = rs.GeneratePageFiles(uniqName, scanPages, _scanConfig._docAdminImgFolderBase, _scanConfig._maxPagesForImages);
+                    try
+                    {
+                        List<string> imgFileNames = rs.GeneratePageFiles(uniqName, scanPages, _scanConfig._docAdminImgFolderBase, _scanConfig._maxPagesForImages, false);
+                    }
+                    finally
+                    {
+                        rs.Close();
+                    }
+
                 }
             }
 
@@ -866,7 +881,10 @@ namespace ScanMonitorApp
                 AddDocInfoRecToMongo(scanDocInfo);
             if (bAddToDocPagesDb)
                 AddScanPagesRecToMongo(scanPages);
- 
+
+            // Request update to unfiled documents list
+            _scanDocInfoCache.RequestUnfiledListUpdate();
+
             return true;
         }
 

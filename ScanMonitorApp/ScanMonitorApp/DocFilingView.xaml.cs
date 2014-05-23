@@ -1,4 +1,5 @@
-﻿using MahApps.Metro.Controls;
+﻿//#define TEST_PERF_SHOWDOCFIRSTTIME
+using MahApps.Metro.Controls;
 using Microsoft.WindowsAPICodePack.Dialogs;
 using NLog;
 using System;
@@ -35,7 +36,6 @@ namespace ScanMonitorApp
         private ScanDocHandler _scanDocHandler;
         private DocTypesMatcher _docTypesMatcher;
         private int _curDocDisplay_pageNum;
-        private List<string> _docsToBeFiledUniqNames = new List<string>();
         private int _curDocToBeFiledIdxInList = 0;
         private ScanPages _curDocScanPages;
         private ScanDocInfo _curDocScanDocInfo;
@@ -50,6 +50,7 @@ namespace ScanMonitorApp
         private TouchFromPageText _touchFromPageText = TouchFromPageText.TOUCH_NONE;
         private System.Windows.Threading.DispatcherTimer _timerForNewDocumentCheck;
         private string _overrideFolderForFiling = "";
+        private int _lastCountOfUnfiledDocs = 0;
 
         #region Init
 
@@ -60,7 +61,6 @@ namespace ScanMonitorApp
             _docTypesMatcher = docTypesMatcher;
             popupDocTypePickerThumbs.ItemsSource = _thumbnailsOfDocTypes;
             popupDocTypeResultList.ItemsSource = _listOfPossibleDocMatches;
-            GetListOfDocsToFile();
             ShowDocToBeFiled(0);
 
             // Image filler thread
@@ -69,11 +69,14 @@ namespace ScanMonitorApp
             _bwThreadForImagesPopup.WorkerReportsProgress = true;
             _bwThreadForImagesPopup.DoWork += new DoWorkEventHandler(AddImages_DoWork);
 
-            //  DispatcherTimer setup
-            _timerForNewDocumentCheck = new System.Windows.Threading.DispatcherTimer();
-            _timerForNewDocumentCheck.Tick += new EventHandler(NewDocumentTimer_Tick);
-            _timerForNewDocumentCheck.Interval = new TimeSpan(0, 0, 2);
-            _timerForNewDocumentCheck.Start();
+            // Timer to display latest doc - only when running as monitor
+            if (Properties.Settings.Default.PCtoRunMonitorOn.Trim() == System.Environment.MachineName.Trim())
+            {
+                _timerForNewDocumentCheck = new System.Windows.Threading.DispatcherTimer();
+                _timerForNewDocumentCheck.Tick += new EventHandler(NewDocumentTimer_Tick);
+                _timerForNewDocumentCheck.Interval = new TimeSpan(0, 0, 2);
+                _timerForNewDocumentCheck.Start();
+            }
 
             // Use a background worker to populate
             _bwThreadForImagesPopup.RunWorkerAsync();
@@ -82,56 +85,25 @@ namespace ScanMonitorApp
         private void NewDocumentTimer_Tick(object sender, EventArgs e)
         {
             if (txtDestFileSuffix.Text.Trim() == "")
-                if (NewDocsReady())
-                {
-                    CheckForNewDocs(true);
-                    ShowDocToBeFiled(_docsToBeFiledUniqNames.Count - 1);
-                }
+                if (_lastCountOfUnfiledDocs != _scanDocHandler.GetCountOfUnfiledDocs())
+                    ShowDocToBeFiled(_scanDocHandler.GetCountOfUnfiledDocs() - 1);
         }
 
         #endregion
 
         #region Current Doc To Be Filed
 
-        private void GetListOfDocsToFile()
-        {
-            _docsToBeFiledUniqNames = _scanDocHandler.GetListOfUnfiledDocUniqNames();
-        }
-
-        private void CheckForNewDocs(bool assumeChanges)
-        {
-            if (assumeChanges || (_docsToBeFiledUniqNames.Count != _scanDocHandler.GetCountOfUnfiledDocs()))
-            {
-                GetListOfDocsToFile();
-            }
-        }
-
-        private bool NewDocsReady()
-        {
-            return _docsToBeFiledUniqNames.Count != _scanDocHandler.GetCountOfUnfiledDocs();
-        }
-
         private void ShowDocToBeFiled(int docIdx)
         {
-            // Check for nothing to be filed
-            if (_docsToBeFiledUniqNames.Count == 0)
-            {
-                _curDocToBeFiledIdxInList = 0;
-                ShowDocumentFirstTime("");
-                return;
-            }
+            // Get name of doc
+            string uniqName = _scanDocHandler.GetUniqNameOfDocToBeFiled(docIdx);
 
-            // Handle range errors
-            if (_curDocToBeFiledIdxInList >= _docsToBeFiledUniqNames.Count)
-                _curDocToBeFiledIdxInList = _docsToBeFiledUniqNames.Count - 1;
-            if (_curDocToBeFiledIdxInList < 0)
-                _curDocToBeFiledIdxInList = 0;
-            if ((docIdx < 0) || (docIdx >= _docsToBeFiledUniqNames.Count))
-                return;
-
-            // Show the doc
+            // Save docIdx and show doc
             _curDocToBeFiledIdxInList = docIdx;
-            ShowDocumentFirstTime(_docsToBeFiledUniqNames[docIdx]);
+            ShowDocumentFirstTime(uniqName);
+
+            // Save count of unfiled docs
+            _lastCountOfUnfiledDocs = _scanDocHandler.GetCountOfUnfiledDocs();
         }
 
         #endregion
@@ -140,9 +112,13 @@ namespace ScanMonitorApp
 
         private void ShowDocumentFirstTime(string uniqName)
         {
+#if TEST_PERF_SHOWDOCFIRSTTIME
+            Stopwatch stopWatch1 = new Stopwatch();
+            stopWatch1.Start();
+#endif
             // Load document info from db
             List<DocTypeMatchResult> possMatches = new List<DocTypeMatchResult>();
-            ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(uniqName);
+            ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfoCached(uniqName);
             if ((scanDocAllInfo == null) || (scanDocAllInfo.scanDocInfo == null))
             {
                 _curDocScanPages = null;
@@ -183,6 +159,10 @@ namespace ScanMonitorApp
 
             // Show type and date
             ShowDocumentTypeAndDate(_latestMatchResult.docTypeName);
+#if TEST_PERF_SHOWDOCFIRSTTIME
+            stopWatch1.Stop();
+            logger.Info("ShowDocFirstTime : {0:0.00} uS", stopWatch1.ElapsedTicks * 1000000.0 / Stopwatch.Frequency);
+#endif
         }
 
         private void ShowDocumentTypeAndDate(string docTypeName)
@@ -274,7 +254,7 @@ namespace ScanMonitorApp
             SetDateRollers(dateToUse.Year, dateToUse.Month, dateToUse.Day);
 
             // Show File number in list
-            SetLabelContent(lblStatusBarFileNo, (_curDocToBeFiledIdxInList + 1).ToString() + " / " + _docsToBeFiledUniqNames.Count.ToString());
+            SetLabelContent(lblStatusBarFileNo, (_curDocToBeFiledIdxInList + 1).ToString() + " / " +  _scanDocHandler.GetCountOfUnfiledDocs().ToString());
 
             // Show status of filing
             string statusStr = "Unfiled";
@@ -305,12 +285,12 @@ namespace ScanMonitorApp
                         break;
                 }
             }
-            else if (_curDocScanDocInfo.flagForHelpFiling)
+            else if ((_curDocScanDocInfo != null) && (_curDocScanDocInfo.flagForHelpFiling))
             {
                 statusStr = "FLAGGED";
                 foreColour = Brushes.Red;
             }
-            SetLabelContent(lblStatusBarFileName, _curDocScanDocInfo.uniqName + " " + statusStr);
+            SetLabelContent(lblStatusBarFileName, (_curDocScanDocInfo != null) ? (_curDocScanDocInfo.uniqName + " " + statusStr) : "");
             lblStatusBarFileName.Foreground = foreColour;
             ShowFilingPath();
         }
@@ -413,13 +393,11 @@ namespace ScanMonitorApp
 
         private void btnFirstDoc_Click(object sender, RoutedEventArgs e)
         {
-            CheckForNewDocs(false);
             ShowDocToBeFiled(0);
         }
 
         private void btnPrevDoc_Click(object sender, RoutedEventArgs e)
         {
-            CheckForNewDocs(false);
             ShowDocToBeFiled(_curDocToBeFiledIdxInList - 1);
         }
 
@@ -430,7 +408,6 @@ namespace ScanMonitorApp
             Stopwatch stopWatch1 = new Stopwatch();
             stopWatch1.Start();
 #endif
-            CheckForNewDocs(false);
 #if PERFORMANCE_CHECK
             stopWatch1.Stop();
             Stopwatch stopWatch2 = new Stopwatch();
@@ -441,26 +418,25 @@ namespace ScanMonitorApp
             stopWatch2.Stop();
             DateTime dtEndDebug = DateTime.Now;
             Dispatcher.BeginInvoke(new Action(() => logger.Info("DisplayUpdate: {0}ms", (DateTime.Now-dtDebug).TotalMilliseconds)), DispatcherPriority.ContextIdle, null);
-            logger.Info("CheckForNewDocs : {0}ms, ShowDocToBeFiled : {0}ms, DateTime CrossCheck {0}ms", stopWatch1.ElapsedMilliseconds, stopWatch2.ElapsedMilliseconds, (dtEndDebug - dtDebug).TotalMilliseconds);
+            logger.Info("CheckForNewDocs : {0}ms, ShowDocToBeFiled : {1}ms, DateTime CrossCheck {2}ms", stopWatch1.ElapsedMilliseconds, stopWatch2.ElapsedMilliseconds, (dtEndDebug - dtDebug).TotalMilliseconds);
 #endif
         }
 
         private void btnLastDoc_Click(object sender, RoutedEventArgs e)
         {
-            CheckForNewDocs(false);
-            ShowDocToBeFiled(_docsToBeFiledUniqNames.Count - 1);
+            ShowDocToBeFiled(_scanDocHandler.GetCountOfUnfiledDocs() - 1);
         }
 
         private void btnBackPage_Click(object sender, RoutedEventArgs e)
         {
-            if ((_curDocToBeFiledIdxInList < 0) || (_curDocToBeFiledIdxInList >= _docsToBeFiledUniqNames.Count))
+            if ((_curDocToBeFiledIdxInList < 0) || (_curDocToBeFiledIdxInList >= _scanDocHandler.GetCountOfUnfiledDocs()))
                 return;
             DisplayScannedDocImage(_curDocDisplay_pageNum - 1);
         }
 
         private void btnNextPage_Click(object sender, RoutedEventArgs e)
         {
-            if ((_curDocToBeFiledIdxInList < 0) || (_curDocToBeFiledIdxInList >= _docsToBeFiledUniqNames.Count))
+            if ((_curDocToBeFiledIdxInList < 0) || (_curDocToBeFiledIdxInList >= _scanDocHandler.GetCountOfUnfiledDocs()))
                 return;
             DisplayScannedDocImage(_curDocDisplay_pageNum + 1);
         }
@@ -470,8 +446,10 @@ namespace ScanMonitorApp
             DocTypeView dtv = new DocTypeView(_scanDocHandler, _docTypesMatcher);
             dtv.ShowDocTypeList((_curSelectedDocType == null) ? "" : _curSelectedDocType.docTypeName, _curDocScanDocInfo, _curDocScanPages);
             dtv.ShowDialog();
-            CheckForNewDocs(true);
             ShowDocToBeFiled(_curDocToBeFiledIdxInList);
+            // Use a background worker to repopulate the list of images
+            if (!_bwThreadForImagesPopup.IsBusy)
+                _bwThreadForImagesPopup.RunWorkerAsync();
         }
 
         private void btnDayUp_Click(object sender, RoutedEventArgs e)
@@ -762,7 +740,6 @@ namespace ScanMonitorApp
             _scanDocHandler.AddOrUpdateScanDocRecInDb(_curDocScanDocInfo);
 
             // Re-show
-            CheckForNewDocs(true);
             ShowDocToBeFiled(_curDocToBeFiledIdxInList);
         }
 
@@ -789,12 +766,12 @@ namespace ScanMonitorApp
                 if (_curSelectedDocType.moveFileToPath.Trim() != Properties.Settings.Default.BasePathForFilingFolderSelection.Trim())
                 {
                     // Ask the user if they are sure
-                    MessageDialog.MsgDlgRslt rslt = MessageDialog.Show("File to " + folderName + " ?\n" + "Are you sure?", "Yes", "No", "Cancel", btnShowMoveToFolder, this);
-                    if (rslt == MessageDialog.MsgDlgRslt.RSLT_YES)
-                    {
+//                    MessageDialog.MsgDlgRslt rslt = MessageDialog.Show("File to " + folderName + " ?\n" + "Are you sure?", "Yes", "No", "Cancel", btnShowMoveToFolder, this);
+//                    if (rslt == MessageDialog.MsgDlgRslt.RSLT_YES)
+//                    {
                         _overrideFolderForFiling = folderName;
                         btnMoveToUndo.IsEnabled = true;
-                    }
+//                    }
                 }
             }
             ShowFilingPath();
@@ -839,7 +816,6 @@ namespace ScanMonitorApp
             }
 
             // Goto a file if there is one
-            CheckForNewDocs(true);
             ShowDocToBeFiled(_curDocToBeFiledIdxInList);
         }
 
@@ -847,6 +823,90 @@ namespace ScanMonitorApp
         {
             AuditView av = new AuditView(_scanDocHandler, _docTypesMatcher);
             av.ShowDialog();
+        }
+
+        private void btnDocTypeSel_Click(object sender, RoutedEventArgs e)
+        {
+            // Clear menu
+            btnDocTypeSelContextMenu.Items.Clear();
+
+            // Reload menu
+            List<string> docTypeStrings = new List<string>();
+            List<DocType> docTypeList = _docTypesMatcher.ListDocTypes();
+            foreach (DocType dt in docTypeList)
+            {
+                if (!dt.isEnabled)
+                    continue;
+                docTypeStrings.Add(dt.docTypeName);
+            }
+            docTypeStrings.Sort();
+            string curHead = "";
+            MenuItem curMenuItem = null;
+            foreach (string docTypeString in docTypeStrings)
+            {
+                string[] elemsS = docTypeString.Split('-');
+                if (elemsS.Length <= 0)
+                    continue;
+                string hdrStr = elemsS[0].Trim();
+                if (curHead.ToLower() != hdrStr.ToLower())
+                {
+                    if (curMenuItem != null)
+                        btnDocTypeSelContextMenu.Items.Add(curMenuItem);
+                    curMenuItem = new MenuItem();
+                    curMenuItem.Header = hdrStr;
+                    curHead = hdrStr;
+                }
+                MenuItem subItem = new MenuItem();
+                if (elemsS.Length < 2)
+                    subItem.Header = hdrStr;
+                else
+                    subItem.Header = elemsS[1].Trim();
+                subItem.Tag = docTypeString;
+                subItem.Click += DocTypeSubMenuItem_Click;
+                curMenuItem.Items.Add(subItem);
+            }
+            if (curMenuItem != null)
+                if (curMenuItem.Items.Count > 0)
+                    btnDocTypeSelContextMenu.Items.Add(curMenuItem);
+
+            // Show menu
+            if (!btnDocTypeSel.ContextMenu.IsOpen)
+                btnDocTypeSel.ContextMenu.IsOpen = true;
+        }
+
+        private void DocTypeSubMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            MenuItem menuItem = sender as MenuItem;
+            ContextMenu contextMenu = menuItem.CommandParameter as ContextMenu;
+            btnDocTypeSel.ContextMenu.IsOpen = false;
+            object tag = menuItem.Tag;
+            if (tag.GetType() == typeof(string))
+                ShowDocumentTypeAndDate((string)tag);
+        }
+
+        private void docImgCtxtOriginal_Click(object sender, RoutedEventArgs e)
+        {
+            if (_curDocScanDocInfo != null)
+            {
+                ScanDocHandler.ShowFileInExplorer(_curDocScanDocInfo.origFileName.Replace("/", @"\"));
+            }
+
+        }
+
+        private void docImgCtxtArchive_Click(object sender, RoutedEventArgs e)
+        {
+            if (_curDocScanDocInfo != null)
+            {
+                string imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, _curDocScanDocInfo.uniqName, 1, false);
+                try
+                {
+                    ScanDocHandler.ShowFileInExplorer(imgFileName.Replace("/", @"\"));
+                }
+                finally
+                {
+
+                }
+            }
         }
 
         #endregion
@@ -879,8 +939,10 @@ namespace ScanMonitorApp
                     lblStatusBarProcStatus.Foreground = Brushes.Black;
                 }
 
+                // Update the doc list cache
+                _scanDocHandler.RemoveDocFromUnfiledCache(_curDocScanDocInfo.uniqName, "");
+
                 // Goto a file if there is one
-                CheckForNewDocs(true);
                 ShowDocToBeFiled(_curDocToBeFiledIdxInList-1);
             }
         }
@@ -1091,7 +1153,15 @@ namespace ScanMonitorApp
                         currencyPos = extractedText.IndexOf('€');
 
                     // Find number matching money format
-                    Match match = Regex.Match(extractedText, @"((?:^\d{1,3}(?:\.?\d{3})*(?:,\d{2})?$))|((?:^\d{1,3}(?:,?\d{3})*(?:\.\d{2})?$)((\d+)?(\.\d{1,2})?))");
+                    string noCurrencyStr = extractedText;
+                    if ((currencyPos >= 0) && (extractedText.Length > currencyPos+1))
+                    {
+                        noCurrencyStr = extractedText.Substring(currencyPos+1);
+                        int whitespacePos = noCurrencyStr.IndexOf(' ');
+                        if (whitespacePos > 0)
+                            noCurrencyStr = noCurrencyStr.Substring(0, whitespacePos);
+                    }
+                    Match match = Regex.Match(noCurrencyStr, @"((?:^\d{1,3}(?:\.?\d{3})*(?:,\d{2})?$))|((?:^\d{1,3}(?:,?\d{3})*(?:\.\d{2})?$)((\d+)?(\.\d{1,2})?))");
                     if ((match.Success) && (match.Groups.Count > 1))
                     {
                         // Found string may be ###,###.## or ###.###,##
@@ -1107,8 +1177,6 @@ namespace ScanMonitorApp
                         }
 
                         // Form string
-                        if (currencyPos > match.Index)
-                            currencyPos = -1;
                         string numberText = (currencyPos >= 0 ? extractedText.Substring(currencyPos, currencyLen) : "") + foundStr;
                         txtMoneySum.Text = txtMoneySum.Text + (txtMoneySum.Text.Trim() == "" ? "" : " ") + numberText;
                     }
@@ -1129,6 +1197,11 @@ namespace ScanMonitorApp
 
         private void AddImages_DoWork(object sender, DoWorkEventArgs e)
         {
+            this.Dispatcher.BeginInvoke((Action)delegate()
+            {
+                _thumbnailsOfDocTypes.Clear();
+            });
+            Thread.Sleep(500);
             int thumbnailHeight = Properties.Settings.Default.PickThumbHeight;
             BackgroundWorker worker = sender as BackgroundWorker;
             List<DocType> docTypeList = _docTypesMatcher.ListDocTypes();
@@ -1289,7 +1362,6 @@ namespace ScanMonitorApp
         {
             lblStatusBarProcStatus.Content = str;
             // Show next document
-            CheckForNewDocs(true);
             ShowDocToBeFiled(_curDocToBeFiledIdxInList-1);
         }
 
@@ -1327,65 +1399,6 @@ namespace ScanMonitorApp
         }
 
         #endregion
-
-        private void btnDocTypeSel_Click(object sender, RoutedEventArgs e)
-        {
-            // Clear menu
-            btnDocTypeSelContextMenu.Items.Clear();
-
-            // Reload menu
-            List<string> docTypeStrings = new List<string>();
-            List<DocType> docTypeList = _docTypesMatcher.ListDocTypes();
-            foreach (DocType dt in docTypeList)
-            {
-                if (!dt.isEnabled)
-                    continue;
-                docTypeStrings.Add(dt.docTypeName);
-            }
-            docTypeStrings.Sort();
-            string curHead = "";
-            MenuItem curMenuItem = null;
-            foreach (string docTypeString in docTypeStrings)
-            {
-                string[] elemsS = docTypeString.Split('-');
-                if (elemsS.Length <= 0)
-                    continue;
-                string hdrStr = elemsS[0].Trim();
-                if (curHead.ToLower() != hdrStr.ToLower())
-                {
-                    if (curMenuItem != null)
-                        btnDocTypeSelContextMenu.Items.Add(curMenuItem);
-                    curMenuItem = new MenuItem();
-                    curMenuItem.Header = hdrStr;
-                    curHead = hdrStr;
-                }
-                MenuItem subItem = new MenuItem();
-                if (elemsS.Length < 2)
-                    subItem.Header = hdrStr;
-                else
-                    subItem.Header = elemsS[1].Trim();
-                subItem.Tag = docTypeString;
-                subItem.Click += DocTypeSubMenuItem_Click;
-                curMenuItem.Items.Add(subItem);
-            }
-            if (curMenuItem != null)
-                if (curMenuItem.Items.Count > 0)
-                    btnDocTypeSelContextMenu.Items.Add(curMenuItem);
-
-            // Show menu
-            if (!btnDocTypeSel.ContextMenu.IsOpen)
-                btnDocTypeSel.ContextMenu.IsOpen = true;
-        }
-
-        private void DocTypeSubMenuItem_Click(object sender, RoutedEventArgs e)
-        {
-            MenuItem menuItem = sender as MenuItem;
-            ContextMenu contextMenu = menuItem.CommandParameter as ContextMenu;
-            btnDocTypeSel.ContextMenu.IsOpen = false;
-            object tag = menuItem.Tag;
-            if (tag.GetType() == typeof(string))
-                ShowDocumentTypeAndDate((string)tag);
-        }
 
     }
 
