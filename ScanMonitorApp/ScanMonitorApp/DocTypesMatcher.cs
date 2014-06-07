@@ -621,12 +621,16 @@ namespace ScanMonitorApp
             }
 
             // Replace datetime strings
-            folderName = Regex.Replace(folderName, @"[1-2]\d\d\d\\", @"[year]\");  // replace if occurs as end of folder name
-            folderName = Regex.Replace(folderName, @"[1-2]\d\d\d$", @"[year]");       // replace if occurs at end of path name
-            folderName = Regex.Replace(folderName, @"[1-2]\d\d\d\-\d\d\\", @"[year-month]\");
-            folderName = Regex.Replace(folderName, @"[1-2]\d\d\d\-\d\d$", @"[year-month]");
-            folderName = Regex.Replace(folderName, @"[1-2]\d\d\d\ Q[1-4]\\", @"[year-qtr]\");
-            folderName = Regex.Replace(folderName, @"[1-2]\d\d\d\ Q[1-4]$", @"[year-qtr]");
+            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)\\", @"[year]\");  // replace if occurs as end of folder name
+            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)$", @"[year]");       // replace if occurs at end of path name
+            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)\-(0[123456789]|1[012])\\", @"[year-month]\");
+            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)\-(0[123456789]|1[012])$", @"[year-month]");
+            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)\ Q[1-4]\\", @"[year-qtr]\");
+            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)\ Q[1-4]$", @"[year-qtr]");
+            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)\ F[1-4]\\", @"[year-fqtr]\");
+            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)\ F[1-4]$", @"[year-fqtr]");
+            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)-(19[6789]\d|20[01234]\d)\\", @"[finyear]\");
+            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)-(19[6789]\d|20[01234]\d)$", @"[finyear]");
 
             return folderName;
         }
@@ -679,6 +683,8 @@ namespace ScanMonitorApp
                 inPath = inPath.Replace("[year]", yearStr);
                 string yearMonStr = string.Format("{0:yyyy-MM}", dateTimeOfFile);
                 inPath = inPath.Replace("[year-month]", yearMonStr);
+                string finYearStr = string.Format("{0:yyyy}-{1:yyyy}", dateTimeOfFile.AddYears(-1), dateTimeOfFile);
+                inPath = inPath.Replace("[finyear]", finYearStr);
 
                 // Check for year-quarter
                 if (inPath.ToLower().Contains("[year-qtr]"))
@@ -687,6 +693,14 @@ namespace ScanMonitorApp
                     int quarterNo = 1 + (dateTimeOfFile.Month - 1) / 3;
                     string replStr = string.Format("{0:yyyy} Q{1}", dateTimeOfFile, quarterNo);
                     inPath = inPath.Replace("[year-qtr]", replStr);
+                }
+                // Check for financial year-quarter
+                if (inPath.ToLower().Contains("[year-fqtr]"))
+                {
+                    // Calculate quarter
+                    int quarterNo = (2 + (dateTimeOfFile.Month - 1) / 3) % 4;
+                    string replStr = string.Format("{0:yyyy} F{1}", dateTimeOfFile, quarterNo);
+                    inPath = inPath.Replace("[year-fqtr]", replStr);
                 }
             }
 

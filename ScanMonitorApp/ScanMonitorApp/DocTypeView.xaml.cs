@@ -945,14 +945,13 @@ namespace ScanMonitorApp
             btnEditDocType.IsEnabled = false;
             btnRenameDocType.IsEnabled = false;
             btnNewDocType.IsEnabled = false;
+            btnCloneDocType.IsEnabled = false;
             chkEnabledDocType.IsEnabled = true;
             txtMatchExpression.IsEnabled = true;
             txtDateLocations.IsEnabled = true;
             locRectHandler.SelectionEnable(true);
             txtMoveTo.IsEnabled = true;
             btnMoveToPick.IsEnabled = true;
-            btnMoveToMonthYear.IsEnabled = true;
-            btnMoveToYearQtr.IsEnabled = true;
             txtRenameTo.IsEnabled = true;
             btnCancelTypeChanges.IsEnabled = true;
             btnUseCurrentDocImageAsThumbnail.IsEnabled = true;
@@ -966,6 +965,7 @@ namespace ScanMonitorApp
             btnEditDocType.IsEnabled = false;
             btnRenameDocType.IsEnabled = false;
             btnNewDocType.IsEnabled = false;
+            btnCloneDocType.IsEnabled = false;
             txtDocTypeName.IsEnabled = true;
             chkEnabledDocType.IsEnabled = true;
             txtMatchExpression.IsEnabled = true;
@@ -973,8 +973,6 @@ namespace ScanMonitorApp
             locRectHandler.SelectionEnable(true);
             txtMoveTo.IsEnabled = true;
             btnMoveToPick.IsEnabled = true;
-            btnMoveToMonthYear.IsEnabled = true;
-            btnMoveToYearQtr.IsEnabled = true;
             txtRenameTo.IsEnabled = true;
             btnCancelTypeChanges.IsEnabled = true;
             btnUseCurrentDocImageAsThumbnail.IsEnabled = true;
@@ -987,6 +985,7 @@ namespace ScanMonitorApp
             btnEditDocType.IsEnabled = false;
             btnRenameDocType.IsEnabled = false;
             btnNewDocType.IsEnabled = false;
+            btnCloneDocType.IsEnabled = false;
             txtDocTypeName.IsEnabled = true;
             chkEnabledDocType.IsEnabled = true;
             txtMatchExpression.IsEnabled = true;
@@ -995,8 +994,6 @@ namespace ScanMonitorApp
             txtMoveTo.IsEnabled = true;
             txtMoveTo.Text = "";
             btnMoveToPick.IsEnabled = true;
-            btnMoveToMonthYear.IsEnabled = true;
-            btnMoveToYearQtr.IsEnabled = true;
             txtRenameTo.IsEnabled = true;
             txtRenameTo.Text = Properties.Settings.Default.DefaultRenameTo;
             _selectedDocType = null;
@@ -1005,6 +1002,30 @@ namespace ScanMonitorApp
             chkEnabledDocType.IsChecked = true;
             SetTextInRichTextBox(txtMatchExpression, "");
             SetTextInRichTextBox(txtDateLocations, "");
+            btnCancelTypeChanges.IsEnabled = true;
+            ShowDocTypeThumbnail("");
+            btnUseCurrentDocImageAsThumbnail.IsEnabled = true;
+            btnPickThumbnail.IsEnabled = true;
+            btnClearThumbail.IsEnabled = true;
+        }
+
+        private void btnCloneDocType_Click(object sender, RoutedEventArgs e)
+        {
+            btnEditDocType.IsEnabled = false;
+            btnRenameDocType.IsEnabled = false;
+            btnNewDocType.IsEnabled = false;
+            btnCloneDocType.IsEnabled = false;
+            txtDocTypeName.IsEnabled = true;
+            chkEnabledDocType.IsEnabled = true;
+            txtMatchExpression.IsEnabled = true;
+            txtDateLocations.IsEnabled = true;
+            locRectHandler.SelectionEnable(true);
+            txtMoveTo.IsEnabled = true;
+            btnMoveToPick.IsEnabled = true;
+            txtRenameTo.IsEnabled = true;
+            _selectedDocType = null;
+            docTypeListView.SelectedItem = null;
+            chkEnabledDocType.IsChecked = true;
             btnCancelTypeChanges.IsEnabled = true;
             ShowDocTypeThumbnail("");
             btnUseCurrentDocImageAsThumbnail.IsEnabled = true;
@@ -1063,7 +1084,17 @@ namespace ScanMonitorApp
             }
             else if (_selectedDocType == null)
             {
-                // Ensure the new name is unique
+                // Record is new or being cloned
+                // Ensure the type name is unique
+                string docTypeName = txtDocTypeName.Text.Trim();
+                if (docTypeName == "")
+                {
+                    MessageBoxButton btnMessageBox = MessageBoxButton.OK;
+                    MessageBoxImage icnMessageBox = MessageBoxImage.Information;
+                    MessageBoxResult rsltMessageBox = MessageBox.Show("Document Type cannot be blank", "Naming Problem", btnMessageBox, icnMessageBox);
+                    return;
+                }
+
                 DocType testDocType = _docTypesMatcher.GetDocType(txtDocTypeName.Text);
                 if (testDocType != null)
                 {
@@ -1079,6 +1110,7 @@ namespace ScanMonitorApp
             }
             else
             {
+                // Record is being edited
                 // Get changes to record
                 _selectedDocType = GetDocTypeFromForm(_selectedDocType);
 
@@ -1124,6 +1156,7 @@ namespace ScanMonitorApp
             btnEditDocType.IsEnabled = true;
             btnRenameDocType.IsEnabled = true;
             btnNewDocType.IsEnabled = true;
+            btnCloneDocType.IsEnabled = true;
             btnCancelTypeChanges.IsEnabled = false;
             btnSaveTypeChanges.IsEnabled = false;
             chkEnabledDocType.IsEnabled = false;
@@ -1133,8 +1166,6 @@ namespace ScanMonitorApp
             locRectHandler.SelectionEnable(false);
             txtMoveTo.IsEnabled = false;
             btnMoveToPick.IsEnabled = false;
-            btnMoveToMonthYear.IsEnabled = false;
-            btnMoveToYearQtr.IsEnabled = false;
             txtRenameTo.IsEnabled = false;
             btnClearThumbail.IsEnabled = false;
             btnUseCurrentDocImageAsThumbnail.IsEnabled = false;
@@ -1312,16 +1343,33 @@ namespace ScanMonitorApp
             //}
         }
 
-        private void btnMoveToMonthYear_Click(object sender, RoutedEventArgs e)
+        private void moveToCtx_Year_Click(object sender, RoutedEventArgs e)
         {
             // Add year & yearmonth to folder name
-            txtMoveTo.Text += @"\[year]\[year-month]";
+            txtMoveTo.Text += @"\[year]";
         }
 
-        private void btnMoveToYearQtr_Click(object sender, RoutedEventArgs e)
+        private void moveToCtx_YearQtr_Click(object sender, RoutedEventArgs e)
         {
-            // Add year qtr to folder name
+            // Add year & yearmonth to folder name
             txtMoveTo.Text += @"\[year]\[year-qtr]";
+        }
+
+        private void moveToCtx_FinYear_Click(object sender, RoutedEventArgs e)
+        {
+            // Add year & yearmonth to folder name
+            txtMoveTo.Text += @"\[finyear]";
+        }
+
+        private void moveToCtx_YearFinQtr_Click(object sender, RoutedEventArgs e)
+        {
+            // Add year & yearmonth to folder name
+            txtMoveTo.Text += @"\[year]\[year-fqtr]";
+        }
+
+        private void moveToCtx_YearMon_Click(object sender, RoutedEventArgs e)
+        {
+
         }
 
         private void txtMoveTo_TextChanged(object sender, TextChangedEventArgs e)
@@ -1345,6 +1393,76 @@ namespace ScanMonitorApp
             locRectHandler.DrawVisRectangles();
             // Re-check the document and display result
             CheckDisplayedDocForMatchAndShowResult();
+        }
+
+        private void dateExprCtx_USDate_Click(object sender, RoutedEventArgs e)
+        {
+            string dateExpr = GetTextFromRichTextBox(txtDateLocations);
+            dateExpr += "~USDate";
+            SetTextInRichTextBox(txtDateLocations, dateExpr);
+        }
+
+        private void dateExprCtx_AllowColons_Click(object sender, RoutedEventArgs e)
+        {
+            string dateExpr = GetTextFromRichTextBox(txtDateLocations);
+            dateExpr += "~AllowColons";
+            SetTextInRichTextBox(txtDateLocations, dateExpr);
+        }
+
+        private void dateExprCtx_AllowDots_Click(object sender, RoutedEventArgs e)
+        {
+            string dateExpr = GetTextFromRichTextBox(txtDateLocations);
+            dateExpr += "~AllowDots";
+            SetTextInRichTextBox(txtDateLocations, dateExpr);
+        }
+
+        private void dateExprCtx_AllowTwoComma_Click(object sender, RoutedEventArgs e)
+        {
+            string dateExpr = GetTextFromRichTextBox(txtDateLocations);
+            dateExpr += "~AllowTwoCommas";
+            SetTextInRichTextBox(txtDateLocations, dateExpr);
+        }
+
+        private void dateExprCtx_PlusOneMonth_Click(object sender, RoutedEventArgs e)
+        {
+            string dateExpr = GetTextFromRichTextBox(txtDateLocations);
+            dateExpr += "~AllowTwoCommas";
+            SetTextInRichTextBox(txtDateLocations, dateExpr);
+        }
+
+        private void dateExprCtx_JoinTextInRect_Click(object sender, RoutedEventArgs e)
+        {
+            string dateExpr = GetTextFromRichTextBox(txtDateLocations);
+            dateExpr += "~join";
+            SetTextInRichTextBox(txtDateLocations, dateExpr);
+        }
+
+        private void dateExprCtx_NoDateRanges_Click(object sender, RoutedEventArgs e)
+        {
+            string dateExpr = GetTextFromRichTextBox(txtDateLocations);
+            dateExpr += "~NoDateRanges";
+            SetTextInRichTextBox(txtDateLocations, dateExpr);
+        }
+
+        private void dateExprCtx_LatestDate_Click(object sender, RoutedEventArgs e)
+        {
+            string dateExpr = GetTextFromRichTextBox(txtDateLocations);
+            dateExpr += "~latest";
+            SetTextInRichTextBox(txtDateLocations, dateExpr);
+        }
+
+        private void dateExprCtx_EarliestDate_Click(object sender, RoutedEventArgs e)
+        {
+            string dateExpr = GetTextFromRichTextBox(txtDateLocations);
+            dateExpr += "~earliest";
+            SetTextInRichTextBox(txtDateLocations, dateExpr);
+        }
+
+        private void dateExprCtx_FinYearEnd_Click(object sender, RoutedEventArgs e)
+        {
+            string dateExpr = GetTextFromRichTextBox(txtDateLocations);
+            dateExpr += "~finYearEnd";
+            SetTextInRichTextBox(txtDateLocations, dateExpr);
         }
 
         #endregion

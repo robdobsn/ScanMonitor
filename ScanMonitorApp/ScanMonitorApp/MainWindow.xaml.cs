@@ -23,6 +23,7 @@ using System.Collections;
 using System.Net;
 using System.Collections.Specialized;
 using System.Web;
+using System.Threading;
 
 namespace ScanMonitorApp
 {
@@ -320,6 +321,7 @@ namespace ScanMonitorApp
 
         private void MetroWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            Thread.Sleep(2000);
             DocFilingView dfv = new DocFilingView(_scanDocHandler, _docTypesMatcher);
             dfv.ShowDialog();
         }

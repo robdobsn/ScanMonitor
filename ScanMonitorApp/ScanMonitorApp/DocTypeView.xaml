@@ -49,7 +49,7 @@
                 <ColumnDefinition Width="200*"/>
                 <ColumnDefinition Width="175"/>
             </Grid.ColumnDefinitions>
-            <Label Content="Doc Type" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="109" RenderTransformOrigin="0.488,0.429" Margin="5,42,0,0"/>
+            <Label Content="Type (- PREFIX)" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="109" RenderTransformOrigin="0.488,0.429" Margin="5,42,0,0"/>
             <TextBox x:Name="txtDocTypeName" Height="18" Margin="119,42,0,0" TextWrapping="Wrap" VerticalAlignment="Top" TextChanged="txtDocTypeName_TextChanged" IsEnabled="False"/>
             <Label Content="Match Expression" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="104" RenderTransformOrigin="0.488,0.429" Margin="5,73,0,0"/>
             <RichTextBox x:Name="txtMatchExpression" Margin="119,73,0,0" Height="57" VerticalAlignment="Top" TextChanged="txtMatchExpression_TextChanged" IsEnabled="False">
@@ -66,6 +66,7 @@
             <Button x:Name="btnEditDocType" Content="Edit" HorizontalAlignment="Left" Height="21" Margin="10,0,0,0" VerticalAlignment="Top" Width="60" Click="btnEditDocType_Click" IsEnabled="False"/>
             <Button x:Name="btnRenameDocType" Content="Rename" HorizontalAlignment="Left" Height="21" Margin="75,0,0,0" VerticalAlignment="Top" Width="60" Click="btnRenameDocType_Click" IsEnabled="False"/>
             <Button x:Name="btnNewDocType" Content="New" HorizontalAlignment="Left" Height="21" Margin="140,0,0,0" VerticalAlignment="Top" Width="60" Click="btnNewDocType_Click"/>
+            <Button x:Name="btnCloneDocType" Content="Clone" HorizontalAlignment="Left" Height="21" Margin="205,0,0,0" VerticalAlignment="Top" Width="60" Click="btnCloneDocType_Click"/>
             <Image x:Name="imgDocThumbnail" Grid.Column="1" Height="189" Margin="5,32,0,0" VerticalAlignment="Top" Source="res/NoThumbnail.png">
                 <Image.ContextMenu>
                     <ContextMenu>
@@ -75,23 +76,45 @@
             </Image>
             <Button x:Name="btnUseCurrentDocImageAsThumbnail" Content="Use Img" Height="21" Margin="0,0,6,0" VerticalAlignment="Top" Click="btnUseCurrentDocImageAsThumbnail_Click" IsEnabled="False" HorizontalAlignment="Right" Width="58" Grid.Column="1"/>
             <Button x:Name="btnClearThumbail" Content="Clear" Height="21" Margin="0,0,126,0" VerticalAlignment="Top" Click="btnClearThumbail_Click" IsEnabled="False" HorizontalAlignment="Right" Width="42" Grid.Column="1"/>
-            <Label Content="Date Locations" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="104" RenderTransformOrigin="0.488,0.429" Margin="5,135,0,0"/>
+            <Label Content="Date Expression" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="104" RenderTransformOrigin="0.488,0.429" Margin="5,135,0,0"/>
             <RichTextBox x:Name="txtDateLocations" Margin="119,135,0,0" Height="26" VerticalAlignment="Top" TextChanged="txtDateLocations_TextChanged" IsEnabled="False">
                 <RichTextBox.Resources>
                     <Style TargetType="{x:Type Paragraph}">
                         <Setter Property="Margin" Value="0"/>
                     </Style>
                 </RichTextBox.Resources>
+                <RichTextBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem x:Name="dateExprCtx_USDate" Header="US Date Format" Click="dateExprCtx_USDate_Click"/>
+                        <MenuItem x:Name="dateExprCtx_AllowColons" Header="Allow Colons" Click="dateExprCtx_AllowColons_Click"/>
+                        <MenuItem x:Name="dateExprCtx_AllowDots" Header="Allow Dots" Click="dateExprCtx_AllowDots_Click"/>
+                        <MenuItem x:Name="dateExprCtx_AllowTwoComma" Header="Allow Two Commas" Click="dateExprCtx_AllowTwoComma_Click"/>
+                        <MenuItem x:Name="dateExprCtx_PlusOneMonth" Header="Plus One Month" Click="dateExprCtx_PlusOneMonth_Click"/>
+                        <MenuItem x:Name="dateExprCtx_JoinTextInRect" Header="Join Text In Rectangle" Click="dateExprCtx_JoinTextInRect_Click"/>
+                        <MenuItem x:Name="dateExprCtx_NoDateRanges" Header="No Date Ranges" Click="dateExprCtx_NoDateRanges_Click"/>
+                        <MenuItem x:Name="dateExprCtx_LatestDate" Header="Choose Latest Date" Click="dateExprCtx_LatestDate_Click"/>
+                        <MenuItem x:Name="dateExprCtx_EarliestDate" Header="Choose Earliest Date" Click="dateExprCtx_EarliestDate_Click"/>
+                        <MenuItem x:Name="dateExprCtx_FinYearEnd" Header="Find Financial Year End (e.g. year ending YYYY)" Click="dateExprCtx_FinYearEnd_Click"/>
+                    </ContextMenu>
+                </RichTextBox.ContextMenu>
             </RichTextBox>
             <Label Content="Move To Folder" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="104" RenderTransformOrigin="0.488,0.429" Margin="5,166,0,0"/>
-            <TextBox x:Name="txtMoveTo" Height="18" Margin="119,166,118,0" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False" TextChanged="txtMoveTo_TextChanged"/>
-            <Button x:Name="btnMoveToPick" Content="..." Height="25" Margin="0,167,82,0" VerticalAlignment="Top" Click="btnMoveToPick_Click" HorizontalAlignment="Right" Width="31" IsEnabled="False"/>
+            <TextBox x:Name="txtMoveTo" Height="18" Margin="119,166,36,0" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False" TextChanged="txtMoveTo_TextChanged">
+                <TextBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem x:Name="moveToCtx_Year" Header="Add Year" Click="moveToCtx_Year_Click"/>
+                        <MenuItem x:Name="moveToCtx_YearMon" Header="Add Year-Month" Click="moveToCtx_YearMon_Click"/>
+                        <MenuItem x:Name="moveToCtx_YearQtr" Header="Add Year-Qtr" Click="moveToCtx_YearQtr_Click"/>
+                        <MenuItem x:Name="moveToCtx_FinYear" Header="Add Financial Year" Click="moveToCtx_FinYear_Click"/>
+                        <MenuItem x:Name="moveToCtx_YearFinQtr" Header="Add Year Financial Qtr" Click="moveToCtx_YearFinQtr_Click"/>
+                    </ContextMenu>
+                </TextBox.ContextMenu>
+            </TextBox>
+            <Button x:Name="btnMoveToPick" Content="..." Height="25" Margin="0,167,0,0" VerticalAlignment="Top" Click="btnMoveToPick_Click" HorizontalAlignment="Right" Width="31" IsEnabled="False"/>
             <Label Content="Rename To" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="104" RenderTransformOrigin="0.488,0.429" Margin="5,197,0,0"/>
             <TextBox x:Name="txtRenameTo" Height="18" Margin="119,197,0,0" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False" TextChanged="txtRenameTo_TextChanged"/>
-            <Button x:Name="btnMoveToMonthYear" Content="Y/M" Height="25" Margin="0,167,0,0" VerticalAlignment="Top" Click="btnMoveToMonthYear_Click" HorizontalAlignment="Right" Width="36" IsEnabled="False"/>
             <Button x:Name="btnMacros" Content="Subst" Height="21" VerticalAlignment="Top" Click="btnMacros_Click" HorizontalAlignment="Right" Width="60"/>
             <Button x:Name="btnPickThumbnail" Content="Pick" Height="21" Margin="0,0,69,0" VerticalAlignment="Top" Click="btnPickThumbnail_Click" IsEnabled="False" HorizontalAlignment="Right" Width="52" Grid.Column="1"/>
-            <Button x:Name="btnMoveToYearQtr" Content="Y/Q" Height="25" Margin="0,167,41,0" VerticalAlignment="Top" Click="btnMoveToYearQtr_Click" HorizontalAlignment="Right" Width="36" IsEnabled="False"/>
         </Grid>
         <Grid x:Name="matchAgainstFiledDocsGrid" Margin="10,10,10,0" Grid.Column="0" Grid.Row="2" Grid.RowSpan="2">
             <Button x:Name="btnTestMatch" Content="Find Matches" HorizontalAlignment="Left" Height="25" Margin="10,0,0,0" VerticalAlignment="Top" Width="137" Click="btnTestMatch_Click"/>

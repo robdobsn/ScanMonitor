@@ -246,12 +246,12 @@ namespace ScanMonitorApp
 
         private void btnRotateAllACWFile_Click(object sender, RoutedEventArgs e)
         {
-            RotateAllPages(90);
+            RotateAllPages(-90);
         }
 
         private void btnRotateAllCWFile_Click(object sender, RoutedEventArgs e)
         {
-            RotateAllPages(-90);
+            RotateAllPages(90);
         }
 
         private void RotateAllPages(int angle)
@@ -342,7 +342,7 @@ namespace ScanMonitorApp
                 bSaveOk = SaveFiles(outputFileNames);
             if (!bSaveOk)
             {
-                MessageDialog.Show("Problem saving files, check the error log", "Problem", "", "Ok", null, this);
+                MessageDialog.Show("Problem saving files, check the error log", "", "", "Ok", null, this);
                 return;
             }
 
@@ -611,21 +611,27 @@ namespace ScanMonitorApp
 
                     System.Drawing.Image pageImg = _pdfRasterizer.GetPageImage(i + 1, false);
 
-                    this.Dispatcher.BeginInvoke((Action)delegate()
+                    object[] args = new object[4];
+                    args[0] = i;
+                    args[1] = startNewPageNum;
+                    args[2] = startNewFileNum;
+                    args[3] = pageImg;
+
+                    this.Dispatcher.BeginInvoke((Action<int, int, int, System.Drawing.Image>)delegate(int pageIdx, int startNewPgNum, int startNewFilNum, System.Drawing.Image pagImg)
                     {
-                        BitmapImage bitmap = ConvertToBitmap(pageImg);
+                        BitmapImage bitmap = ConvertToBitmap(pagImg);
                         PdfPageInfo pgInfo = new PdfPageInfo();
-                        pgInfo.PageNum = i + 1;
+                        pgInfo.PageNum = pageIdx + 1;
                         pgInfo.FileIndex = _curBackgroundLoadingFileIdx;
                         pgInfo.ThumbBitmap = bitmap;
                         pgInfo.SplitAfter = false;
                         pgInfo.DeletePage = false;
                         pgInfo.PageRotation = 0;
                         pgInfo.ShowFileNum = (_curBackgroundLoadingFileIdx > 0);
-                        pgInfo.NewDocPageNum = i + startNewPageNum;
-                        pgInfo.NewDocFileNum = startNewFileNum;
+                        pgInfo.NewDocPageNum = pageIdx + startNewPgNum;
+                        pgInfo.NewDocFileNum = startNewFilNum;
                         _pdfPageList.Add(pgInfo);
-                    });
+                    }, args);
                     Thread.Sleep(50);
                     (sender as BackgroundWorker).ReportProgress(i * 100 / _pdfRasterizer.NumPages(), null);
                 }

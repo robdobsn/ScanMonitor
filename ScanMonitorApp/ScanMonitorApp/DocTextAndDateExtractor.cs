@@ -261,6 +261,26 @@ namespace ScanMonitorApp
 
         private static void SearchWithinString(string inStr, DocRectangle textBounds, string dateSearchTerm, DateSrchInfo dateSrchInfo, double matchFactor, int pageIdx, List<ExtractedDate> datesResult, bool ignoreWhitespace)
         {
+            int numDatesFoundInString = 0;
+            int year = -1;
+
+            // Use regex to find financial
+            if (dateSrchInfo.bFinancialYearEnd)
+            {
+                const string finYearEndRegex = @"year end.{0,16}?\s?((19|20)?(\d\d))";
+                Match fyMatch = Regex.Match(inStr, finYearEndRegex, RegexOptions.IgnoreCase);
+                if (fyMatch.Success)
+                {
+                    if (fyMatch.Groups.Count > 1)
+                    {
+                        // Add result
+                        year = Convert.ToInt32(fyMatch.Groups[1].Value);
+                        AddCompletedDateToList(inStr, textBounds, 100, year, 4, 5, false, false, fyMatch.Index, fyMatch.Length, dateSrchInfo, pageIdx+1, datesResult);
+                        numDatesFoundInString++;
+                    }
+                }
+            }
+
             // Start at the beginning of the string
             string s = inStr;
             if (ignoreWhitespace)
@@ -271,14 +291,13 @@ namespace ScanMonitorApp
             int day = -1;
             int month = -1;
             bool bMonthFromChars = false;
-            int year = -1;
+            year = -1;
             s = s.ToLower();
             bool strIsDigits = false;
             int firstMatchPos = -1;
             int lastMatchPos = 0;
             int commaCount = 0;
             bool bRangeIndicatorFound = false;
-            int numDatesFoundInString = 0;
             int numSepChars = 0;
             for (chIdx = 0; chIdx < s.Length; chIdx++)
             {
@@ -700,6 +719,7 @@ namespace ScanMonitorApp
             dateSrchInfo.bNoDateRanges = (dateSearchTerm.IndexOf("~NoDateRanges", StringComparison.OrdinalIgnoreCase) >= 0);
             dateSrchInfo.bLatestDate = (dateSearchTerm.IndexOf("~latest", StringComparison.OrdinalIgnoreCase) >= 0);
             dateSrchInfo.bEarliestDate = (dateSearchTerm.IndexOf("~earliest", StringComparison.OrdinalIgnoreCase) >= 0);
+            dateSrchInfo.bFinancialYearEnd = (dateSearchTerm.IndexOf("~finYearEnd", StringComparison.OrdinalIgnoreCase) >= 0);
 
             // Pattern str
             string patternStr = "";
@@ -787,6 +807,7 @@ namespace ScanMonitorApp
             public bool bNoDateRanges = false;
             public bool bLatestDate = false;
             public bool bEarliestDate = false;
+            public bool bFinancialYearEnd = false;
         }
 
         private class DateElemSrch
