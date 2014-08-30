@@ -299,6 +299,11 @@ namespace ScanMonitorApp
             }
         }
 
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            this.WindowState = System.Windows.WindowState.Maximized;
+        }
+
         //private void auditListView_Loaded(object sender, RoutedEventArgs e)
         //{
         //    List<ScanDocInfo> sdiList = _scanDocHandler.GetListOfScanDocs();

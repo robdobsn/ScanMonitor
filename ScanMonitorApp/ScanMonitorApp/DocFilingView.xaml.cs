@@ -39,7 +39,7 @@ namespace ScanMonitorApp
         private int _curDocToBeFiledIdxInList = 0;
         private ScanPages _curDocScanPages;
         private ScanDocInfo _curDocScanDocInfo;
-        private FiledDocInfo _curFiledDocInfo; 
+        private FiledDocInfo _curFiledDocInfo;
         private DocTypeMatchResult _latestMatchResult;
         private DocType _curSelectedDocType = null;
         private BackgroundWorker _bwThreadForImagesPopup;
@@ -95,6 +95,12 @@ namespace ScanMonitorApp
 
         private void ShowDocToBeFiled(int docIdx)
         {
+            // Check if docIdx is valid
+            if (docIdx >= _scanDocHandler.GetCountOfUnfiledDocs())
+                docIdx = _scanDocHandler.GetCountOfUnfiledDocs() - 1;
+            if (docIdx < 0)
+                docIdx = 0;
+
             // Get name of doc
             string uniqName = _scanDocHandler.GetUniqNameOfDocToBeFiled(docIdx);
 
@@ -259,6 +265,7 @@ namespace ScanMonitorApp
             // Show status of filing
             string statusStr = "Unfiled";
             Brush foreColour = Brushes.Black;
+            bool processButtonsEnabled = true;
             SetFieldEnable(btnDeleteDoc, true);
             SetFieldEnable(btnProcessDoc, true);
             if (_curFiledDocInfo != null)
@@ -290,6 +297,26 @@ namespace ScanMonitorApp
                 statusStr = "FLAGGED";
                 foreColour = Brushes.Red;
             }
+            else
+            {
+                if (!File.Exists(_curDocScanDocInfo.origFileName))
+                {
+                    string archiveFileName = System.IO.Path.Combine(Properties.Settings.Default.DocArchiveFolder, _curDocScanDocInfo.uniqName + ".pdf");
+                    if (!File.Exists(archiveFileName))
+                    {
+                        statusStr = "ORIGINAL MISSING!";
+                        foreColour = Brushes.Red;
+                        btnEditPdf.IsEnabled = false;
+                        processButtonsEnabled = false;
+                    }
+                    else
+                    {
+                        statusStr = "Unfiled (original moved but backup ok)";
+                    }
+                }
+            }
+            btnEditPdf.IsEnabled = processButtonsEnabled;
+            btnProcessDoc.IsEnabled = processButtonsEnabled;
             SetLabelContent(lblStatusBarFileName, (_curDocScanDocInfo != null) ? (_curDocScanDocInfo.uniqName + " " + statusStr) : "");
             lblStatusBarFileName.Foreground = foreColour;
             ShowFilingPath();
@@ -307,10 +334,18 @@ namespace ScanMonitorApp
                 tb.Text = s;
         }
 
-        private void SetLabelContent(Label lb, string s)
+        private void SetLabelContent(object lb, string s)
         {
-            if (((string)lb.Content) != s)
-                lb.Content = s;
+            if (lb.GetType() == typeof(Label))
+            {
+                if ((((Label)lb).Content.ToString()) != s)
+                    ((Label)lb).Content = s;
+            }
+            else
+            {
+                if ((((TextBlock)lb).Text.ToString()) != s)
+                    ((TextBlock)lb).Text = s;
+            }
         }
 
         private void SetEventVisibility(bool vis, bool calendarEntry)
@@ -341,7 +376,7 @@ namespace ScanMonitorApp
             bool pathContainsMacros = false;
             string destPath = GetFilingPath(ref pathContainsMacros);
             SetLabelContent(lblMoveToName, destPath);
-            lblMoveToName.ToolTip = destPath;
+            lblMoveToNameToolTipText.Text = ScanUtils.GetFolderContentsAsString(destPath);
         }
 
         #endregion
@@ -656,7 +691,7 @@ namespace ScanMonitorApp
 
         private void lblMoveToCtxt_Click(object sender, RoutedEventArgs e)
         {
-            string filePath = lblMoveToName.Content.ToString();
+            string filePath = lblMoveToName.Text.ToString();
             try
             {
                 ScanDocHandler.ShowFileInExplorer(filePath.Replace("/", @"\"), false);
@@ -793,26 +828,54 @@ namespace ScanMonitorApp
             if (_scanDocHandler.IsBusy())
                 return;
 
+            // Check file to edit is present
+            string fileToEdit = _curDocScanDocInfo.origFileName;
+            if (!File.Exists(fileToEdit))
+            {
+                fileToEdit = System.IO.Path.Combine(Properties.Settings.Default.DocArchiveFolder, _curDocScanDocInfo.uniqName + ".pdf");
+                if (!File.Exists(fileToEdit))
+                {
+                    MessageDialog.Show("Neither original not archive file can be found", "", "OK", "", null, this);
+                    return;
+                }
+            }
+            
             PdfEditorWindow pew = new PdfEditorWindow();
-            pew.OpenEmbeddedPdfEditor(_curDocScanDocInfo.origFileName, HandlePdfEditSaveComplete);
+            pew.OpenEmbeddedPdfEditor(fileToEdit, HandlePdfEditSaveComplete, Properties.Settings.Default.DocArchiveFolder);
             pew.ShowDialog();
         }
 
         private void HandlePdfEditSaveComplete(string originalFileName, List<string> savedFileNames)
         {
-            // New files should be picked up by the folder watcher
+            // Changed handling of saving of PDF - now saves PDF to archive location - not to original folder (on scanning machine)
+            // And the processing of the file into the database is now handled explicitly rather than waiting for the monitoring 
+            // machine to do it
 
-            // So all we have to do is delete the original
+            // Delete the original
             bool deletedOk = _scanDocHandler.DeleteFile(_curDocScanDocInfo.uniqName, _curFiledDocInfo, _curDocScanDocInfo.origFileName, true);
             if (!deletedOk)
             {
-                lblStatusBarProcStatus.Content = "Failed to remove original file";
+                lblStatusBarProcStatus.Content = "Last filing: Failed to remove original";
                 lblStatusBarProcStatus.Foreground = Brushes.Red;
             }
             else
             {
-                lblStatusBarProcStatus.Content = "Ok";
+                lblStatusBarProcStatus.Content = "Last Filing: Ok";
                 lblStatusBarProcStatus.Foreground = Brushes.Black;
+            }
+
+            // Process the output files
+            using (new WaitCursor())
+            {
+                foreach (string fileName in savedFileNames)
+                {
+                    DateTime fileDateTime = File.GetCreationTime(fileName);
+                    string uniqName = ScanDocInfo.GetUniqNameForFile(fileName, fileDateTime);
+                    _scanDocHandler.ProcessPdfFile(fileName, uniqName, true, true, true, true, true, true);
+                }
+
+                // Wait for a bit to let the database catch up
+                Thread.Sleep(2000);
             }
 
             // Goto a file if there is one
@@ -923,6 +986,7 @@ namespace ScanMonitorApp
                 return;
 
             // Ask user if sure
+            int nextDocToShow = _curDocToBeFiledIdxInList;
             MessageDialog.MsgDlgRslt rslt = MessageDialog.Show("Delete " + _curDocScanDocInfo.uniqName + " ?\n" + "Are you sure?", "Yes", "No", "Cancel", btnDeleteDoc, this);
             if (rslt == MessageDialog.MsgDlgRslt.RSLT_YES)
             {
@@ -930,20 +994,32 @@ namespace ScanMonitorApp
                 bool deletedOk = _scanDocHandler.DeleteFile(_curDocScanDocInfo.uniqName, _curFiledDocInfo, _curDocScanDocInfo.origFileName, false);
                 if (!deletedOk)
                 {
-                    lblStatusBarProcStatus.Content = "Failed to delete file";
-                    lblStatusBarProcStatus.Foreground = Brushes.Red;
+                    if (!File.Exists(_curDocScanDocInfo.origFileName))
+                    {
+                        rslt = MessageDialog.Show("Original File " + _curDocScanDocInfo.uniqName + " not found\n" + "Remove file from to-file-list?", "Yes", "No", "Cancel", btnDeleteDoc, this);
+                        if (rslt == MessageDialog.MsgDlgRslt.RSLT_YES)
+                        {
+                            lblStatusBarProcStatus.Content = "Last File: Removed from list";
+                            lblStatusBarProcStatus.Foreground = Brushes.Red;
+
+                            // Update the doc list cache
+                            _scanDocHandler.RemoveDocFromUnfiledCache(_curDocScanDocInfo.uniqName, "");
+                            nextDocToShow = _curDocToBeFiledIdxInList - 1;
+                        }
+                    }
                 }
                 else
                 {
-                    lblStatusBarProcStatus.Content = "Deleted";
+                    lblStatusBarProcStatus.Content = "Last File: Deleted";
                     lblStatusBarProcStatus.Foreground = Brushes.Black;
+
+                    // Update the doc list cache
+                    _scanDocHandler.RemoveDocFromUnfiledCache(_curDocScanDocInfo.uniqName, "");
+                    nextDocToShow = _curDocToBeFiledIdxInList - 1;
                 }
 
-                // Update the doc list cache
-                _scanDocHandler.RemoveDocFromUnfiledCache(_curDocScanDocInfo.uniqName, "");
-
                 // Goto a file if there is one
-                ShowDocToBeFiled(_curDocToBeFiledIdxInList-1);
+                ShowDocToBeFiled(nextDocToShow);
             }
         }
 
@@ -1049,6 +1125,13 @@ namespace ScanMonitorApp
             if (_touchFromPageText != TouchFromPageText.TOUCH_NONE)
                 return;
 
+            // Check if window is in foreground - remove popup if it isn't
+            if (!IsActive)
+            {
+                imageDocToFileToolTip.IsOpen = false;
+                return;
+            }
+
             // Show tool tip
             Point curMousePoint = e.GetPosition(imageDocToFile);
             Point docCoords = ConvertImagePointToDocPoint(imageDocToFile, curMousePoint.X, curMousePoint.Y);
@@ -1086,6 +1169,21 @@ namespace ScanMonitorApp
             else if (curMousePoint.Y < 0 || curMousePoint.Y > imageDocToFile.ActualHeight)
                 imageDocToFileToolTip.IsOpen = false;
             e.Handled = true;
+        }
+
+        private void imageDocToFile_LostFocus(object sender, RoutedEventArgs e)
+        {
+            imageDocToFileToolTip.IsOpen = false;
+        }
+
+        private void backgroundGrid_MouseEnter(object sender, MouseEventArgs e)
+        {
+            imageDocToFileToolTip.IsOpen = false;
+        }
+
+        private void MetroWindow_Deactivated(object sender, EventArgs e)
+        {
+            imageDocToFileToolTip.IsOpen = false;
         }
 
         private void imageDocToFile_MouseDown(object sender, MouseButtonEventArgs e)
@@ -1399,6 +1497,15 @@ namespace ScanMonitorApp
         }
 
         #endregion
+
+        private void btnSettings_Click(object sender, RoutedEventArgs e)
+        {
+            SettingsView sv = new SettingsView();
+            string oldViewOrder = Properties.Settings.Default.UnfiledDocListOrder;
+            sv.ShowDialog();
+            if (Properties.Settings.Default.UnfiledDocListOrder != oldViewOrder)
+                ShowDocToBeFiled(_curDocToBeFiledIdxInList);
+        }
 
     }
 

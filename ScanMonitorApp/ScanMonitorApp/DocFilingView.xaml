@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
-        Title="Document Filing" Height="1140.718" Width="1854.264" Loaded="MetroWindow_Loaded">
+        Title="Document Filing" Height="1140.718" Width="1854.264" Loaded="MetroWindow_Loaded" Deactivated="MetroWindow_Deactivated">
     <Window.Resources>
         <ControlTemplate x:Key="RepeatButton" TargetType="{x:Type RepeatButton}">
             <Border CornerRadius="0" SnapsToDevicePixels="True" BorderThickness="2" BorderBrush="Black" Background="White">
@@ -25,7 +25,7 @@
             </ControlTemplate.Triggers>
         </ControlTemplate>
     </Window.Resources>
-    <Grid>
+    <Grid x:Name="backgroundGrid" MouseEnter="backgroundGrid_MouseEnter">
         <Grid.Background>
             <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
                 <GradientStop Color="#FFF2F2F2" />
@@ -42,7 +42,7 @@
             <RowDefinition Height="57" />
         </Grid.RowDefinitions>
 
-        <Image x:Name="imageDocToFile" Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="1" MouseMove="imageDocToFile_MouseMove" MouseLeave="imageDocToFile_MouseLeave" MouseDown="imageDocToFile_MouseDown" >
+        <Image x:Name="imageDocToFile" Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="1" MouseMove="imageDocToFile_MouseMove" MouseLeave="imageDocToFile_MouseLeave" MouseDown="imageDocToFile_MouseDown" LostFocus="imageDocToFile_LostFocus" >
             <Image.ContextMenu>
                 <ContextMenu>
                     <MenuItem x:Name="docImgCtxtOriginal" Header="Original" Click="docImgCtxtOriginal_Click"/>
@@ -163,8 +163,11 @@
             <Label x:Name="lblDestFileNameLabel" Content="file name" HorizontalAlignment="Left" Height="38" Margin="10,460,0,0" VerticalAlignment="Top" Width="107" FontSize="20"/>
             <Label x:Name="lblDestFileName" Content="" Height="38" Margin="124,460,10,0" VerticalAlignment="Top" FontSize="20" Background="#FFF2F2F2"/>
             <Label x:Name="lblMoveToLabel" Content="file folder" HorizontalAlignment="Left" Height="50" Margin="10,506,0,0" VerticalAlignment="Top" VerticalContentAlignment="Center" Width="107" FontSize="20"/>
-            <Label x:Name="lblMoveToName" Content="" Height="50" Margin="124,506,140,0" VerticalAlignment="Top" VerticalContentAlignment="Center" FontSize="20" Background="#FFF2F2F2" ToolTip="" MouseDown="lblMoveToCtxt_Click">
-            </Label>
+            <TextBlock x:Name="lblMoveToName" Height="50" Margin="124,506,140,0" VerticalAlignment="Top" FontSize="20" Background="#FFF2F2F2" MouseDown="lblMoveToCtxt_Click" Padding="5,10" TextDecorations="Underline" Foreground="Blue">
+                <TextBlock.ToolTip>
+                    <TextBlock x:Name="lblMoveToNameToolTipText" FontFamily="Courier New" FontSize="11" Text=""/>
+                </TextBlock.ToolTip>
+            </TextBlock>
             <Button x:Name="btnMoveToUndo" VerticalAlignment="Top" Height="50" Margin="0,506,10,0" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="50" Click="btnMoveToUndo_Click">
                 <Image Source="res/appbar.undo.png" Stretch="Fill" Width="25" Height="25"/>
             </Button>
@@ -253,8 +256,8 @@
                 <Image Source="res/appbar.cabinet.files.variant.png" Margin="3"></Image>
             </Button>
             <Label x:Name="lblStatusBarFileNo" Content="" HorizontalAlignment="Left" Height="38" Margin="11,77,0,0" VerticalAlignment="Top" Width="161" FontSize="20" Background="#FFF2F2F2"/>
-            <Label x:Name="lblStatusBarFileName" Content="" HorizontalAlignment="Left" Height="38" Margin="177,77,0,0" VerticalAlignment="Top" Width="308" FontSize="20" Background="#FFF2F2F2"/>
-            <Label x:Name="lblStatusBarProcStatus" Content="" Height="38" Margin="0,77,10,0" VerticalAlignment="Top" FontSize="20" Background="#FFF2F2F2" HorizontalAlignment="Right" Width="413" HorizontalContentAlignment="Right"/>
+            <Label x:Name="lblStatusBarFileName" Content="" Height="38" Margin="177,77,428,0" VerticalAlignment="Top" FontSize="20" Background="#FFF2F2F2"/>
+            <Label x:Name="lblStatusBarProcStatus" Content="" Height="38" Margin="0,77,10,0" VerticalAlignment="Top" FontSize="20" Background="#FFF2F2F2" HorizontalContentAlignment="Right" HorizontalAlignment="Right" Width="413"/>
             <Button x:Name="btnFlagForHelpFiling" VerticalAlignment="Top" Height="60" FontSize="16" Margin="0,10,123,0" Style="{DynamicResource SquareButtonStyle}" HorizontalAlignment="Right" Width="96" Click="btnFlagForHelpFiling_Click">
                 <Image Source="res/appbar.flag.wavy.png" Margin="3"/>
             </Button>
@@ -302,5 +305,7 @@
         <Button x:Name="btnAuditTrail" Grid.Column="0"  Margin="0,0,310,3" FontSize="16" Click="btnAuditTrail_Click" Height="50" VerticalAlignment="Bottom" Grid.Row="2" HorizontalAlignment="Right" Width="96" Style="{DynamicResource SquareButtonStyle}">
             <Image Source="res/appbar.list.gear.png" Margin="3"/>
         </Button>
-    </Grid>
+        <Button x:Name="btnSettings" Grid.Column="0"  Margin="0,0,420,3" FontSize="16" Height="50" VerticalAlignment="Bottom" Grid.Row="2" HorizontalAlignment="Right" Width="96" Style="{DynamicResource SquareButtonStyle}" Click="btnSettings_Click">
+            <Image Source="res/appbar.settings.png" Margin="3"/>
+        </Button>    </Grid>
 </Controls:MetroWindow>

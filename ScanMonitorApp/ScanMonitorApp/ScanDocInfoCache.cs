@@ -89,7 +89,7 @@ namespace ScanMonitorApp
             return listCopy;
         }
 
-        public void UnfiledListUpdateThread_DoWork(object sender, DoWorkEventArgs e)
+        private void UnfiledListUpdateThread_DoWork(object sender, DoWorkEventArgs e)
         {
             BackgroundWorker worker = sender as BackgroundWorker;
             while (_threadRunning)
@@ -162,7 +162,7 @@ namespace ScanMonitorApp
                 // Handle range errors
                 if (docIdx < 0)
                     docIdx = 0;
-                if ((docIdx >= 0) && (docIdx < _scanDocHandler.GetCountOfUnfiledDocs()))
+                if ((docIdx >= 0) && (docIdx < _uniqNamesOfDocsToBeFiled.Count()))
                      uniqName = _uniqNamesOfDocsToBeFiled[docIdx];
             }
             return uniqName;

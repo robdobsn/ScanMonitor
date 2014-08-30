@@ -1,7 +1,7 @@
 ﻿<Window x:Class="ScanMonitorApp.AuditView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="AuditView" Height="747" Width="1378" 
+        Title="AuditView" Height="747" Width="1378" Loaded="Window_Loaded" 
         >
     <Grid RenderTransformOrigin="0.498,0.734">
         <Grid.ColumnDefinitions>

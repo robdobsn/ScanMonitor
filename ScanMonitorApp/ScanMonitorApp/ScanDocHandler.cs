@@ -37,6 +37,7 @@ namespace ScanMonitorApp
         private string _docFilingStatusStr = "";
         // Cache used only to speed up doc-type checking - circumvents database multiuser so don't rely on results! 100%
         private ScanDocInfoCache _scanDocInfoCache = null;
+        private ScanDocLikelyDocType _scanDocLikelyDocType = null;
         private List<string> _lastNDocTypesFiled = new List<string>();
 
         #region Init
@@ -47,6 +48,7 @@ namespace ScanMonitorApp
             _docTypesMatcher = docTypesMatcher;
             _scanConfig = scanConfig;
             _scanDocInfoCache = new ScanDocInfoCache(this);
+            _scanDocLikelyDocType = new ScanDocLikelyDocType(this, _docTypesMatcher);
 
             // Init the background worker used for processing docs
             _fileProcessBkgndWorker.WorkerSupportsCancellation = true;
@@ -186,6 +188,7 @@ namespace ScanMonitorApp
 
                 // Update cache
                 _scanDocInfoCache.UpdateDocInfo(scanDocInfo.uniqName);
+                _scanDocLikelyDocType.UpdateDocInfo(scanDocInfo.uniqName);
             }
             catch (Exception excp)
             {
@@ -231,6 +234,7 @@ namespace ScanMonitorApp
                 logger.Info("Added/updated scandocinfo record for {0}", scanDocInfo.uniqName);
                 // Update cache
                 _scanDocInfoCache.UpdateDocInfo(scanDocInfo.uniqName);
+                _scanDocLikelyDocType.UpdateDocInfo(scanDocInfo.uniqName);
             }
             catch (Exception excp)
             {
@@ -378,7 +382,7 @@ namespace ScanMonitorApp
 
         #region Unfiled Document Handling
 
-        public List<string> GetListOfUnfiledDocUniqNames()
+        public List<string> GetCopyOfUnfiledDocsList()
         {
             return _scanDocInfoCache.GetListOfUnfiledDocUniqNames();
         }
@@ -390,7 +394,12 @@ namespace ScanMonitorApp
 
         public string GetUniqNameOfDocToBeFiled(int docIdx)
         {
-            return _scanDocInfoCache.GetUniqNameOfDocToBeFiled(docIdx);
+            return _scanDocLikelyDocType.GetUniqNameOfDocToBeFiled(docIdx, Properties.Settings.Default.UnfiledDocListOrder);
+        }
+
+        public void DocTypeAddedOrChanged(string nameOfDocTypeAddedOrChanged)
+        {
+            _scanDocLikelyDocType.DocTypeAddedOrChanged(nameOfDocTypeAddedOrChanged);
         }
 
         public void RemoveDocFromUnfiledCache(string uniqName, string docTypeFiledAs)

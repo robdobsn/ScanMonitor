@@ -77,5 +77,11 @@
     <Setting Name="UnfiledDocCheckSeconds" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">10</Value>
     </Setting>
+    <Setting Name="DocTypeReCheckSeconds" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">600</Value>
+    </Setting>
+    <Setting Name="UnfiledDocListOrder" Type="System.String" Scope="User">
+      <Value Profile="(Default)">docType</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

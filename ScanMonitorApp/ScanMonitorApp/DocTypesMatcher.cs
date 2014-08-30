@@ -59,7 +59,7 @@ namespace ScanMonitorApp
             // Get list of types
             DocTypeMatchResult bestMatchResult = new DocTypeMatchResult();
             var collection_doctypes = GetDocTypesCollection();
-            MongoCursor<DocType> foundSdf = collection_doctypes.FindAll();
+            MongoCursor<DocType> foundSdf = collection_doctypes.Find(Query.EQ("isEnabled", true));
 #if TEST_PERF_GETMATCHINGDOCTYPE
             Stopwatch stopWatch1 = new Stopwatch();
             Stopwatch stopWatch2 = new Stopwatch();

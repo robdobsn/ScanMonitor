@@ -5,7 +5,7 @@
         xmlns:WpfExtensions="clr-namespace:WpfExtensions"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
         x:Name="RobsPDFEditor"
-        Title="PDF Editor" Height="790" Width="1200" Closing="RobsPDFEditor_Closing">
+        Title="PDF Editor" Height="790" Width="1200" Closing="RobsPDFEditor_Closing" Loaded="RobsPDFEditor_Loaded">
     <Grid Background="LightGray">
         <Grid.RowDefinitions>
             <RowDefinition Height="85"/>

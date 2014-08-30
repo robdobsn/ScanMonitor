@@ -2,10 +2,10 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
-        Title="Document Types" Height="824" Width="1342" Closing="Window_Closing">
-    <Grid>
+        Title="Document Types" Height="824" Width="1342" Closing="Window_Closing" Loaded="MetroWindow_Loaded" Deactivated="MetroWindow_Deactivated">
+    <Grid x:Name="BackgroundGrid">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition />
+            <ColumnDefinition MouseEnter="ColumnDefinition_MouseEnter" />
             <ColumnDefinition />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
@@ -98,10 +98,16 @@
                     </ContextMenu>
                 </RichTextBox.ContextMenu>
             </RichTextBox>
-            <Label Content="Move To Folder" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="104" RenderTransformOrigin="0.488,0.429" Margin="5,166,0,0"/>
+            <Label Content="Move To Folder" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="104" RenderTransformOrigin="0.488,0.429" Margin="5,166,0,0" MouseDown="lblMoveTo_MouseDown">
+                <Label.ToolTip>
+                    <TextBlock x:Name="lblMoveToNameToolTipText" FontFamily="Courier New" FontSize="11" Text=""/>
+                </Label.ToolTip>                
+            </Label>
             <TextBox x:Name="txtMoveTo" Height="18" Margin="119,166,36,0" TextWrapping="Wrap" VerticalAlignment="Top" IsEnabled="False" TextChanged="txtMoveTo_TextChanged">
                 <TextBox.ContextMenu>
                     <ContextMenu>
+                        <MenuItem x:Name="moveToShowFolder" Header="Open Folder" Click="moveToShowFolder_Click"/>
+                        <Separator></Separator>
                         <MenuItem x:Name="moveToCtx_Year" Header="Add Year" Click="moveToCtx_Year_Click"/>
                         <MenuItem x:Name="moveToCtx_YearMon" Header="Add Year-Month" Click="moveToCtx_YearMon_Click"/>
                         <MenuItem x:Name="moveToCtx_YearQtr" Header="Add Year-Qtr" Click="moveToCtx_YearQtr_Click"/>
@@ -109,6 +115,9 @@
                         <MenuItem x:Name="moveToCtx_YearFinQtr" Header="Add Year Financial Qtr" Click="moveToCtx_YearFinQtr_Click"/>
                     </ContextMenu>
                 </TextBox.ContextMenu>
+                <TextBox.ToolTip>
+                    <TextBlock x:Name="txtMoveToNameToolTipText" FontFamily="Courier New" FontSize="11" Text=""/>
+                </TextBox.ToolTip>
             </TextBox>
             <Button x:Name="btnMoveToPick" Content="..." Height="25" Margin="0,167,0,0" VerticalAlignment="Top" Click="btnMoveToPick_Click" HorizontalAlignment="Right" Width="31" IsEnabled="False"/>
             <Label Content="Rename To" HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="104" RenderTransformOrigin="0.488,0.429" Margin="5,197,0,0"/>
@@ -136,9 +145,9 @@
                 </ListView.ItemContainerStyle>
                 <ListView.View>
                     <GridView>
-                        <GridViewColumn Header="Status" DisplayMemberBinding="{Binding matchStatus}"/>
-                        <GridViewColumn Header="Unique Name" DisplayMemberBinding="{Binding uniqName}"/>
-                        <GridViewColumn Header="Filed Type" DisplayMemberBinding="{Binding docTypeFiled}"/>
+                        <GridViewColumn Header="Status" Width="150" DisplayMemberBinding="{Binding matchStatus}"/>
+                        <GridViewColumn Header="Unique Name" Width="175" DisplayMemberBinding="{Binding uniqName}"/>
+                        <GridViewColumn Header="Filed Type" Width="175" DisplayMemberBinding="{Binding docTypeFiled}"/>
                         <GridViewColumn Header="Match Factor" DisplayMemberBinding="{Binding matchFactorStr}"/>
                     </GridView>
                 </ListView.View>

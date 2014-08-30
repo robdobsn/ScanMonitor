@@ -26,7 +26,7 @@
     <MapFileExtensions>true</MapFileExtensions>
     <CreateWebPageOnPublish>true</CreateWebPageOnPublish>
     <WebPage>publish.htm</WebPage>
-    <ApplicationRevision>31</ApplicationRevision>
+    <ApplicationRevision>33</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
@@ -148,8 +148,13 @@
     <Compile Include="ScanDocInfoCache.cs" />
     <Compile Include="ScanDocInfo.cs" />
     <Compile Include="ScanDocHandler.cs" />
+    <Compile Include="ScanDocLikelyDocType.cs" />
     <Compile Include="ScanFileMonitor.cs" />
     <Compile Include="ScanFolderWatcher.cs" />
+    <Compile Include="ScanUtils.cs" />
+    <Compile Include="SettingsView.xaml.cs">
+      <DependentUpon>SettingsView.xaml</DependentUpon>
+    </Compile>
     <Compile Include="WebEndPoint_DocTypes.cs" />
     <Compile Include="WebEndPoint_ScanDocs.cs" />
     <Compile Include="WebServer\WebEndPoint.cs" />
@@ -195,6 +200,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="PDFMovePageDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="SettingsView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -341,6 +350,9 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="res\appbar.list.gear.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="res\appbar.settings.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

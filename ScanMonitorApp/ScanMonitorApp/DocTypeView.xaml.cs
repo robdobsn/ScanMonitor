@@ -821,6 +821,12 @@ namespace ScanMonitorApp
 
         private void tooltipCallback_MouseMove(Point ptOnImage, DocRectangle ptInDocPercent)
         {
+            // Close tooltip if window isn't active
+            if (!IsActive)
+            {
+                exampleFileImageToolTip.IsOpen = false;
+                return;
+            }
             bool bToolTipSet = false;
             if (_curDocDisplay_scanPages != null)
                 if ((_curDocDisplay_pageNum > 0) && (_curDocDisplay_pageNum <= _curDocDisplay_scanPages.scanPagesText.Count))
@@ -1081,6 +1087,9 @@ namespace ScanMonitorApp
                 DocType newDocType = GetDocTypeFromForm(new DocType());
                 newDocType.previousName = _selectedDocType.docTypeName;
                 _docTypesMatcher.AddOrUpdateDocTypeRecInDb(newDocType);
+
+                // Inform scan doc handler of update
+                _scanDocHandler.DocTypeAddedOrChanged(newDocType.docTypeName);
             }
             else if (_selectedDocType == null)
             {
@@ -1107,6 +1116,7 @@ namespace ScanMonitorApp
                 // Create the new record
                 DocType newDocType = GetDocTypeFromForm(new DocType());
                 _docTypesMatcher.AddOrUpdateDocTypeRecInDb(newDocType);
+                _scanDocHandler.DocTypeAddedOrChanged(newDocType.docTypeName);
             }
             else
             {
@@ -1116,6 +1126,7 @@ namespace ScanMonitorApp
 
                 // Update the record
                 _docTypesMatcher.AddOrUpdateDocTypeRecInDb(_selectedDocType);
+                _scanDocHandler.DocTypeAddedOrChanged(_selectedDocType.docTypeName);
             }
 
             // Ensure no longer able to save/cancel
@@ -1343,6 +1354,33 @@ namespace ScanMonitorApp
             //}
         }
 
+        private void ShowMoveToFolder()
+        {
+            bool pathContainsMacros = false;
+            string folderName = _docTypesMatcher.ComputeExpandedPath(txtMoveTo.Text.Trim(), DateTime.Now, false, ref pathContainsMacros);
+            if (!Directory.Exists(folderName))
+                folderName = _docTypesMatcher.ComputeExpandedPath(txtMoveTo.Text.Trim(), DateTime.Now, true, ref pathContainsMacros);
+            string filePath = folderName.ToString();
+            try
+            {
+                ScanDocHandler.ShowFileInExplorer(filePath.Replace("/", @"\"), false);
+            }
+            finally
+            {
+
+            }
+        }
+
+        private void moveToShowFolder_Click(object sender, RoutedEventArgs e)
+        {
+            ShowMoveToFolder();
+        }
+
+        private void lblMoveTo_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            ShowMoveToFolder();
+        }
+
         private void moveToCtx_Year_Click(object sender, RoutedEventArgs e)
         {
             // Add year & yearmonth to folder name
@@ -1369,12 +1407,18 @@ namespace ScanMonitorApp
 
         private void moveToCtx_YearMon_Click(object sender, RoutedEventArgs e)
         {
-
+            // Add year & yearmonth to folder name
+            txtMoveTo.Text += @"\[year]\[year-month]";
         }
 
         private void txtMoveTo_TextChanged(object sender, TextChangedEventArgs e)
         {
             UpdateUIForDocTypeChanges();
+            bool pathContainsMacros = false;
+            string folderName = _docTypesMatcher.ComputeExpandedPath(txtMoveTo.Text.Trim(), DateTime.Now, false, ref pathContainsMacros);
+            string folderContentStr = ScanUtils.GetFolderContentsAsString(folderName);
+            txtMoveToNameToolTipText.Text = folderContentStr;
+            lblMoveToNameToolTipText.Text = folderContentStr;
         }
 
         private void txtRenameTo_TextChanged(object sender, TextChangedEventArgs e)
@@ -1614,6 +1658,21 @@ namespace ScanMonitorApp
                 MessageDialog msgDlg = new MessageDialog(infoStr, "OK", "", "", null, this);
                 msgDlg.ShowDialog();
             }
+        }
+
+        private void MetroWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            this.WindowState = System.Windows.WindowState.Maximized;
+        }
+
+        private void MetroWindow_Deactivated(object sender, EventArgs e)
+        {
+            exampleFileImageToolTip.IsOpen = false;
+        }
+
+        private void ColumnDefinition_MouseEnter(object sender, MouseEventArgs e)
+        {
+            exampleFileImageToolTip.IsOpen = false;
         }
 
     }

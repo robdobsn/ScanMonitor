@@ -1,4 +1,6 @@
-﻿using iTextSharp.text;
+﻿//#define TEST_SAVING_OF_PDF
+
+using iTextSharp.text;
 using iTextSharp.text.pdf;
 using MahApps.Metro.Controls;
 using Microsoft.WindowsAPICodePack.Dialogs;
@@ -46,6 +48,7 @@ namespace ScanMonitorApp
         private bool _bRunningEmbedded = false;
         public delegate void SaveCompleteCallback(string originalFileName, List<string> fileNamesSaved);
         private SaveCompleteCallback _saveCompleteCallback;
+        private string _saveToFolder = "";
 
         public PdfEditorWindow()
         {
@@ -68,12 +71,13 @@ namespace ScanMonitorApp
             _bwThreadForPages.RunWorkerCompleted += new RunWorkerCompletedEventHandler(AddPages_Completed);
         }
 
-        public void OpenEmbeddedPdfEditor(string fileName, SaveCompleteCallback saveCompleteCallback)
+        public void OpenEmbeddedPdfEditor(string fileName, SaveCompleteCallback saveCompleteCallback, string saveToFolder)
         {
             btnOpenFile.IsEnabled = false;
             btnReplaceFile.Visibility = System.Windows.Visibility.Hidden;
             _bRunningEmbedded = true;
             _saveCompleteCallback = saveCompleteCallback;
+            _saveToFolder = saveToFolder;
             OpenFile(fileName);
         }
 
@@ -339,7 +343,32 @@ namespace ScanMonitorApp
 
             bool bSaveOk = false;
             using (new WaitCursor())
+            {
+#if TEST_SAVING_OF_PDF
+                for (int i = 0; i < outputFileNames.Count; i++ )
+                {
+                    outputFileNames[i] = @"c:\users\rob_2\documents\1-testpdfedit\testf" + i.ToString() + ".pdf";
+                    try
+                    {
+                        if (File.Exists(outputFileNames[i]))
+                            File.Delete(outputFileNames[i]);
+                    }
+                    catch
+                    {
+                        MessageDialog.Show("Can't delete one or more output files", "", "", "Ok", null, this);
+                        return;
+                    }
+                    bSaveOk = SaveFiles(outputFileNames);
+                    if (!bSaveOk)
+                    {
+                        MessageDialog.Show("Problem saving files, check the error log", "", "", "Ok", null, this);
+                        return;
+                    }
+                }
+                return;
+#endif
                 bSaveOk = SaveFiles(outputFileNames);
+            }
             if (!bSaveOk)
             {
                 MessageDialog.Show("Problem saving files, check the error log", "", "", "Ok", null, this);
@@ -485,15 +514,17 @@ namespace ScanMonitorApp
 
                                         // Create a new destination page of the right dimensions
                                         iTextSharp.text.Rectangle pageSize = pdfReaders[fileIdx].GetPageSizeWithRotation(pageNum);
+                                        iTextSharp.text.Rectangle newPageSize = pdfReaders[fileIdx].GetPageSizeWithRotation(pageNum);
                                         if ((int)_pdfPageList[pdfPageListIdx].PageRotation == 90 || (int)_pdfPageList[pdfPageListIdx].PageRotation == 270)
-                                            pageSize = new iTextSharp.text.Rectangle(pageSize.Height, pageSize.Width);
-                                        inDoc.SetPageSize(pageSize);
+                                            newPageSize = new iTextSharp.text.Rectangle(pageSize.Height, pageSize.Width);
+                                        inDoc.SetPageSize(newPageSize);
                                         inDoc.NewPage();
 
                                         // Get original page
                                         PdfImportedPage importedPage = outputWriter.GetImportedPage(pdfReaders[fileIdx], pageNum);
 
                                         // Handle rotation
+                                        // Fixed based on information in this question - http://stackoverflow.com/questions/3579058/rotating-pdf-in-c-sharp-using-itextsharp
                                         switch (pageRotation)
                                         {
                                             case 0:
@@ -510,9 +541,14 @@ namespace ScanMonitorApp
                                                 break;
 
                                             case 270:
-                                                outputWriter.DirectContent.AddTemplate(importedPage, 0, 1f, -1f, 0, pageSize.Width, 0);
+                                                outputWriter.DirectContent.AddTemplate(importedPage, 0, 1f, -1f, 0, pageSize.Height, 0);
                                                 break;
                                         }
+
+                                        Console.WriteLine("FileIdx {0}, PdfPageListIdx {1}, PageNum {2}, GetPageRotation {3}, userRotation {4}, pageSizeWidth {5},  pageSizeHeight {6},  pageSizeRotation {7}, newSizeWidth {8},  newSizeHeight {9},  newSizeRotation {10}, finalRotation {11}", 
+                                                      fileIdx, pdfPageListIdx, pageNum, pdfReaders[fileIdx].GetPageRotation(pageNum), (int)_pdfPageList[pdfPageListIdx].PageRotation,
+                                                      pdfReaders[fileIdx].GetPageSizeWithRotation(pageNum).Width, pdfReaders[fileIdx].GetPageSizeWithRotation(pageNum).Height, pdfReaders[fileIdx].GetPageSizeWithRotation(pageNum).Rotation,
+                                                      newPageSize.Width, newPageSize.Height, newPageSize.Rotation, pageRotation);
                                     }
 
                                     // Check if this is the last page in this PDF
@@ -710,7 +746,10 @@ namespace ScanMonitorApp
         private string GenOutFileName(string curFileName, int fileIdx)
         {
             string fileName = System.IO.Path.GetFileNameWithoutExtension(curFileName) + "_" + fileIdx.ToString() + System.IO.Path.GetExtension(curFileName);
-            return System.IO.Path.Combine(System.IO.Path.GetDirectoryName(curFileName), fileName);
+            string destFolder = System.IO.Path.GetDirectoryName(curFileName);
+            if (_saveToFolder != "")
+                destFolder = _saveToFolder;
+            return System.IO.Path.Combine(destFolder, fileName);
         }
 
         private void RobsPDFEditor_Closing(object sender, CancelEventArgs e)
@@ -996,6 +1035,11 @@ namespace ScanMonitorApp
                 }
             }
 
+        }
+
+        private void RobsPDFEditor_Loaded(object sender, RoutedEventArgs e)
+        {
+            this.WindowState = System.Windows.WindowState.Maximized;
         }
 
     }
