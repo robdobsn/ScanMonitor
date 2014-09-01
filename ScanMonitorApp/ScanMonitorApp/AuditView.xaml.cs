@@ -7,6 +7,7 @@ using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -46,14 +47,8 @@ namespace ScanMonitorApp
             _bwThreadForPopulateList.WorkerSupportsCancellation = true;
             _bwThreadForPopulateList.WorkerReportsProgress = true;
             _bwThreadForPopulateList.DoWork += new DoWorkEventHandler(PopulateList_DoWork);
-            //_bwThreadForPopulateList.ProgressChanged += new ProgressChangedEventHandler(PopulateList_ProgressChanged);
-            //_bwThreadForPopulateList.RunWorkerCompleted += new RunWorkerCompletedEventHandler(PopulateList_RunWorkerCompleted);
-
-            if (!_bwThreadForPopulateList.IsBusy)
-            {
-                object[] args = { "All", 100000 };
-                _bwThreadForPopulateList.RunWorkerAsync(args);
-            }
+            _bwThreadForPopulateList.ProgressChanged += new ProgressChangedEventHandler(PopulateList_ProgressChanged);
+            _bwThreadForPopulateList.RunWorkerCompleted += new RunWorkerCompletedEventHandler(PopulateList_RunWorkerCompleted);
         }
 
         public ObservableCollection<AuditData> AuditDataColl
@@ -67,22 +62,21 @@ namespace ScanMonitorApp
             BackgroundWorker worker = sender as BackgroundWorker;
             List<ScanDocInfo> sdiList = _scanDocHandler.GetListOfScanDocs();
             this.Dispatcher.BeginInvoke((Action)delegate()
-                {
-                    lblTotalsInfo.Content = sdiList.Count().ToString() + " total docs";
-                });
+            {
+                lblTotalsInfo.Content = sdiList.Count().ToString() + " total docs";
+            });
             
             object[] args = (object[])e.Argument;
             string rsltFilter = (string)args[0];
-            int includeInListFromIdx = (int)args[1];
+            int includeInListFromIdxNonInclusive = (int)args[1];
 
-            // Start filling list
-            int nStartIdx = includeInListFromIdx;
-            if (nStartIdx > sdiList.Count - 1)
-                nStartIdx = sdiList.Count - MAX_NUM_DOCS_TO_ADD_TO_LIST;
-            int nEndIdx = includeInListFromIdx + MAX_NUM_DOCS_TO_ADD_TO_LIST - 1;
-            if (nEndIdx > sdiList.Count - 1)
+            // Start filling list from the end
+            int nEndIdx = includeInListFromIdxNonInclusive-1;
+            if (nEndIdx >= sdiList.Count - 1)
                 nEndIdx = sdiList.Count - 1;
-            for (int nDocIdx = nStartIdx; nDocIdx <= nEndIdx; nDocIdx++)
+            int numFound = 0;
+            int nDocIdx = nEndIdx;
+            while (nDocIdx >= 0)
             {
                 // Check for cancel
                 if ((worker.CancellationPending == true))
@@ -91,42 +85,119 @@ namespace ScanMonitorApp
                     break;
                 }
 
+                // Update status
+                worker.ReportProgress((int)(numFound * 100 / MAX_NUM_DOCS_TO_ADD_TO_LIST));
+
                 // Get scan doc info and filed doc info
                 ScanDocInfo sdi = sdiList[nDocIdx];
                 FiledDocInfo fdi = _scanDocHandler.GetFiledDocInfo(sdi.uniqName);
+
+                // Filter out records that aren't interesting
+                bool bInclude = true;
+                switch (rsltFilter)
+                {
+                    case "filed":
+                    case "filedNotFound":
+                        if (fdi == null)
+                        {
+                            bInclude = false;
+                        }
+                        else
+                        {
+                            if (fdi.filedAt_finalStatus != FiledDocInfo.DocFinalStatus.STATUS_FILED)
+                                bInclude = false;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+                if (!bInclude)
+                {
+                    nDocIdx--;
+                    continue;
+                }
+
+                // Show this record
                 AuditData audDat = new AuditData();
                 audDat.UniqName = sdi.uniqName;
                 string statStr = "Unfiled";
+                bool filedFileNotFound = false;
                 if (fdi != null)
                 {
                     statStr = FiledDocInfo.GetFinalStatusStr(fdi.filedAt_finalStatus);
                     statStr += " on " + fdi.filedAt_dateAndTime.ToShortDateString();
+                    // Check if the file is where it was placed
+                    if (fdi.filedAt_finalStatus == FiledDocInfo.DocFinalStatus.STATUS_FILED)
+                    {
+                        filedFileNotFound = true;
+                        try
+                        {
+                            if (File.Exists(fdi.filedAs_pathAndFileName))
+                                filedFileNotFound = false;
+                        }
+                        catch
+                        {
+
+                        }
+                    }
+                }
+
+                // Check special result filters
+                if ((fdi != null) && !filedFileNotFound && (rsltFilter == "filedNotFound"))
+                {
+                    nDocIdx--;
+                    continue;
                 }
                
                 audDat.FinalStatus = statStr;
+                audDat.FiledDocPresent = (fdi == null) ? "" : (filedFileNotFound ? "Not found" : "Ok");
+
+                // See if we can find a file which matches this one in the existing files database
+                string movedToFileName = "";
+                string archiveFileName = System.IO.Path.Combine(Properties.Settings.Default.DocArchiveFolder, sdi.uniqName + ".pdf");
+                if ((filedFileNotFound) && (File.Exists(archiveFileName)))
+                {
+                    using (var md5 = MD5.Create())
+                    {
+                        using (var stream = File.OpenRead(archiveFileName))
+                        {
+                            List<ExistingFileInfoRec> efirList = _scanDocHandler.FindExistingFileRecsByHash(md5.ComputeHash(stream));
+                            foreach (ExistingFileInfoRec efir in efirList)
+                                if (stream.Length == efir.fileLength)
+                                {
+                                    movedToFileName = efir.filename;
+                                    break;
+                                }
+                        }
+                    }
+                }
+                audDat.MovedToFileName = movedToFileName;
 
                 this.Dispatcher.BeginInvoke((Action)delegate()
                     {
                         _auditDataColl.Add(audDat);
                     });
 
-                // Update status
-                worker.ReportProgress((int)(nDocIdx * 100 / sdiList.Count));
-                if (((nDocIdx % 10) == 0) || (nDocIdx == nEndIdx))
-                {
-                    string rsltStr = (nDocIdx-nStartIdx).ToString();
-                    this.Dispatcher.BeginInvoke((Action)delegate()
-                    {
-                        progBar.Value = ((100 * (nDocIdx - nStartIdx)) / (nEndIdx - nStartIdx));
-                    });
-                }
+                numFound++;
+                if (numFound >= MAX_NUM_DOCS_TO_ADD_TO_LIST)
+                    break;
+                nDocIdx--;
             }
             e.Result = "Ok";
             this.Dispatcher.BeginInvoke((Action)delegate()
             {
-                txtStart.Text = (nStartIdx + 1).ToString();
-                txtEnd.Text = (nEndIdx + 1).ToString();
+                txtStart.Text = (nDocIdx).ToString();
             });
+        }
+
+        private void PopulateList_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            progBar.Value = (e.ProgressPercentage);
+        }
+
+        void PopulateList_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            progBar.Value = (100);
         }
 
         private void auditListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -210,20 +281,9 @@ namespace ScanMonitorApp
             }
         }
 
-        private void btnNext_Click(object sender, RoutedEventArgs e)
+        private string GetListViewType()
         {
-            // Clear list
-            _auditDataColl.Clear();
-
-            int startVal = 0;
-            Int32.TryParse(txtStart.Text, out startVal);
-            int endVal = 0;
-            Int32.TryParse(txtEnd.Text, out endVal);
-            if (!_bwThreadForPopulateList.IsBusy)
-            {
-                object[] args = { "All", endVal };
-                _bwThreadForPopulateList.RunWorkerAsync(args);
-            }
+            return ((ComboBoxItem)(comboListView.SelectedItem)).Tag.ToString();
         }
 
         private void btnGo_Click(object sender, RoutedEventArgs e)
@@ -231,29 +291,24 @@ namespace ScanMonitorApp
             // Clear list
             _auditDataColl.Clear();
 
-            int startVal = 0;
-            Int32.TryParse(txtStart.Text, out startVal);
-            int endVal = 0;
-            Int32.TryParse(txtEnd.Text, out endVal);
+            int startVal = 1000000;
             if (!_bwThreadForPopulateList.IsBusy)
             {
-                object[] args = { "All", startVal };
+                object[] args = { GetListViewType(), startVal };
                 _bwThreadForPopulateList.RunWorkerAsync(args);
             }
         }
 
-        private void btnPrev_Click(object sender, RoutedEventArgs e)
+        private void btnNext_Click(object sender, RoutedEventArgs e)
         {
             // Clear list
             _auditDataColl.Clear();
 
-            int startVal = 0;
+            int startVal = 1000000;
             Int32.TryParse(txtStart.Text, out startVal);
-            int endVal = 0;
-            Int32.TryParse(txtEnd.Text, out endVal);
             if (!_bwThreadForPopulateList.IsBusy)
             {
-                object[] args = { "All", startVal-MAX_NUM_DOCS_TO_ADD_TO_LIST };
+                object[] args = { GetListViewType(), startVal };
                 _bwThreadForPopulateList.RunWorkerAsync(args);
             }
         }
@@ -302,6 +357,12 @@ namespace ScanMonitorApp
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             this.WindowState = System.Windows.WindowState.Maximized;
+            if (!_bwThreadForPopulateList.IsBusy)
+            {
+                object[] args = { GetListViewType(), 100000 };
+                _bwThreadForPopulateList.RunWorkerAsync(args);
+            }
+
         }
 
         //private void auditListView_Loaded(object sender, RoutedEventArgs e)
@@ -321,6 +382,8 @@ namespace ScanMonitorApp
     {
         public string UniqName {get; set;}
         public string FinalStatus { get; set; }
+        public string FiledDocPresent { get; set; }
+        public string MovedToFileName { get; set; }
     }
 
 }

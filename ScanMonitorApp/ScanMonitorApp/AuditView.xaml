@@ -17,6 +17,8 @@
                 <GridView>
                     <GridViewColumn Header="Uniq Name" DisplayMemberBinding="{Binding UniqName}"/>
                     <GridViewColumn Header="Status" DisplayMemberBinding="{Binding FinalStatus}"/>
+                    <GridViewColumn Header="FiledDoc" DisplayMemberBinding="{Binding FiledDocPresent}"/>
+                    <GridViewColumn Header="MovedTo" DisplayMemberBinding="{Binding MovedToFileName}"/>
                 </GridView>
             </ListView.View>
         </ListView>
@@ -31,16 +33,19 @@
             <TextBox x:Name="txtFiledDocInfo" Height="180" Margin="84,113,0,0" TextWrapping="Wrap" VerticalAlignment="Top"/>
             <TextBox x:Name="txtPageText" Margin="84,298,0,0" TextWrapping="Wrap"/>
         </Grid>
-        <TextBox x:Name="txtStart" HorizontalAlignment="Left" Height="31" Margin="281,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="56"/>
-        <TextBox x:Name="txtEnd" HorizontalAlignment="Left" Height="31" Margin="342,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="56"/>
-        <Button x:Name="btnGo" Content="Go" HorizontalAlignment="Left" Height="31" Margin="403,10,0,0" VerticalAlignment="Top" Width="57" Click="btnGo_Click"/>
-        <Button x:Name="btnPrev" Content="Prev" HorizontalAlignment="Left" Height="31" Margin="465,11,0,0" VerticalAlignment="Top" Width="58" Click="btnPrev_Click"/>
-        <Button x:Name="btnNext" Content="Next" HorizontalAlignment="Left" Height="31" Margin="528,11,0,0" VerticalAlignment="Top" Width="58" Click="btnNext_Click"/>
-        <ProgressBar x:Name="progBar" HorizontalAlignment="Left" Height="8" Margin="9,46,0,0" VerticalAlignment="Top" Width="577"/>
-        <Label x:Name="lblTotalsInfo" Content="" HorizontalAlignment="Left" Height="31" Margin="10,10,0,0" VerticalAlignment="Top" Width="266"/>
+        <TextBox x:Name="txtStart" HorizontalAlignment="Left" Height="31" Margin="396,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="56"/>
+        <Button x:Name="btnGo" Content="Show" HorizontalAlignment="Left" Height="31" Margin="334,11,0,0" VerticalAlignment="Top" Width="57" Click="btnGo_Click"/>
+        <ProgressBar x:Name="progBar" HorizontalAlignment="Left" Height="8" Margin="132,46,0,0" VerticalAlignment="Top" Width="543"/>
+        <Label x:Name="lblTotalsInfo" Content="" HorizontalAlignment="Left" Height="31" Margin="132,10,0,0" VerticalAlignment="Top" Width="197"/>
         <Button x:Name="btnOpenOrig" Content="Original" HorizontalAlignment="Left" Height="31" Margin="10,39,0,0" Grid.Row="1" VerticalAlignment="Top" Width="78" Click="btnOpenOrig_Click"/>
         <Button x:Name="btnOpenArchive" Content="Archive" HorizontalAlignment="Left" Height="31" Margin="10,75,0,0" Grid.Row="1" VerticalAlignment="Top" Width="78" Click="btnOpenArchive_Click"/>
         <Button x:Name="btnOpenFiled" Content="Filed" HorizontalAlignment="Left" Height="31" Margin="10,145,0,0" Grid.Row="1" VerticalAlignment="Top" Width="78" Click="btnOpenFiled_Click"/>
+        <ComboBox x:Name="comboListView" HorizontalAlignment="Left" Height="30" Margin="10,11,0,0" VerticalAlignment="Top" Width="117" SelectedIndex="0">
+            <ComboBoxItem Tag="filed">Filed</ComboBoxItem>
+            <ComboBoxItem Tag="filedNotFound">Filed-NotFound</ComboBoxItem>
+            <ComboBoxItem Tag="all">All</ComboBoxItem>
+        </ComboBox>
+        <Button x:Name="btnNext" Content="Next" HorizontalAlignment="Left" Height="31" Margin="457,10,0,0" VerticalAlignment="Top" Width="57" Click="btnNext_Click"/>
 
     </Grid>
 </Window>
