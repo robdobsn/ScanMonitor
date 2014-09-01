@@ -246,4 +246,14 @@ namespace ScanMonitorApp
         public string text { get; set; }
         public DocRectangle bounds { get; set; }
     }
+
+    public class ExistingFileInfoRec
+    {
+        public ObjectId Id;
+        public string filename;
+        public byte[] md5Hash;
+        public long fileLength;
+    }
+
+
 }

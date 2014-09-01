@@ -87,6 +87,9 @@ namespace ScanMonitorApp
             collection_spages.EnsureIndex(new IndexKeysBuilder().Ascending("uniqName"), IndexOptions.SetUnique(true));
             MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
             collection_fdinfo.EnsureIndex(new IndexKeysBuilder().Ascending("uniqName"), IndexOptions.SetUnique(true));
+            MongoCollection<ExistingFileInfoRec> collection_existingFiles = GetExistingFileInfoCollection();
+            collection_existingFiles.EnsureIndex(new IndexKeysBuilder().Ascending("filename"), IndexOptions.SetUnique(false));
+            collection_existingFiles.EnsureIndex(new IndexKeysBuilder().Ascending("md5Hash"), IndexOptions.SetUnique(false));
         }
 
         public bool CheckMongoConnection()
@@ -99,11 +102,7 @@ namespace ScanMonitorApp
 
                 // Check if record exists already
                 MongoCursor<ScanDocInfo> foundSdf = collection_sdinfo.Find(Query.EQ("uniqName", ""));
-                foreach (ScanDocInfo foundRec in foundSdf)
-                {
-                    bOk = true;
-                    break;
-                }
+                ScanDocInfo foundRec = foundSdf.First();
                 bOk = true;
             }
             catch (Exception excp)
@@ -135,6 +134,11 @@ namespace ScanMonitorApp
         public ScanDocAllInfo GetScanDocAllInfoCached(string uniqName)
         {
             return _scanDocInfoCache.GetScanDocAllInfo(uniqName);
+        }
+
+        public MongoClient GetMongoClient()
+        {
+            return _dbClient;
         }
 
         #endregion
@@ -380,6 +384,60 @@ namespace ScanMonitorApp
 
         #endregion
 
+        #region Existing File Hash Information
+
+        public MongoCollection<ExistingFileInfoRec> GetExistingFileInfoCollection()
+        {
+            var server = _dbClient.GetServer();
+            var database = server.GetDatabase(_scanConfig._dbNameForDocs); // the name of the database
+            return database.GetCollection<ExistingFileInfoRec>(_scanConfig._dbCollectionForExistingFiles);
+        }
+
+        public bool AddExistingFileRecToMongo(ExistingFileInfoRec infoRec)
+        {
+            // Mongo append
+            bool bOk = false;
+            try
+            {
+                MongoCollection<ExistingFileInfoRec> collection_existingFile = GetExistingFileInfoCollection();
+                WriteConcernResult rslt = collection_existingFile.Insert(infoRec);
+                bOk = rslt.Ok;
+                // Log it
+                //logger.Info("Added existing-file-info record for {0}", System.IO.Path.GetFileName(infoRec.filename));
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Cannot insert existing-file-info into {0} Coll... {1} for file {2} excp {3}",
+                            _scanConfig._dbNameForDocs, _scanConfig._dbCollectionForExistingFiles, infoRec.filename,
+                            excp.Message);
+            }
+            return bOk;
+        }
+
+        public void EmptyExistingFileRecDB()
+        {
+            try
+            {
+                MongoCollection<ExistingFileInfoRec> collection_existingFile = GetExistingFileInfoCollection();
+                collection_existingFile.Drop();
+                // Log it
+                logger.Info("Emptied existing file db");
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Cannot empty existing-file db");
+            }
+        }
+
+        public List<ExistingFileInfoRec> FindExistingFileRecsByHash(byte[] md5Hash)
+        {
+            MongoCollection<ExistingFileInfoRec> collection_existingFile = GetExistingFileInfoCollection();
+            List<ExistingFileInfoRec> efirList = collection_existingFile.Find(Query.EQ("md5Hash", md5Hash)).ToList();
+            return efirList;
+        }
+
+        #endregion
+
         #region Unfiled Document Handling
 
         public List<string> GetCopyOfUnfiledDocsList()
@@ -461,8 +519,21 @@ namespace ScanMonitorApp
 
         public bool CheckOkToFileDoc(string destDocPathAndFileName, out string rsltText)
         {
+            // Check for invalid strings
+            rsltText = "Dest folder invalid";
+            if (destDocPathAndFileName.Trim() == "")
+                return false;
+
             // Get folder
-            string destPathOnly = Path.GetDirectoryName(destDocPathAndFileName);
+            string destPathOnly = "";
+            try
+            {
+                destPathOnly = Path.GetDirectoryName(destDocPathAndFileName);
+            }
+            catch
+            {
+                return false;
+            }
 
             // Check folder exists
             if (!Directory.Exists(destPathOnly))
@@ -886,10 +957,10 @@ namespace ScanMonitorApp
             ScanDocInfo scanDocInfo = new ScanDocInfo(uniqName, totalNumPages, scanPages.scanPagesText.Count, fileDateTime, fileName.Replace('\\', '/'), false);
 
             // Add records to mongo databases
-            if (bAddToDocInfoDb)
-                AddDocInfoRecToMongo(scanDocInfo);
             if (bAddToDocPagesDb)
                 AddScanPagesRecToMongo(scanPages);
+            if (bAddToDocInfoDb)
+                AddDocInfoRecToMongo(scanDocInfo);
 
             // Request update to unfiled documents list
             _scanDocInfoCache.RequestUnfiledListUpdate();
@@ -1042,13 +1113,14 @@ namespace ScanMonitorApp
         public string _dbCollectionForDocInfo;
         public string _dbCollectionForDocPages;
         public string _dbCollectionForFiledDocs;
+        public string _dbCollectionForExistingFiles;
         public string _docAdminImgFolderBase;
         public int _maxPagesForImages = 0;
         public int _maxPagesForText = 0;
 
         public ScanDocHandlerConfig(string docAdminImgFolderBase,
                     int maxPagesForImages, int maxPagesForText, string dbNameForDocs, string dbCollectionForDocInfo, string dbCollectionForDocPages,
-                    string dbCollectionForFiledDocs)
+                    string dbCollectionForFiledDocs, string dbCollectionForExistingFiles)
         {
             _docAdminImgFolderBase = docAdminImgFolderBase;
             _maxPagesForImages = maxPagesForImages;
@@ -1057,6 +1129,7 @@ namespace ScanMonitorApp
             _dbCollectionForDocInfo = dbCollectionForDocInfo;
             _dbCollectionForDocPages = dbCollectionForDocPages;
             _dbCollectionForFiledDocs = dbCollectionForFiledDocs;
+            _dbCollectionForExistingFiles = dbCollectionForExistingFiles;
         }
     }
 }

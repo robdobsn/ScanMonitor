@@ -148,7 +148,7 @@ namespace ScanMonitorApp
         public void UpdateDocInfo(string uniqName)
         {
             ScanDocAllInfo allInfo = _scanDocHandler.GetScanDocAllInfoCached(uniqName);
-            if (allInfo != null)
+            if ((allInfo != null) && (allInfo.scanPages != null))
             {
                 DocTypeMatchResult matchRes = _docTypesMatcher.GetMatchingDocType(allInfo.scanPages, null);
                 lock (_lockForDocTypeListAccess)

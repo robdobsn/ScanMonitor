@@ -343,5 +343,30 @@ namespace ScanMonitorApp.Properties {
                 this["UnfiledDocListOrder"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("ExistingFileInfo")]
+        public string DbCollectionForExistingFiles {
+            get {
+                return ((string)(this["DbCollectionForExistingFiles"]));
+            }
+            set {
+                this["DbCollectionForExistingFiles"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Main\\RobAndJudyPersonal;\\\\MACALLAN\\Main\\Rob Business;\\\\MACALLAN\\Main\\j" +
+            "udyw\\driveg\\Marketry")]
+        public string FoldersToSearchForFiledDocs {
+            get {
+                return ((string)(this["FoldersToSearchForFiledDocs"]));
+            }
+            set {
+                this["FoldersToSearchForFiledDocs"] = value;
+            }
+        }
     }
 }

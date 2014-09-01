@@ -83,5 +83,11 @@
     <Setting Name="UnfiledDocListOrder" Type="System.String" Scope="User">
       <Value Profile="(Default)">docType</Value>
     </Setting>
+    <Setting Name="DbCollectionForExistingFiles" Type="System.String" Scope="User">
+      <Value Profile="(Default)">ExistingFileInfo</Value>
+    </Setting>
+    <Setting Name="FoldersToSearchForFiledDocs" Type="System.String" Scope="User">
+      <Value Profile="(Default)">\\MACALLAN\Main\RobAndJudyPersonal;\\MACALLAN\Main\Rob Business;\\MACALLAN\Main\judyw\driveg\Marketry</Value>
+    </Setting>
   </Settings>
 </SettingsFile>
