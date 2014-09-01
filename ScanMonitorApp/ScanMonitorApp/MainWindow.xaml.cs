@@ -24,6 +24,8 @@ using System.Net;
 using System.Collections.Specialized;
 using System.Web;
 using System.Threading;
+using System.Security.Cryptography;
+using MongoDB.Driver;
 
 namespace ScanMonitorApp
 {
@@ -33,7 +35,8 @@ namespace ScanMonitorApp
     public partial class MainWindow : MetroWindow
     {
         private const bool TEST_MODE = false;
-        BackgroundWorker _bwThread;
+        BackgroundWorker _bwThread_forAuditLoading;
+        BackgroundWorker _bwThread_forFileHashCreation = null;
 
 //        private List<string> foldersToMonitor = new List<string> { Properties.Settings.Default.FoldersToMonitor };
 
@@ -43,7 +46,8 @@ namespace ScanMonitorApp
             Properties.Settings.Default.DbNameForDocs,
             Properties.Settings.Default.DbCollectionForDocInfo,
             Properties.Settings.Default.DbCollectionForDocPages,
-            Properties.Settings.Default.DbCollectionForFiledDocs
+            Properties.Settings.Default.DbCollectionForFiledDocs,
+            Properties.Settings.Default.DbCollectionForExistingFiles
             );
 
         private static Logger logger = LogManager.GetCurrentClassLogger();
@@ -281,12 +285,12 @@ namespace ScanMonitorApp
                 string filename = dlg.FileName;
 
                 // Matcher thread
-                _bwThread = new BackgroundWorker();
-                _bwThread.WorkerSupportsCancellation = false;
-                _bwThread.WorkerReportsProgress = false;
-                _bwThread.DoWork += new DoWorkEventHandler(LoadAuditFileToDb_DoWork);
-                _bwThread.RunWorkerCompleted += new RunWorkerCompletedEventHandler(LoadAuditFileToDb_RunWorkerCompleted);
-                _bwThread.RunWorkerAsync(filename);
+                _bwThread_forAuditLoading = new BackgroundWorker();
+                _bwThread_forAuditLoading.WorkerSupportsCancellation = false;
+                _bwThread_forAuditLoading.WorkerReportsProgress = false;
+                _bwThread_forAuditLoading.DoWork += new DoWorkEventHandler(LoadAuditFileToDb_DoWork);
+                _bwThread_forAuditLoading.RunWorkerCompleted += new RunWorkerCompletedEventHandler(LoadAuditFileToDb_RunWorkerCompleted);
+                _bwThread_forAuditLoading.RunWorkerAsync(filename);
                 butAddOldLogRecs.IsEnabled = false;
             }
         }
@@ -324,6 +328,164 @@ namespace ScanMonitorApp
             Thread.Sleep(2000);
             DocFilingView dfv = new DocFilingView(_scanDocHandler, _docTypesMatcher);
             dfv.ShowDialog();
+        }
+
+        private void AddFileToDb(string filename, byte[] md5Hash, long fileLength)
+        {
+            ExistingFileInfoRec ir = new ExistingFileInfoRec();
+            ir.filename = filename;
+            ir.md5Hash = md5Hash;
+            ir.fileLength = fileLength;
+            _scanDocHandler.AddExistingFileRecToMongo(ir);
+        }
+
+        string[] fileFilters = new string[] { "*.pdf", "*.jpg", "*.png" };
+
+        private void RecurseFoldersAddingFilesToDb(string startingFolder, BackgroundWorker worker, DoWorkEventArgs e, int totalNumFilesEstimate, ref int filesAdded)
+        {
+            try
+            {
+                if (!Directory.Exists(startingFolder))
+                    return;
+                foreach (string fileFilter in fileFilters)
+                {
+                    foreach (string f in Directory.GetFiles(startingFolder, fileFilter))
+                    {
+                        // Check for cancel
+                        if ((worker.CancellationPending == true))
+                        {
+                            e.Cancel = true;
+                            object[] rslt = {"Cancelled", filesAdded} ;
+                            e.Result = rslt;
+                            return;
+                        }
+                        using (var md5 = MD5.Create())
+                        {
+                            using (var stream = File.OpenRead(f))
+                            {
+                                AddFileToDb(f, md5.ComputeHash(stream), stream.Length);
+                                filesAdded++;
+                            }
+                        }
+                    }
+                }
+                foreach (string d in Directory.GetDirectories(startingFolder))
+                {
+                    RecurseFoldersAddingFilesToDb(d, worker, e, totalNumFilesEstimate, ref filesAdded);
+                    worker.ReportProgress((int)(5 + (filesAdded * 95 / totalNumFilesEstimate)));
+                    if ((worker.CancellationPending == true))
+                    {
+                        e.Cancel = true;
+                        object[] rslt = { "Cancelled", filesAdded };
+                        return;
+                    }
+                }
+            }
+            catch (System.Exception excpt)
+            {
+                logger.Error("Failed to create MD5 {0}", excpt.Message);
+                object[] rslt = { "Error - check log", filesAdded };
+                e.Result = rslt;
+            }
+            object[] finalRslt = { String.Format("Added {0} files", filesAdded), filesAdded };
+            e.Result = finalRslt;
+        }
+
+        private void EstimateNumFilesToAdd(string startingFolder, BackgroundWorker worker, DoWorkEventArgs e, ref int numFilesFound)
+        {
+            try
+            {
+                if (!Directory.Exists(startingFolder))
+                    return;
+                foreach (string fileFilter in fileFilters)
+                    numFilesFound += Directory.GetFiles(startingFolder, fileFilter).Length;
+                foreach (string d in Directory.GetDirectories(startingFolder))
+                {
+                    EstimateNumFilesToAdd(d, worker, e, ref numFilesFound);
+                    if ((worker.CancellationPending == true))
+                    {
+                        e.Cancel = true;
+                        e.Result = "Cancelled";
+                        return;
+                    }
+                }
+            }
+            catch (System.Exception excpt)
+            {
+                logger.Error("Error estimating number of files already filed", excpt.Message);
+                e.Result = "Error - check log";
+            }
+        }
+
+        private void butRecomputeMD5_Click(object sender, RoutedEventArgs e)
+        {
+            if ((_bwThread_forFileHashCreation != null) && (_bwThread_forFileHashCreation.IsBusy))
+            {
+                if (butRecomputeMD5.Content.ToString().ToLower().Contains("cancel"))
+                {
+                    _bwThread_forAuditLoading.CancelAsync();
+                    hashCreateStatus.Content = "Cancelling...";
+                }
+                return;
+            }
+
+            // Go through all folders in the filing area and compute MD5 hashes for them
+            // Matcher thread
+            _bwThread_forFileHashCreation = new BackgroundWorker();
+            _bwThread_forFileHashCreation.WorkerSupportsCancellation = true;
+            _bwThread_forFileHashCreation.WorkerReportsProgress = true;
+            _bwThread_forFileHashCreation.DoWork += new DoWorkEventHandler(FileHashCreation_DoWork);
+            _bwThread_forFileHashCreation.RunWorkerCompleted += new RunWorkerCompletedEventHandler(FileHashCreation_RunWorkerCompleted);
+            _bwThread_forFileHashCreation.ProgressChanged += new ProgressChangedEventHandler(FileHashCreation_ProgressChanged);
+            _bwThread_forFileHashCreation.RunWorkerAsync(Properties.Settings.Default.FoldersToSearchForFiledDocs);
+
+            // Change button to cancel
+            butRecomputeMD5.Content = "Cancel MD5";
+            hashCreateStatus.Content = "Busy...";
+        }
+
+        private void FileHashCreation_DoWork(object sender, DoWorkEventArgs e)
+        {
+            string startFolders = (string)e.Argument;
+            string[] startFolderList = startFolders.Split(';');
+            BackgroundWorker worker = sender as BackgroundWorker;
+
+            // Empty database initially
+            _scanDocHandler.EmptyExistingFileRecDB();
+
+            // Process
+            int numFilesFound = 0;
+            int folderIdx = 0;
+            foreach (string startFolder in startFolderList)
+            {
+                worker.ReportProgress((int)((folderIdx+1) * 5 / startFolderList.Length));
+                EstimateNumFilesToAdd(startFolder, worker, e, ref numFilesFound);
+                folderIdx++;
+            }
+
+            int filesAdded = 0;
+            foreach (string startFolder in startFolderList)
+            {
+                RecurseFoldersAddingFilesToDb(startFolder, worker, e, numFilesFound, ref filesAdded);
+                if (e.Cancel)
+                    break;
+            }
+        }
+
+        private void FileHashCreation_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            progBar.Value = (e.ProgressPercentage);
+        }        
+
+        private void FileHashCreation_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            object[] rslt = (object[])e.Result;
+            string rsltMessage = (string)rslt[0];
+            int rsltFilesAdded = (int)rslt[1];
+            hashCreateStatus.Content = rsltMessage;
+
+            progBar.Value = (100);
+            butRecomputeMD5.Content = "Recompute MD5";
         }
 
     }
