@@ -621,16 +621,16 @@ namespace ScanMonitorApp
             }
 
             // Replace datetime strings
-            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)\\", @"[year]\");  // replace if occurs as end of folder name
-            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)$", @"[year]");       // replace if occurs at end of path name
-            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)\-(0[123456789]|1[012])\\", @"[year-month]\");
-            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)\-(0[123456789]|1[012])$", @"[year-month]");
-            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)\ Q[1-4]\\", @"[year-qtr]\");
-            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)\ Q[1-4]$", @"[year-qtr]");
-            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)\ F[1-4]\\", @"[year-fqtr]\");
-            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)\ F[1-4]$", @"[year-fqtr]");
-            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)-(19[6789]\d|20[01234]\d)\\", @"[finyear]\");
-            folderName = Regex.Replace(folderName, @"(19[6789]\d|20[01234]\d)-(19[6789]\d|20[01234]\d)$", @"[finyear]");
+            folderName = Regex.Replace(folderName, @"[\\\s](19[6789]\d|20[01234]\d)\\", @"[year]\");  // replace if occurs as end of folder name
+            folderName = Regex.Replace(folderName, @"[\\\s](19[6789]\d|20[01234]\d)$", @"[year]");       // replace if occurs at end of path name
+            folderName = Regex.Replace(folderName, @"[\\\s](19[6789]\d|20[01234]\d)\-(0[123456789]|1[012])\\", @"[year-month]\");
+            folderName = Regex.Replace(folderName, @"[\\\s](19[6789]\d|20[01234]\d)\-(0[123456789]|1[012])$", @"[year-month]");
+            folderName = Regex.Replace(folderName, @"[\\\s](19[6789]\d|20[01234]\d)\ Q[1-4]\\", @"[year-qtr]\");
+            folderName = Regex.Replace(folderName, @"[\\\s](19[6789]\d|20[01234]\d)\ Q[1-4]$", @"[year-qtr]");
+            folderName = Regex.Replace(folderName, @"[\\\s](19[6789]\d|20[01234]\d)\ F[1-4]\\", @"[year-fqtr]\");
+            folderName = Regex.Replace(folderName, @"[\\\s](19[6789]\d|20[01234]\d)\ F[1-4]$", @"[year-fqtr]");
+            folderName = Regex.Replace(folderName, @"[\\\s](19[6789]\d|20[01234]\d)-(19[6789]\d|20[01234]\d)\\", @"[finyear]\");
+            folderName = Regex.Replace(folderName, @"[\\\s](19[6789]\d|20[01234]\d)-(19[6789]\d|20[01234]\d)$", @"[finyear]");
 
             return folderName;
         }
