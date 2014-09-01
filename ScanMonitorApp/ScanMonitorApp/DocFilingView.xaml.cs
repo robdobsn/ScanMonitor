@@ -194,8 +194,8 @@ namespace ScanMonitorApp
 
             // Show doc type
             string docTypeNameStr = (_curSelectedDocType == null) ? "" : _curSelectedDocType.docTypeName;
-            if (((string)lblDocTypeName.Content) != docTypeNameStr)
-                lblDocTypeName.Content = docTypeNameStr;
+            if (txtDocTypeName.Text != docTypeNameStr)
+                txtDocTypeName.Text = docTypeNameStr;
 
             // Field enables
             SetFieldEnable(txtDestFilePrefix, false);
@@ -597,7 +597,7 @@ namespace ScanMonitorApp
 
         private void btnPrefixErase_Click(object sender, RoutedEventArgs e)
         {
-            txtDestFilePrefix.Text = "";
+            txtDestFilePrefix.Text = (_curSelectedDocType == null) ? "" : _curSelectedDocType.GetFileNamePrefix();
         }
 
         private void btnChangePrefix_Click(object sender, RoutedEventArgs e)
@@ -780,12 +780,11 @@ namespace ScanMonitorApp
 
         private void btnShowMoveToFolder_Click(object sender, RoutedEventArgs e)
         {
-            if (_curSelectedDocType == null)
-                return;
-
             // Check what path to use
             bool pathContainsMacros = false;
             string destPath = GetFilingPath(ref pathContainsMacros);
+            if (destPath == "")
+                destPath = Properties.Settings.Default.BasePathForFilingFolderSelection.Trim();
 
             CommonOpenFileDialog cofd = new CommonOpenFileDialog("Folder for filing");
             cofd.IsFolderPicker = true;
@@ -797,17 +796,8 @@ namespace ScanMonitorApp
             if (result == CommonFileDialogResult.Ok)
             {
                 string folderName = cofd.FileName;
-                // If the folder for this doctype was the base folder then accept the change
-                if (_curSelectedDocType.moveFileToPath.Trim() != Properties.Settings.Default.BasePathForFilingFolderSelection.Trim())
-                {
-                    // Ask the user if they are sure
-//                    MessageDialog.MsgDlgRslt rslt = MessageDialog.Show("File to " + folderName + " ?\n" + "Are you sure?", "Yes", "No", "Cancel", btnShowMoveToFolder, this);
-//                    if (rslt == MessageDialog.MsgDlgRslt.RSLT_YES)
-//                    {
-                        _overrideFolderForFiling = folderName;
-                        btnMoveToUndo.IsEnabled = true;
-//                    }
-                }
+                _overrideFolderForFiling = folderName;
+                btnMoveToUndo.IsEnabled = true;
             }
             ShowFilingPath();
         }
@@ -1037,11 +1027,21 @@ namespace ScanMonitorApp
                 return;
 
             // Check a doc type has been selected
+            bool quickDocTypeMode = false;
             if (_curSelectedDocType == null)
             {
-                lblStatusBarProcStatus.Content = "A document type must be selected";
-                lblStatusBarProcStatus.Foreground = Brushes.Red;
-                return;
+                if (txtDocTypeName.Text.Trim() == "")
+                {
+                    lblStatusBarProcStatus.Content = "A document type must be selected";
+                    lblStatusBarProcStatus.Foreground = Brushes.Red;
+                    return;
+                }
+                quickDocTypeMode = true;
+            }
+            else
+            {
+                if ((txtDocTypeName.IsEnabled) && (txtDocTypeName.Text != _curSelectedDocType.docTypeName))
+                    quickDocTypeMode = true;
             }
 
             // Check validity
@@ -1104,10 +1104,49 @@ namespace ScanMonitorApp
                 }
             }
 
+            // If in quick doc type mode check that the doc type is valid
+            string fileAsDocTypeName = "";
+            if (quickDocTypeMode)
+            {
+                fileAsDocTypeName = txtDocTypeName.Text.Trim();
+                // Ensure doc type contains a dash
+                if (!fileAsDocTypeName.Contains("-"))
+                {
+                    MessageBoxButton btnMessageBox = MessageBoxButton.OK;
+                    MessageBoxImage icnMessageBox = MessageBoxImage.Information;
+                    MessageBoxResult rsltMessageBox = MessageBox.Show("Document Type name should be in a 'MasterType - SubType' format", "Quick DocType Problem", btnMessageBox, icnMessageBox);
+                    return;
+                }
+                // Ensure the new name is unique
+                DocType testDocType = _docTypesMatcher.GetDocType(fileAsDocTypeName);
+                if (testDocType != null)
+                {
+                    MessageBoxButton btnMessageBox = MessageBoxButton.OK;
+                    MessageBoxImage icnMessageBox = MessageBoxImage.Information;
+                    MessageBoxResult rsltMessageBox = MessageBox.Show("There is already a Document Type with this name", "Quick DocType Problem", btnMessageBox, icnMessageBox);
+                    return;
+                }
+
+                // Create the new doctype
+                DocType docType = new DocType();
+                docType.docTypeName = fileAsDocTypeName;
+                docType.isEnabled = true;
+                docType.matchExpression = "";
+                docType.dateExpression = "";
+                docType.moveFileToPath = _docTypesMatcher.ComputeMinimalPath(System.IO.Path.GetDirectoryName(fullPathAndFileNameForFilingTo));
+                string defaultRenameToContents = Properties.Settings.Default.DefaultRenameTo;
+                docType.renameFileTo = defaultRenameToContents;
+                _docTypesMatcher.AddOrUpdateDocTypeRecInDb(docType);
+                _scanDocHandler.DocTypeAddedOrChanged(docType.docTypeName);
+            }
+            else
+            {
+                fileAsDocTypeName = _curSelectedDocType.docTypeName;
+            }
+
             // Set the filing information
-            fdi.SetDocFilingInfo(_curSelectedDocType.docTypeName, fullPathAndFileNameForFilingTo, GetDateFromRollers(), txtMoneySum.Text, followUpStr,
-                        addToCalendarStr, txtEventName.Text, selectedDateTime, eventDuration, txtEventDesc.Text, txtEventLocn.Text, 
-                        flagAttachFile);
+            fdi.SetDocFilingInfo(fileAsDocTypeName, fullPathAndFileNameForFilingTo, GetDateFromRollers(), txtMoneySum.Text, followUpStr,
+                        addToCalendarStr, txtEventName.Text, selectedDateTime, eventDuration, txtEventDesc.Text, txtEventLocn.Text, flagAttachFile);
 
             // Start filing the document
             lblStatusBarProcStatus.Content = "Processing ...";
@@ -1336,9 +1375,10 @@ namespace ScanMonitorApp
 
         private void DisplayDestFileName()
         {
-            if ((_curDocScanDocInfo != null) && (_curSelectedDocType != null))
+            if (_curDocScanDocInfo != null)
             {
-                string dfn = ScanDocHandler.FormatFileNameFromMacros(_curDocScanDocInfo.origFileName, _curSelectedDocType.renameFileTo, GetDateFromRollers(), txtDestFilePrefix.Text, txtDestFileSuffix.Text, _curSelectedDocType.docTypeName);
+                string docFormat = (_curSelectedDocType == null) ? "" : _curSelectedDocType.renameFileTo;
+                string dfn = ScanDocHandler.FormatFileNameFromMacros(_curDocScanDocInfo.origFileName, docFormat, GetDateFromRollers(), txtDestFilePrefix.Text, txtDestFileSuffix.Text, txtDocTypeName.Text.Trim());
                 if (((string)lblDestFileName.Content) != dfn) 
                     lblDestFileName.Content = dfn;
             }
@@ -1422,14 +1462,15 @@ namespace ScanMonitorApp
 
             // Check whether to use overridden path or not
             string destPath = "";
-            if (_curSelectedDocType != null)
+            if (_overrideFolderForFiling.Trim() != "")
             {
-                if (_overrideFolderForFiling.Trim() != "")
-                    destPath = _overrideFolderForFiling.Trim();
-                else
+                destPath = _overrideFolderForFiling.Trim();
+            }
+            else
+            {
+                if (_curSelectedDocType != null)
                     destPath = _docTypesMatcher.ComputeExpandedPath(_curSelectedDocType.moveFileToPath, GetDateFromRollers(), false, ref pathContainsMacros);
             }
-
             return destPath;
         }
 
@@ -1505,6 +1546,11 @@ namespace ScanMonitorApp
             sv.ShowDialog();
             if (Properties.Settings.Default.UnfiledDocListOrder != oldViewOrder)
                 ShowDocToBeFiled(_curDocToBeFiledIdxInList);
+        }
+
+        private void btnQuickDocType_Click(object sender, RoutedEventArgs e)
+        {
+            txtDocTypeName.IsEnabled = true;
         }
 
     }
