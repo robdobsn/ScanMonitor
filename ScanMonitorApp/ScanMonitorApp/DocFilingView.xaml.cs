@@ -51,6 +51,10 @@ namespace ScanMonitorApp
         private System.Windows.Threading.DispatcherTimer _timerForNewDocumentCheck;
         private string _overrideFolderForFiling = "";
         private int _lastCountOfUnfiledDocs = 0;
+        private enum dateRollerChange
+        {
+            none, drc_dayPlus, drc_dayMinus, drc_monthPlus, drc_monthMinus, drc_yearPlus, drc_yearMinus
+        }
 
         #region Init
 
@@ -257,7 +261,7 @@ namespace ScanMonitorApp
             DateTime dateToUse = DateTime.Now;
             if (_latestMatchResult.docDate != DateTime.MinValue)
                 dateToUse = _latestMatchResult.docDate;
-            SetDateRollers(dateToUse.Year, dateToUse.Month, dateToUse.Day);
+            SetDateRollers(dateToUse.Year, dateToUse.Month, dateToUse.Day, dateRollerChange.none);
 
             // Show File number in list
             SetLabelContent(lblStatusBarFileNo, (_curDocToBeFiledIdxInList + 1).ToString() + " / " +  _scanDocHandler.GetCountOfUnfiledDocs().ToString());
@@ -490,37 +494,37 @@ namespace ScanMonitorApp
         private void btnDayUp_Click(object sender, RoutedEventArgs e)
         {
             DateTime dt = GetDateFromRollers();
-            SetDateRollers(dt.Year, dt.Month, dt.Day+1);
+            SetDateRollers(dt.Year, dt.Month, dt.Day+1, dateRollerChange.drc_dayPlus);
         }
 
         private void btnMonthUp_Click(object sender, RoutedEventArgs e)
         {
             DateTime dt = GetDateFromRollers();
-            SetDateRollers(dt.Year, dt.Month+1, dt.Day);
+            SetDateRollers(dt.Year, dt.Month + 1, dt.Day, dateRollerChange.drc_monthPlus);
         }
 
         private void btnYearUp_Click(object sender, RoutedEventArgs e)
         {
             DateTime dt = GetDateFromRollers();
-            SetDateRollers(dt.Year+1, dt.Month, dt.Day);
+            SetDateRollers(dt.Year + 1, dt.Month, dt.Day, dateRollerChange.drc_yearPlus);
         }
 
         private void btnDayDown_Click(object sender, RoutedEventArgs e)
         {
             DateTime dt = GetDateFromRollers();
-            SetDateRollers(dt.Year, dt.Month, dt.Day - 1);
+            SetDateRollers(dt.Year, dt.Month, dt.Day - 1, dateRollerChange.drc_dayMinus);
         }
 
         private void btnMonthDown_Click(object sender, RoutedEventArgs e)
         {
             DateTime dt = GetDateFromRollers();
-            SetDateRollers(dt.Year, dt.Month - 1, dt.Day);
+            SetDateRollers(dt.Year, dt.Month - 1, dt.Day, dateRollerChange.drc_monthMinus);
         }
 
         private void btnYearDown_Click(object sender, RoutedEventArgs e)
         {
             DateTime dt = GetDateFromRollers();
-            SetDateRollers(dt.Year - 1, dt.Month, dt.Day);
+            SetDateRollers(dt.Year - 1, dt.Month, dt.Day, dateRollerChange.drc_yearMinus);
         }
 
         private void btnPickDocType_Click(object sender, RoutedEventArgs e)
@@ -568,13 +572,13 @@ namespace ScanMonitorApp
         private void btnUseScanDate_Click(object sender, RoutedEventArgs e)
         {
             if (_curDocScanDocInfo != null)
-                SetDateRollers(_curDocScanDocInfo.createDate.Year, _curDocScanDocInfo.createDate.Month, _curDocScanDocInfo.createDate.Day);
+                SetDateRollers(_curDocScanDocInfo.createDate.Year, _curDocScanDocInfo.createDate.Month, _curDocScanDocInfo.createDate.Day, dateRollerChange.none);
         }
 
         private void btnLastUsedDate_Click(object sender, RoutedEventArgs e)
         {
             if (_lastDocFiledAsDateTime != null)
-                SetDateRollers(_lastDocFiledAsDateTime.Year, _lastDocFiledAsDateTime.Month, _lastDocFiledAsDateTime.Day);
+                SetDateRollers(_lastDocFiledAsDateTime.Year, _lastDocFiledAsDateTime.Month, _lastDocFiledAsDateTime.Day, dateRollerChange.none);
         }
 
         private void txtDestFilePrefix_TextChanged(object sender, TextChangedEventArgs e)
@@ -1256,7 +1260,7 @@ namespace ScanMonitorApp
                 if (extractedDates.Count > 0)
                 {
                     if (_touchFromPageText == TouchFromPageText.TOUCH_DATE)
-                        SetDateRollers(extractedDates[0].dateTime.Year, extractedDates[0].dateTime.Month, extractedDates[0].dateTime.Day);
+                        SetDateRollers(extractedDates[0].dateTime.Year, extractedDates[0].dateTime.Month, extractedDates[0].dateTime.Day, dateRollerChange.none);
                     else
                         datePickerEventDate.SelectedDate = new DateTime(extractedDates[0].dateTime.Year, extractedDates[0].dateTime.Month, extractedDates[0].dateTime.Day);
                 }
@@ -1402,20 +1406,36 @@ namespace ScanMonitorApp
             return dt;
         }
 
-        private void SetDateRollers(int year, int mon, int day)
+        private void SetDateRollers(int year, int mon, int day, dateRollerChange drc)
         {
             if (year > DateTime.MaxValue.Year)
                 year = DateTime.MaxValue.Year;
             if (year < DateTime.MinValue.Year)
                 year = DateTime.MinValue.Year;
             if (mon > 12)
+            {
                 mon = 12;
+                if (drc == dateRollerChange.drc_monthPlus)
+                    mon = 1;
+            }
             if (mon < 1)
+            {
                 mon = 1;
+                if (drc == dateRollerChange.drc_monthMinus)
+                    mon = 1;
+            }
             if (day > DateTime.DaysInMonth(year, mon))
+            {
                 day = DateTime.DaysInMonth(year, mon);
+                if (drc == dateRollerChange.drc_dayPlus)
+                    day = 1;
+            }
             if (day < 1)
+            {
                 day = 1;
+                if (drc == dateRollerChange.drc_dayMinus)
+                    day = DateTime.DaysInMonth(year, mon);
+            }
             DateTime dt = new DateTime(year, mon, day);
             if (lblDayVal.Text != day.ToString())
                 lblDayVal.Text = day.ToString();
