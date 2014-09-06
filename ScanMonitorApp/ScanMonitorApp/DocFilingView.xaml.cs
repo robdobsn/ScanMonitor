@@ -197,6 +197,7 @@ namespace ScanMonitorApp
                 _latestMatchResult.docDate = DateTime.MinValue;
 
             // Show doc type
+            txtDocTypeName.IsEnabled = false;
             string docTypeNameStr = (_curSelectedDocType == null) ? "" : _curSelectedDocType.docTypeName;
             if (txtDocTypeName.Text != docTypeNameStr)
                 txtDocTypeName.Text = docTypeNameStr;
@@ -204,7 +205,7 @@ namespace ScanMonitorApp
             // Field enables
             SetFieldEnable(txtDestFilePrefix, false);
             SetFieldEnable(btnChangePrefix, true);
-            string destFilePrefixStr = (_curSelectedDocType == null) ? "" : _curSelectedDocType.GetFileNamePrefix();
+            string destFilePrefixStr = (_curSelectedDocType == null) ? "" : DocType.GetFileNamePrefix(_curSelectedDocType.docTypeName);
             if (txtDestFilePrefix.Text != destFilePrefixStr)
                 txtDestFilePrefix.Text = destFilePrefixStr;
             if (txtDestFileSuffix.Text != "")
@@ -601,7 +602,7 @@ namespace ScanMonitorApp
 
         private void btnPrefixErase_Click(object sender, RoutedEventArgs e)
         {
-            txtDestFilePrefix.Text = (_curSelectedDocType == null) ? "" : _curSelectedDocType.GetFileNamePrefix();
+            txtDestFilePrefix.Text = (_curSelectedDocType == null) ? "" : DocType.GetFileNamePrefix(_curSelectedDocType.docTypeName);
         }
 
         private void btnChangePrefix_Click(object sender, RoutedEventArgs e)
@@ -1021,6 +1022,22 @@ namespace ScanMonitorApp
 
         #region Handle processing of the document
 
+        private bool isQuickDocTypeMode()
+        {
+            bool quickDocTypeMode = false;
+            if (_curSelectedDocType == null)
+            {
+                quickDocTypeMode = true;
+            }
+            else
+            {
+                if ((txtDocTypeName.IsEnabled) && (txtDocTypeName.Text != _curSelectedDocType.docTypeName))
+                    quickDocTypeMode = true;
+            }
+
+            return quickDocTypeMode;
+        }
+
         private void btnProcessDoc_Click(object sender, RoutedEventArgs e)
         {
             if (_curDocScanDocInfo == null)
@@ -1031,21 +1048,12 @@ namespace ScanMonitorApp
                 return;
 
             // Check a doc type has been selected
-            bool quickDocTypeMode = false;
-            if (_curSelectedDocType == null)
+            bool quickDocTypeMode = isQuickDocTypeMode();
+            if (txtDocTypeName.Text.Trim() == "")
             {
-                if (txtDocTypeName.Text.Trim() == "")
-                {
-                    lblStatusBarProcStatus.Content = "A document type must be selected";
-                    lblStatusBarProcStatus.Foreground = Brushes.Red;
-                    return;
-                }
-                quickDocTypeMode = true;
-            }
-            else
-            {
-                if ((txtDocTypeName.IsEnabled) && (txtDocTypeName.Text != _curSelectedDocType.docTypeName))
-                    quickDocTypeMode = true;
+                lblStatusBarProcStatus.Content = "A document type must be selected";
+                lblStatusBarProcStatus.Foreground = Brushes.Red;
+                return;
             }
 
             // Check validity
@@ -1381,7 +1389,7 @@ namespace ScanMonitorApp
         {
             if (_curDocScanDocInfo != null)
             {
-                string docFormat = (_curSelectedDocType == null) ? "" : _curSelectedDocType.renameFileTo;
+                string docFormat = ((_curSelectedDocType == null) || isQuickDocTypeMode()) ? "" : _curSelectedDocType.renameFileTo;
                 string dfn = ScanDocHandler.FormatFileNameFromMacros(_curDocScanDocInfo.origFileName, docFormat, GetDateFromRollers(), txtDestFilePrefix.Text, txtDestFileSuffix.Text, txtDocTypeName.Text.Trim());
                 if (((string)lblDestFileName.Content) != dfn) 
                     lblDestFileName.Content = dfn;
@@ -1571,6 +1579,15 @@ namespace ScanMonitorApp
         private void btnQuickDocType_Click(object sender, RoutedEventArgs e)
         {
             txtDocTypeName.IsEnabled = true;
+
+        }
+
+        private void txtDocTypeName_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (isQuickDocTypeMode() && !txtDestFilePrefix.IsEnabled)
+            {
+                txtDestFilePrefix.Text = DocType.GetFileNamePrefix(txtDocTypeName.Text);
+            }
         }
 
     }

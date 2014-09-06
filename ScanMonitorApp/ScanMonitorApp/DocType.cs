@@ -37,7 +37,7 @@ namespace ScanMonitorApp
             previousName = prevDocType.docTypeName;
             renamedTo = "";
         }
-        public string GetFileNamePrefix()
+        public static string GetFileNamePrefix(string docTypeName)
         {
             string rtn = docTypeName;
             int pos = docTypeName.IndexOf('-');
