@@ -348,6 +348,8 @@ namespace ScanMonitorApp
             stopWatch1.Start();
 #endif
             bool result = false;
+            if (scanPages == null)
+                return result;
             int elemCount = 0;
             for (int pageIdx = 0; pageIdx < scanPages.scanPagesText.Count; pageIdx++)
             {
