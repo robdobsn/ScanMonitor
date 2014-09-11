@@ -67,6 +67,7 @@
             <Button x:Name="btnRenameDocType" Content="Rename" HorizontalAlignment="Left" Height="21" Margin="75,0,0,0" VerticalAlignment="Top" Width="60" Click="btnRenameDocType_Click" IsEnabled="False"/>
             <Button x:Name="btnNewDocType" Content="New" HorizontalAlignment="Left" Height="21" Margin="140,0,0,0" VerticalAlignment="Top" Width="60" Click="btnNewDocType_Click"/>
             <Button x:Name="btnCloneDocType" Content="Clone" HorizontalAlignment="Left" Height="21" Margin="205,0,0,0" VerticalAlignment="Top" Width="60" Click="btnCloneDocType_Click"/>
+            <Button x:Name="btnDeleteDocType" Content="Delete" HorizontalAlignment="Left" Height="21" Margin="270,0,0,0" VerticalAlignment="Top" Width="60" Click="btnDeleteDocType_Click"/>
             <Image x:Name="imgDocThumbnail" Grid.Column="1" Height="189" Margin="5,32,0,0" VerticalAlignment="Top" Source="res/NoThumbnail.png">
                 <Image.ContextMenu>
                     <ContextMenu>

@@ -1039,6 +1039,56 @@ namespace ScanMonitorApp
             btnClearThumbail.IsEnabled = true;
         }
 
+        private void btnDeleteDocType_Click(object sender, RoutedEventArgs e)
+        {
+            // Check a doc type is selected
+            if (_selectedDocType == null)
+                return;
+            // Check if doc type is in use
+            bool foundADocFiledAsThisType = false;
+            using (new WaitCursor())
+            {
+                List<FiledDocInfo> fdiList = _scanDocHandler.GetListOfFiledDocs();
+                foreach (FiledDocInfo fdi in fdiList)
+                {
+                    if (fdi.filedAs_docType == _selectedDocType.docTypeName)
+                    {
+                        foundADocFiledAsThisType = true;
+                        break;
+                    }
+                }
+            }
+            if (foundADocFiledAsThisType)
+            {
+                MessageBoxButton btnMessageBox = MessageBoxButton.OK;
+                MessageBoxImage icnMessageBox = MessageBoxImage.Information;
+                MessageBoxResult rsltMessageBox = MessageBox.Show("One or more docs have been filed with this document type.\nSo it cannot be deleted but can be renamed.", "Cannot Delete DocType", btnMessageBox, icnMessageBox);
+                return;
+            }
+
+            MessageBoxButton btn1MessageBox = MessageBoxButton.YesNo;
+            MessageBoxImage icn1MessageBox = MessageBoxImage.Information;
+            MessageBoxResult rslt1MessageBox = MessageBox.Show("Delete document type " + _selectedDocType.docTypeName + "\nAre you sure?", "Delete DocType", btn1MessageBox , icn1MessageBox);
+            if (rslt1MessageBox == MessageBoxResult.No)
+                return;
+
+            // Delete the doc type
+            if (_docTypesMatcher.DeleteDocType(_selectedDocType.docTypeName))
+            {
+                MessageBoxButton btnMessageBox = MessageBoxButton.OK;
+                MessageBoxImage icnMessageBox = MessageBoxImage.Information;
+                MessageBoxResult rsltMessageBox = MessageBox.Show("Doc type " + _selectedDocType.docTypeName + " deleted.", "DocType Deleted", btnMessageBox, icnMessageBox);
+                // Reload the form 
+                ShowDocTypeList("", null, null);
+            }
+            else
+            {
+                MessageBoxButton btnMessageBox = MessageBoxButton.OK;
+                MessageBoxImage icnMessageBox = MessageBoxImage.Information;
+                MessageBoxResult rsltMessageBox = MessageBox.Show("Failed to delete Doc type " + _selectedDocType.docTypeName, "Failed to delete DocType", btnMessageBox, icnMessageBox);
+            }
+        }
+
         private void btnSaveTypeChanges_Click(object sender, RoutedEventArgs e)
         {
             // Remember doctype name to go back to after save

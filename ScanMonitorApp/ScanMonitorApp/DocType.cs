@@ -40,9 +40,9 @@ namespace ScanMonitorApp
         public static string GetFileNamePrefix(string docTypeName)
         {
             string rtn = docTypeName;
-            int pos = docTypeName.IndexOf('-');
-            if ((pos >= 0) && (pos+1 < docTypeName.Length))
-                rtn = docTypeName.Substring(pos+1);
+            int pos = docTypeName.IndexOf(" - ");
+            if ((pos >= 0) && (pos+3 < docTypeName.Length))
+                rtn = docTypeName.Substring(pos+3);
             return rtn.Trim();
         }
 

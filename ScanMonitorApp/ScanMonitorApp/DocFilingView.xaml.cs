@@ -889,6 +889,7 @@ namespace ScanMonitorApp
             btnDocTypeSelContextMenu.Items.Clear();
 
             // Reload menu
+            const int MAX_MENU_LEVELS = 6;
             List<string> docTypeStrings = new List<string>();
             List<DocType> docTypeList = _docTypesMatcher.ListDocTypes();
             foreach (DocType dt in docTypeList)
@@ -898,35 +899,52 @@ namespace ScanMonitorApp
                 docTypeStrings.Add(dt.docTypeName);
             }
             docTypeStrings.Sort();
-            string curHead = "";
-            MenuItem curMenuItem = null;
+            string[] prevMenuStrs = null;
+            MenuItem[] prevMenuItems = new MenuItem[MAX_MENU_LEVELS];
             foreach (string docTypeString in docTypeStrings)
             {
-                string[] elemsS = docTypeString.Split('-');
-                if (elemsS.Length <= 0)
+                string[] elemsS = docTypeString.Split(new string[] { " - " }, StringSplitOptions.RemoveEmptyEntries);
+                if ((elemsS.Length <= 0) || (elemsS.Length > MAX_MENU_LEVELS))
                     continue;
-                string hdrStr = elemsS[0].Trim();
-                if (curHead.ToLower() != hdrStr.ToLower())
+                for (int i = 0; i < elemsS.Length; i++)
+                    elemsS[i] = elemsS[i].Trim();
+                int reqMenuLev = -1;
+                for (int menuLev = 0; menuLev < elemsS.Length; menuLev++)
                 {
-                    if (curMenuItem != null)
-                        btnDocTypeSelContextMenu.Items.Add(curMenuItem);
-                    curMenuItem = new MenuItem();
-                    curMenuItem.Header = hdrStr;
-                    curHead = hdrStr;
+                    if ((prevMenuStrs == null) || (menuLev >= prevMenuStrs.Length))
+                    {
+                        reqMenuLev = menuLev;
+                        break;
+                    }
+                    if (prevMenuStrs[menuLev] != elemsS[menuLev])
+                    {
+                        reqMenuLev = menuLev;
+                        break;
+                    }
                 }
-                MenuItem subItem = new MenuItem();
-                if (elemsS.Length < 2)
-                    subItem.Header = hdrStr;
-                else
-                    subItem.Header = elemsS[1].Trim();
-                subItem.Tag = docTypeString;
-                subItem.Click += DocTypeSubMenuItem_Click;
-                curMenuItem.Items.Add(subItem);
+                // Check if identical to previous type - discard if so
+                if (reqMenuLev == -1)
+                    continue;
+                // Create new menu items
+                for (int createLev = reqMenuLev; createLev < elemsS.Length; createLev++)
+                {
+                    MenuItem newMenuItem = new MenuItem();
+                    newMenuItem.Header = elemsS[createLev];
+                    if (createLev == elemsS.Length - 1)
+                    {
+                        newMenuItem.Tag = docTypeString;
+                        newMenuItem.Click += DocTypeSubMenuItem_Click;
+                    }
+                    // Add the menu item to the appropriate level
+                    if (createLev == 0)
+                        btnDocTypeSelContextMenu.Items.Add(newMenuItem);
+                    else
+                        prevMenuItems[createLev - 1].Items.Add(newMenuItem);
+                    prevMenuItems[createLev] = newMenuItem;
+                }
+                // Update lists
+                prevMenuStrs = elemsS;
             }
-            if (curMenuItem != null)
-                if (curMenuItem.Items.Count > 0)
-                    btnDocTypeSelContextMenu.Items.Add(curMenuItem);
-
             // Show menu
             if (!btnDocTypeSel.ContextMenu.IsOpen)
                 btnDocTypeSel.ContextMenu.IsOpen = true;
@@ -1461,27 +1479,6 @@ namespace ScanMonitorApp
             double tlx = 100 * x / img.ActualWidth;
             double tly = 100 * y / img.ActualHeight;
             return new Point(tlx, tly);
-        }
-
-        private class WaitCursor : IDisposable
-        {
-            private Cursor _previousCursor;
-
-            public WaitCursor()
-            {
-                _previousCursor = Mouse.OverrideCursor;
-
-                Mouse.OverrideCursor = Cursors.Wait;
-            }
-
-            #region IDisposable Members
-
-            public void Dispose()
-            {
-                Mouse.OverrideCursor = _previousCursor;
-            }
-
-            #endregion
         }
 
         private string GetFilingPath(ref bool pathContainsMacros)

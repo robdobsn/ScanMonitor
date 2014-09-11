@@ -54,6 +54,26 @@ namespace ScanMonitorApp
             return database.GetCollection<DocType>(Properties.Settings.Default.DbCollectionForDocTypes);
         }
 
+        public bool DeleteDocType(string docTypeName)
+        {
+            // Mongo delete
+            try
+            {
+                MongoCollection<DocType> collection_docTypes = GetDocTypesCollection();
+                collection_docTypes.Remove(Query.EQ("docTypeName", docTypeName));
+                // Log it
+                logger.Info("Deleted doctype {0}", docTypeName);
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Cannot delete doctype {0} Coll... {1} excp {2}",
+                            Properties.Settings.Default.DbNameForDocs, Properties.Settings.Default.DbCollectionForDocTypes,
+                            excp.Message);
+                return false;
+            }
+            return true;
+        }
+
         public DocTypeMatchResult GetMatchingDocType(ScanPages scanPages, List<DocTypeMatchResult> listOfPossibleMatches = null)
         {
             // Get list of types
