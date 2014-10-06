@@ -42,7 +42,7 @@ namespace ScanMonitorApp
 
         #region Init
 
-        public ScanDocHandler(ReportStatus reportStatusFn, DocTypesMatcher docTypesMatcher, ScanDocHandlerConfig scanConfig)
+        public ScanDocHandler(ReportStatus reportStatusFn, DocTypesMatcher docTypesMatcher, ScanDocHandlerConfig scanConfig, string dbConnectionStr)
         {
             _reportStatusFn = reportStatusFn;
             _docTypesMatcher = docTypesMatcher;
@@ -58,20 +58,19 @@ namespace ScanMonitorApp
             _fileProcessBkgndWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(FileProcessRunWorkerCompleted);
 
             // Init db
-            InitDatabase();
+            InitDatabase(dbConnectionStr);
         }
 
         #endregion
 
         #region Database Common Code
 
-        public void InitDatabase()
+        public void InitDatabase(string dbConnectionStr)
         {
             // Mongo init
             try
             {
-                var connectionString = Properties.Settings.Default.DbConnectionString;
-                _dbClient = new MongoClient(connectionString);
+                _dbClient = new MongoClient(dbConnectionStr);
             }
             catch (Exception excp)
             {

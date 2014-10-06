@@ -26,7 +26,7 @@
     <MapFileExtensions>true</MapFileExtensions>
     <CreateWebPageOnPublish>true</CreateWebPageOnPublish>
     <WebPage>publish.htm</WebPage>
-    <ApplicationRevision>37</ApplicationRevision>
+    <ApplicationRevision>39</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
@@ -145,6 +145,7 @@
     </Compile>
     <Compile Include="PdfRasterizer.cs" />
     <Compile Include="PdfTextAndLocExtractor.cs" />
+    <Compile Include="QuickNewDocType.xaml.cs" />
     <Compile Include="ScanDocInfoCache.cs" />
     <Compile Include="ScanDocInfo.cs" />
     <Compile Include="ScanDocHandler.cs" />
@@ -203,6 +204,10 @@
     <Page Include="PDFMovePageDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="QuickNewDocType.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
     <Page Include="SettingsView.xaml">
       <SubType>Designer</SubType>

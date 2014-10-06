@@ -32,6 +32,7 @@ namespace ScanMonitorApp
     /// </summary>
     public partial class DocFilingView : MetroWindow
     {
+        const bool USE_QUICK_DOC_MENU = false;
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private ScanDocHandler _scanDocHandler;
         private DocTypesMatcher _docTypesMatcher;
@@ -109,7 +110,8 @@ namespace ScanMonitorApp
             string uniqName = _scanDocHandler.GetUniqNameOfDocToBeFiled(docIdx);
 
             // Save docIdx and show doc
-            _curDocToBeFiledIdxInList = docIdx;
+            if (uniqName != "")
+                _curDocToBeFiledIdxInList = docIdx;
             ShowDocumentFirstTime(uniqName);
 
             // Save count of unfiled docs
@@ -265,7 +267,10 @@ namespace ScanMonitorApp
             SetDateRollers(dateToUse.Year, dateToUse.Month, dateToUse.Day, dateRollerChange.none);
 
             // Show File number in list
-            SetLabelContent(lblStatusBarFileNo, (_curDocToBeFiledIdxInList + 1).ToString() + " / " +  _scanDocHandler.GetCountOfUnfiledDocs().ToString());
+            if (_scanDocHandler.GetCountOfUnfiledDocs() == 0)
+                SetLabelContent(lblStatusBarFileNo, "None");
+            else
+                SetLabelContent(lblStatusBarFileNo, (_curDocToBeFiledIdxInList + 1).ToString() + " / " + _scanDocHandler.GetCountOfUnfiledDocs().ToString());
 
             // Show status of filing
             string statusStr = "Unfiled";
@@ -883,10 +888,27 @@ namespace ScanMonitorApp
             av.ShowDialog();
         }
 
+        private void QuickNewType_Click(object sender, RoutedEventArgs e)
+        {
+            QuickNewDocType qndt = new QuickNewDocType(_scanDocHandler, _docTypesMatcher, _curDocScanDocInfo == null ? "" : _curDocScanDocInfo.uniqName, _curDocDisplay_pageNum);
+            bool? rslt = qndt.ShowDialog();
+            if (rslt != null && rslt == true)
+                ShowDocumentTypeAndDate(qndt._newDocTypeName);
+        }
+
         private void btnDocTypeSel_Click(object sender, RoutedEventArgs e)
         {
             // Clear menu
             btnDocTypeSelContextMenu.Items.Clear();
+
+            if (USE_QUICK_DOC_MENU)
+            {
+                // Add a quick type menu item
+                MenuItem quickTypeMenuItem = new MenuItem();
+                quickTypeMenuItem.Header = "<Quick New Type>";
+                quickTypeMenuItem.Click += QuickNewType_Click;
+                btnDocTypeSelContextMenu.Items.Add(quickTypeMenuItem);
+            }
 
             // Reload menu
             const int MAX_MENU_LEVELS = 6;

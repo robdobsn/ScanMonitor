@@ -24,11 +24,11 @@ namespace ScanMonitorApp
         {
         }
 
-        public bool Setup()
+        public bool Setup(string dbConnectionStr)
         {
             try
             {
-                var connectionString = Properties.Settings.Default.DbConnectionString;
+                var connectionString = dbConnectionStr;
                 _dbClient = new MongoClient(connectionString);
                 var collection_doctypes = GetDocTypesCollection();
                 collection_doctypes.EnsureIndex(new IndexKeysBuilder()

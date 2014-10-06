@@ -37,6 +37,8 @@ namespace ScanMonitorApp
         private const bool TEST_MODE = false;
         BackgroundWorker _bwThread_forAuditLoading;
         BackgroundWorker _bwThread_forFileHashCreation = null;
+        private string _dbConnectionStr = Properties.Settings.Default.DbConnectionString;
+        private string _foldersToMonitor = Properties.Settings.Default.FoldersToMonitor;
 
 //        private List<string> foldersToMonitor = new List<string> { Properties.Settings.Default.FoldersToMonitor };
 
@@ -178,7 +180,7 @@ namespace ScanMonitorApp
 
             // Document matcher
             _docTypesMatcher = new DocTypesMatcher();
-            if (!_docTypesMatcher.Setup())
+            if (!_docTypesMatcher.Setup(_dbConnectionStr))
             {
                 MessageBoxButton btnMessageBox = MessageBoxButton.OK;
                 MessageBoxImage icnMessageBox = MessageBoxImage.Error;
@@ -188,14 +190,14 @@ namespace ScanMonitorApp
             }
 
             // Scanned document handler
-            _scanDocHandler = new ScanDocHandler(AddToStatusText, _docTypesMatcher, _scanDocHandlerConfig);
+            _scanDocHandler = new ScanDocHandler(AddToStatusText, _docTypesMatcher, _scanDocHandlerConfig, _dbConnectionStr);
 
             // Scan folder watcher
             statusRunningMonitor.Content = "This PC is " + System.Environment.MachineName;
             if (Properties.Settings.Default.PCtoRunMonitorOn.Trim() == System.Environment.MachineName.Trim())
             {
                 _scanFileMonitor = new ScanFileMonitor(AddToStatusText, _scanDocHandler);
-                string[] foldersToMonitorArray = Properties.Settings.Default.FoldersToMonitor.Split(';');
+                string[] foldersToMonitorArray = _foldersToMonitor.Split(';');
                 List<string> foldersToMonitor = new List<string>();
                 foreach (string folder in foldersToMonitorArray)
                 {
