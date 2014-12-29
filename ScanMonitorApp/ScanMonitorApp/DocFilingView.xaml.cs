@@ -307,7 +307,7 @@ namespace ScanMonitorApp
                 statusStr = "FLAGGED";
                 foreColour = Brushes.Red;
             }
-            else
+            else if (_curDocScanDocInfo != null)
             {
                 if (!File.Exists(_curDocScanDocInfo.origFileName))
                 {

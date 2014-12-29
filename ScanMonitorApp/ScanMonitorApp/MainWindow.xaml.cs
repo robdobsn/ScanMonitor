@@ -220,10 +220,10 @@ namespace ScanMonitorApp
             }
 
             // Start the web server
-            WebServer ws = new WebServer("http://localhost:8080");
+/*            WebServer ws = new WebServer("http://localhost:8080");
             ws.RegisterEndPoint(new WebEndPoint_ScanDocs(_scanDocHandler));
             ws.RegisterEndPoint(new WebEndPoint_DocTypes(_docTypesMatcher));
-            ws.Run();
+            ws.Run();  */
          }
 
         private void butAddOldDocTypes_Click(object sender, RoutedEventArgs e)
