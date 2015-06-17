@@ -23,7 +23,7 @@
             </ListView.View>
             <ListView.ContextMenu>
                 <ContextMenu>
-                    <MenuItem x:Name="listViewCtxtLocate" Header="Info" Click="listViewCtxtLocate_Click"/>
+                    <MenuItem x:Name="listViewCtxtLocate" Header="Locate File" Click="listViewCtxtLocate_Click"/>
                 </ContextMenu>
             </ListView.ContextMenu>
         </ListView>

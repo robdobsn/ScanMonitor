@@ -872,7 +872,7 @@ namespace ScanMonitorApp
                 }
                 else
                 {
-                    string archiveFileName = Path.Combine(Properties.Settings.Default.DocArchiveFolder, sdi.uniqName + ".pdf");
+                    string archiveFileName = ScanDocHandler.GetArchiveFileName(sdi.uniqName);
                     if (File.Exists(archiveFileName))
                     {
                         bResult = CopyFile(archiveFileName, fdi.filedAs_pathAndFileName, ref _docFilingStatusStr);
@@ -967,7 +967,7 @@ namespace ScanMonitorApp
                 return false;
 
             // Make a copy of the file in the archive location
-            string archiveFileName = Path.Combine(Properties.Settings.Default.DocArchiveFolder, uniqName + ".pdf");
+            string archiveFileName = ScanDocHandler.GetArchiveFileName(uniqName);
             if (!File.Exists(archiveFileName))
             {
                 string statusStr = "";
@@ -1030,6 +1030,11 @@ namespace ScanMonitorApp
         #endregion
 
         #region Utility Functions
+
+        public static string GetArchiveFileName(string uniqName)
+        {
+            return Path.Combine(Properties.Settings.Default.DocArchiveFolder, uniqName + ".pdf");
+        }
 
         public static byte[] GenHashOnFileExcludingMetadata(string filename, out long fileLen)
         {

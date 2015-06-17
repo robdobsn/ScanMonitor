@@ -127,7 +127,7 @@ namespace ScanMonitorApp
                 if (srchText != "")
                 {
                     ScanPages scanPages = _scanDocHandler.GetScanPages(sdi.uniqName);
-                    if ((scanPages == null) || (!scanPages.ContainText(srchText)))
+                    if ((scanPages == null) || ((!scanPages.ContainText(srchText)) && !(System.IO.Path.GetFileName(fdi.filedAs_pathAndFileName).ToLower().Contains(srchText.ToLower()))))
                         {
                             nDocIdx--;
                             continue;
@@ -171,7 +171,7 @@ namespace ScanMonitorApp
 
                 // See if we can find a file which matches this one in the existing files database
                 string movedToFileName = "";
-                string archiveFileName = System.IO.Path.Combine(Properties.Settings.Default.DocArchiveFolder, sdi.uniqName + ".pdf");
+                string archiveFileName = ScanDocHandler.GetArchiveFileName(sdi.uniqName);
                 if ((filedFileNotFound) && (File.Exists(archiveFileName)))
                 {
                     long fileLen = 0;
@@ -371,10 +371,11 @@ namespace ScanMonitorApp
             if (selectedRow != null)
             {
                 string uniqName = selectedRow.UniqName;
-                string imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, uniqName, 1, false);
+//                string imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, uniqName, 1, false);
+                string archiveFileName = ScanDocHandler.GetArchiveFileName(uniqName);
                 try
                 {
-                    ScanDocHandler.ShowFileInExplorer(imgFileName.Replace("/", @"\"));
+                    ScanDocHandler.ShowFileInExplorer(archiveFileName.Replace("/", @"\"));
                 }
                 finally
                 {
@@ -448,7 +449,7 @@ namespace ScanMonitorApp
                         selectedRow.MovedToFileName = "MOVEDTO " + cofd.FileName;
 
                         // Check if archived file is present
-                        string archiveFileName = System.IO.Path.Combine(Properties.Settings.Default.DocArchiveFolder, scanDocAllInfo.scanDocInfo.uniqName + ".pdf");
+                        string archiveFileName = ScanDocHandler.GetArchiveFileName(scanDocAllInfo.scanDocInfo.uniqName);
                         if (!File.Exists(archiveFileName))
                         {
                             string tmpStr = "";

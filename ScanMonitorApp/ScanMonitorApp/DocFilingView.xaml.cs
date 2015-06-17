@@ -1,5 +1,5 @@
-﻿#define TEST_PERF_SHOWDOCFIRSTTIME
-#define PERFORMANCE_CHECK
+﻿//#define TEST_PERF_SHOWDOCFIRSTTIME
+//#define PERFORMANCE_CHECK
 using MahApps.Metro.Controls;
 using Microsoft.WindowsAPICodePack.Dialogs;
 using NLog;
@@ -42,9 +42,14 @@ namespace ScanMonitorApp
         private ScanPages _curDocScanPages;
         private ScanDocInfo _curDocScanDocInfo;
         private FiledDocInfo _curFiledDocInfo;
-        private DocTypeMatchResult _latestMatchResult;
         private DocType _curSelectedDocType = null;
         private BackgroundWorker _bwThreadForImagesPopup;
+        private BackgroundWorker _bwThreadForCurDocDisplay;
+        private BackgroundWorker _bwThreadForDocTypeDisplay;
+        private bool _newCurDocProcessingCancel = false;
+        private EventWaitHandle _newCurDocSignal = new EventWaitHandle(false, EventResetMode.AutoReset);
+        private EventWaitHandle _newDocTypeSignal = new EventWaitHandle(false, EventResetMode.AutoReset);
+        private string _curSelectedDocTypeName;
         ObservableCollection<DocTypeCacheEntry> _thumbnailsOfDocTypes = new ObservableCollection<DocTypeCacheEntry>();
         private ObservableCollection<DocTypeMatchResult> _listOfPossibleDocMatches = new ObservableCollection<DocTypeMatchResult>();
         private DateTime _lastDocFiledAsDateTime = DateTime.Now;
@@ -81,8 +86,25 @@ namespace ScanMonitorApp
             _timerForNewDocumentCheck.Interval = new TimeSpan(0, 0, 2);
             _timerForNewDocumentCheck.Start();
 
+            // Current document display thread
+            _bwThreadForCurDocDisplay = new BackgroundWorker();
+            _bwThreadForCurDocDisplay.WorkerSupportsCancellation = true;
+            _bwThreadForCurDocDisplay.WorkerReportsProgress = false;
+            _bwThreadForCurDocDisplay.DoWork += new DoWorkEventHandler(CurDocDisplay_DoWork);
+
+            // DocType display thread
+            _bwThreadForDocTypeDisplay = new BackgroundWorker();
+            _bwThreadForDocTypeDisplay.WorkerSupportsCancellation = true;
+            _bwThreadForDocTypeDisplay.WorkerReportsProgress = false;
+            _bwThreadForDocTypeDisplay.DoWork += new DoWorkEventHandler(DocTypeChanged_DoWork);
+
             // Use a background worker to populate
             _bwThreadForImagesPopup.RunWorkerAsync();
+
+            // Use a background worker to populate
+            _bwThreadForCurDocDisplay.RunWorkerAsync();
+            _bwThreadForDocTypeDisplay.RunWorkerAsync();
+
         }
 
         private void NewDocumentTimer_Tick(object sender, EventArgs e)
@@ -98,22 +120,48 @@ namespace ScanMonitorApp
 
         private void ShowDocToBeFiled(int docIdx)
         {
+#if TEST_PERF_SHOWDOCFIRSTTIME
+            Stopwatch stopWatch1 = new Stopwatch();
+            stopWatch1.Start();
+#endif
             // Check if docIdx is valid
             if (docIdx >= _scanDocHandler.GetCountOfUnfiledDocs())
                 docIdx = _scanDocHandler.GetCountOfUnfiledDocs() - 1;
             if (docIdx < 0)
                 docIdx = 0;
 
+#if TEST_PERF_SHOWDOCFIRSTTIME
+            stopWatch1.Stop();
+            Stopwatch stopWatch2 = new Stopwatch();
+            stopWatch2.Start();
+#endif
             // Get name of doc
             string uniqName = _scanDocHandler.GetUniqNameOfDocToBeFiled(docIdx);
 
+#if TEST_PERF_SHOWDOCFIRSTTIME
+            stopWatch2.Stop();
+            Stopwatch stopWatch3 = new Stopwatch();
+            stopWatch3.Start();
+#endif
             // Save docIdx and show doc
             if (uniqName != "")
                 _curDocToBeFiledIdxInList = docIdx;
             ShowDocumentFirstTime(uniqName);
 
+#if TEST_PERF_SHOWDOCFIRSTTIME
+            stopWatch3.Stop();
+            Stopwatch stopWatch4 = new Stopwatch();
+            stopWatch4.Start();
+#endif
             // Save hash of unfiled docs
             _lastHashOfUnfiledDocs = _scanDocHandler.GetHashOfUnfiledDocs();
+
+#if TEST_PERF_SHOWDOCFIRSTTIME
+            stopWatch4.Stop();
+            logger.Info("ShowDocToBeFiled: A {0:0.00}, B {1:0.00}, C {2:0.00}, D {3:0.00}", stopWatch1.ElapsedTicks * 1000.0 / Stopwatch.Frequency,
+                stopWatch2.ElapsedTicks * 1000.0 / Stopwatch.Frequency, stopWatch3.ElapsedTicks * 1000.0 / Stopwatch.Frequency,
+                stopWatch4.ElapsedTicks * 1000.0 / Stopwatch.Frequency);
+#endif
         }
 
         #endregion
@@ -122,19 +170,13 @@ namespace ScanMonitorApp
 
         private void ShowDocumentFirstTime(string uniqName)
         {
-#if TEST_PERF_SHOWDOCFIRSTTIME
-            Stopwatch stopWatch1 = new Stopwatch();
-            stopWatch1.Start();
-#endif
             // Load document info from db
-            List<DocTypeMatchResult> possMatches = new List<DocTypeMatchResult>();
             ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfoCached(uniqName);
             if ((scanDocAllInfo == null) || (scanDocAllInfo.scanDocInfo == null))
             {
                 _curDocScanPages = null;
                 _curDocScanDocInfo = null;
                 _curFiledDocInfo = null;
-                _latestMatchResult = null;
                 _curSelectedDocType = null;
             }
             else
@@ -144,88 +186,170 @@ namespace ScanMonitorApp
                 _curFiledDocInfo = scanDocAllInfo.filedDocInfo;
             }
 
-#if TEST_PERF_SHOWDOCFIRSTTIME
-            Stopwatch stopWatch2 = new Stopwatch();
-            stopWatch2.Start();
-#endif
-
-            // Re-check the document
-            if (_curDocScanPages != null)
-                _latestMatchResult = _docTypesMatcher.GetMatchingDocType(_curDocScanPages, possMatches);
-            else
-                _latestMatchResult = new DocTypeMatchResult();
-
-#if TEST_PERF_SHOWDOCFIRSTTIME
-            Stopwatch stopWatch3 = new Stopwatch();
-            stopWatch3.Start();
-#endif
-
-            // Update the doc type list view for popup
-            _listOfPossibleDocMatches.Clear();
-            foreach (DocTypeMatchResult res in possMatches)
-                _listOfPossibleDocMatches.Add(res);
-
-#if TEST_PERF_SHOWDOCFIRSTTIME
-            Stopwatch stopWatch4 = new Stopwatch();
-            stopWatch4.Start();
-#endif
-
-            // Add list of previously used doctypes
-            List<string> lastUsedDocTypes = _scanDocHandler.GetLastNDocTypesUsed(10);
-            foreach (string s in lastUsedDocTypes)
-            {
-                DocTypeMatchResult mr = new DocTypeMatchResult();
-                mr.docTypeName = s;
-                _listOfPossibleDocMatches.Add(mr);
-            }
-
-#if TEST_PERF_SHOWDOCFIRSTTIME
-            Stopwatch stopWatch5 = new Stopwatch();
-            stopWatch5.Start();
-#endif
 
             // Display image of first page
             DisplayScannedDocImage(1);
 
+            // Signal that the cur doc has changed
+            _newCurDocProcessingCancel = true;
+            _newCurDocSignal.Set();
+
+        }
+
+        private void CurDocDisplay_DoWork(object sender, EventArgs e)
+        {
+            while (true)
+            {
+                // Wait here until a new doc is requested
+                _newCurDocSignal.WaitOne();
+                _newCurDocProcessingCancel = false;
+
+                HandleDocMatchingAndDisplay();
+
+            }
+        }
+
+        private void HandleDocMatchingAndDisplay()
+        {
 #if TEST_PERF_SHOWDOCFIRSTTIME
+            Stopwatch stopWatch1 = new Stopwatch();
+            Stopwatch stopWatch2 = new Stopwatch();
+            Stopwatch stopWatch3 = new Stopwatch();
+            Stopwatch stopWatch4 = new Stopwatch();
+            Stopwatch stopWatch5 = new Stopwatch();
             Stopwatch stopWatch6 = new Stopwatch();
-            stopWatch6.Start();
+            stopWatch1.Start();
 #endif
 
-            // Show type and date
-            ShowDocumentTypeAndDate(_latestMatchResult.docTypeName);
 #if TEST_PERF_SHOWDOCFIRSTTIME
             stopWatch1.Stop();
-            logger.Info("ShowDocFirstTime: A {0:0.00}, B {1:0.00}, C {2:0.00}, D {3:0.00}, E {4:0.00}, F {5:0.00}", stopWatch1.ElapsedTicks * 1000.0 / Stopwatch.Frequency,
+            stopWatch2.Start();
+#endif
+            // Re-check the document
+            DocTypeMatchResult latestMatchResult;
+            List<DocTypeMatchResult> possMatches = new List<DocTypeMatchResult>();
+            if (_curDocScanPages != null)
+                latestMatchResult = _docTypesMatcher.GetMatchingDocType(_curDocScanPages, possMatches);
+            else
+                latestMatchResult = new DocTypeMatchResult();
+
+            // Check for a new doc - so cancel processing this one
+            if (!_newCurDocProcessingCancel)
+            {
+#if TEST_PERF_SHOWDOCFIRSTTIME
+                stopWatch2.Stop();
+                stopWatch3.Start();
+#endif
+
+                // Update the doc type list view for popup
+                List<DocTypeMatchResult> possDocMatches = new List<DocTypeMatchResult>();
+                foreach (DocTypeMatchResult res in possMatches)
+                    possDocMatches.Add(res);
+
+                // Check for a new doc - so cancel processing this one
+                if (!_newCurDocProcessingCancel)
+                {
+
+#if TEST_PERF_SHOWDOCFIRSTTIME
+                    stopWatch3.Stop();
+                    stopWatch4.Start();
+#endif
+
+                    // Add list of previously used doctypes
+                    List<string> lastUsedDocTypes = _scanDocHandler.GetLastNDocTypesUsed(10);
+                    foreach (string s in lastUsedDocTypes)
+                    {
+                        DocTypeMatchResult mr = new DocTypeMatchResult();
+                        mr.docTypeName = s;
+                        possDocMatches.Add(mr);
+                    }
+
+                    // Check for a new doc - so cancel processing this one
+                    if (!_newCurDocProcessingCancel)
+                    {
+
+#if TEST_PERF_SHOWDOCFIRSTTIME
+                        stopWatch4.Stop();
+                        stopWatch5.Start();
+#endif
+
+                        this.Dispatcher.BeginInvoke((Action)delegate()
+                        {
+                            _listOfPossibleDocMatches.Clear();
+                            foreach (DocTypeMatchResult dtmr in possDocMatches)
+                                _listOfPossibleDocMatches.Add(dtmr);
+                        });
+
+                        // Check for a new doc - so cancel processing this one
+                        if (!_newCurDocProcessingCancel)
+                        {
+
+#if TEST_PERF_SHOWDOCFIRSTTIME
+                            stopWatch5.Stop();
+                            stopWatch6.Start();
+#endif
+
+                            // Show type and date
+                            ShowDocumentTypeAndDate(latestMatchResult.docTypeName);
+                        }
+                    }
+                }
+            }
+
+#if TEST_PERF_SHOWDOCFIRSTTIME
+            stopWatch6.Stop();
+            logger.Info("ShowDocFirstTime: {6} A {0:0.00}, B {1:0.00}, C {2:0.00}, D {3:0.00}, E {4:0.00}, F {5:0.00}", stopWatch1.ElapsedTicks * 1000.0 / Stopwatch.Frequency,
                 stopWatch2.ElapsedTicks * 1000.0 / Stopwatch.Frequency, stopWatch3.ElapsedTicks * 1000.0 / Stopwatch.Frequency,
                 stopWatch4.ElapsedTicks * 1000.0 / Stopwatch.Frequency, stopWatch5.ElapsedTicks * 1000.0 / Stopwatch.Frequency,
-                stopWatch6.ElapsedTicks * 1000.0 / Stopwatch.Frequency);
+                stopWatch6.ElapsedTicks * 1000.0 / Stopwatch.Frequency, _newCurDocProcessingCancel ? "CANCELLED" : "");
 #endif
         }
 
         private void ShowDocumentTypeAndDate(string docTypeName)
         {
-            // Show email password
-            txtEmailPassword.Password = _scanDocHandler.GetEmailPassword();
+            _curSelectedDocTypeName = docTypeName;
+            _newDocTypeSignal.Set();
 
-            // Get the current doc type
-            _curSelectedDocType = _docTypesMatcher.GetDocType(docTypeName);
+        }
+
+
+        private void DocTypeChanged_DoWork(object sender, EventArgs e)
+        {
+            while (true)
+            {
+                // Wait here until a doc type change occurs
+                _newDocTypeSignal.WaitOne();
+
+                // Get the current doc type
+                _curSelectedDocType = _docTypesMatcher.GetDocType(_curSelectedDocTypeName);
+
+                // Update the UI on its thread
+                this.Dispatcher.BeginInvoke((Action)delegate()
+                {
+                    CompleteDocTypeChange(_curSelectedDocTypeName);
+                });
+            }
+        }
+
+        private void CompleteDocTypeChange(string docTypeName)
+        {
 
             // Reset the override folder
             _overrideFolderForFiling = "";
             if (btnMoveToUndo.IsEnabled != false)
                 btnMoveToUndo.IsEnabled = false;
 
+            // Show email password
+            txtEmailPassword.Password = _scanDocHandler.GetEmailPassword();
+
             // Extract date info again and update latest match result
             int bestDateIdx = 0;
             List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(_curDocScanPages,
                                                     (_curSelectedDocType == null) ? "" : _curSelectedDocType.dateExpression,
                                                     out bestDateIdx);
-            _latestMatchResult.datesFoundInDoc = extractedDates;
+            DateTime docDate = docDate = DateTime.MinValue;
             if (extractedDates.Count > 0)
-                _latestMatchResult.docDate = extractedDates[bestDateIdx].dateTime;
-            else
-                _latestMatchResult.docDate = DateTime.MinValue;
+                docDate = extractedDates[bestDateIdx].dateTime;
 
             // Show doc type
             txtDocTypeName.IsEnabled = false;
@@ -291,8 +415,8 @@ namespace ScanMonitorApp
 
             // Set doc date
             DateTime dateToUse = DateTime.Now;
-            if (_latestMatchResult.docDate != DateTime.MinValue)
-                dateToUse = _latestMatchResult.docDate;
+            if (docDate != DateTime.MinValue)
+                dateToUse = docDate;
             SetDateRollers(dateToUse.Year, dateToUse.Month, dateToUse.Day, dateRollerChange.none);
 
             // Show File number in list
@@ -340,7 +464,7 @@ namespace ScanMonitorApp
             {
                 if (!File.Exists(_curDocScanDocInfo.origFileName))
                 {
-                    string archiveFileName = System.IO.Path.Combine(Properties.Settings.Default.DocArchiveFolder, _curDocScanDocInfo.uniqName + ".pdf");
+                    string archiveFileName = ScanDocHandler.GetArchiveFileName(_curDocScanDocInfo.uniqName);
                     if (!File.Exists(archiveFileName))
                     {
                         statusStr = "ORIGINAL MISSING!";
@@ -487,7 +611,7 @@ namespace ScanMonitorApp
             stopWatch1.Stop();
             DateTime dtEndDebug = DateTime.Now;
             //Dispatcher.BeginInvoke(new Action(() => logger.Info("DisplayUpdate: {0}ms", (DateTime.Now-dtDebug).TotalMilliseconds)), DispatcherPriority.ContextIdle, null);
-            logger.Info("ShowDocToBeFiled : {0}ms, DateTime CrossCheck {1}ms", stopWatch1.ElapsedMilliseconds, (dtEndDebug - dtDebug).TotalMilliseconds);
+            logger.Info("btnNextDoc_Click : {0}ms, DateTime CrossCheck {1}ms", stopWatch1.ElapsedMilliseconds, (dtEndDebug - dtDebug).TotalMilliseconds);
 #endif
         }
 
@@ -856,8 +980,8 @@ namespace ScanMonitorApp
             string fileToEdit = _curDocScanDocInfo.origFileName;
             if (!File.Exists(fileToEdit))
             {
-                fileToEdit = System.IO.Path.Combine(Properties.Settings.Default.DocArchiveFolder, _curDocScanDocInfo.uniqName + ".pdf");
-                if (!File.Exists(fileToEdit))
+                string archiveFileName = ScanDocHandler.GetArchiveFileName(_curDocScanDocInfo.uniqName);
+                if (!File.Exists(archiveFileName))
                 {
                     MessageDialog.Show("Neither original not archive file can be found", "", "OK", "", null, this);
                     return;
