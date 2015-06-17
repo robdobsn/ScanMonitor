@@ -1,4 +1,5 @@
-﻿//#define TEST_PERF_SHOWDOCFIRSTTIME
+﻿#define TEST_PERF_SHOWDOCFIRSTTIME
+#define PERFORMANCE_CHECK
 using MahApps.Metro.Controls;
 using Microsoft.WindowsAPICodePack.Dialogs;
 using NLog;
@@ -51,7 +52,7 @@ namespace ScanMonitorApp
         private TouchFromPageText _touchFromPageText = TouchFromPageText.TOUCH_NONE;
         private System.Windows.Threading.DispatcherTimer _timerForNewDocumentCheck;
         private string _overrideFolderForFiling = "";
-        private int _lastCountOfUnfiledDocs = 0;
+        private string _lastHashOfUnfiledDocs = "";
         private enum dateRollerChange
         {
             none, drc_dayPlus, drc_dayMinus, drc_monthPlus, drc_monthMinus, drc_yearPlus, drc_yearMinus
@@ -74,14 +75,11 @@ namespace ScanMonitorApp
             _bwThreadForImagesPopup.WorkerReportsProgress = true;
             _bwThreadForImagesPopup.DoWork += new DoWorkEventHandler(AddImages_DoWork);
 
-            // Timer to display latest doc - only when running as monitor
-            if (Properties.Settings.Default.PCtoRunMonitorOn.Trim() == System.Environment.MachineName.Trim())
-            {
-                _timerForNewDocumentCheck = new System.Windows.Threading.DispatcherTimer();
-                _timerForNewDocumentCheck.Tick += new EventHandler(NewDocumentTimer_Tick);
-                _timerForNewDocumentCheck.Interval = new TimeSpan(0, 0, 2);
-                _timerForNewDocumentCheck.Start();
-            }
+            // Timer to display latest doc
+            _timerForNewDocumentCheck = new System.Windows.Threading.DispatcherTimer();
+            _timerForNewDocumentCheck.Tick += new EventHandler(NewDocumentTimer_Tick);
+            _timerForNewDocumentCheck.Interval = new TimeSpan(0, 0, 2);
+            _timerForNewDocumentCheck.Start();
 
             // Use a background worker to populate
             _bwThreadForImagesPopup.RunWorkerAsync();
@@ -90,7 +88,7 @@ namespace ScanMonitorApp
         private void NewDocumentTimer_Tick(object sender, EventArgs e)
         {
             if (txtDestFileSuffix.Text.Trim() == "")
-                if (_lastCountOfUnfiledDocs != _scanDocHandler.GetCountOfUnfiledDocs())
+                if (_lastHashOfUnfiledDocs != _scanDocHandler.GetHashOfUnfiledDocs())
                     ShowDocToBeFiled(_scanDocHandler.GetCountOfUnfiledDocs() - 1);
         }
 
@@ -114,8 +112,8 @@ namespace ScanMonitorApp
                 _curDocToBeFiledIdxInList = docIdx;
             ShowDocumentFirstTime(uniqName);
 
-            // Save count of unfiled docs
-            _lastCountOfUnfiledDocs = _scanDocHandler.GetCountOfUnfiledDocs();
+            // Save hash of unfiled docs
+            _lastHashOfUnfiledDocs = _scanDocHandler.GetHashOfUnfiledDocs();
         }
 
         #endregion
@@ -146,16 +144,31 @@ namespace ScanMonitorApp
                 _curFiledDocInfo = scanDocAllInfo.filedDocInfo;
             }
 
+#if TEST_PERF_SHOWDOCFIRSTTIME
+            Stopwatch stopWatch2 = new Stopwatch();
+            stopWatch2.Start();
+#endif
+
             // Re-check the document
             if (_curDocScanPages != null)
                 _latestMatchResult = _docTypesMatcher.GetMatchingDocType(_curDocScanPages, possMatches);
             else
                 _latestMatchResult = new DocTypeMatchResult();
 
+#if TEST_PERF_SHOWDOCFIRSTTIME
+            Stopwatch stopWatch3 = new Stopwatch();
+            stopWatch3.Start();
+#endif
+
             // Update the doc type list view for popup
             _listOfPossibleDocMatches.Clear();
-            foreach(DocTypeMatchResult res in possMatches)
+            foreach (DocTypeMatchResult res in possMatches)
                 _listOfPossibleDocMatches.Add(res);
+
+#if TEST_PERF_SHOWDOCFIRSTTIME
+            Stopwatch stopWatch4 = new Stopwatch();
+            stopWatch4.Start();
+#endif
 
             // Add list of previously used doctypes
             List<string> lastUsedDocTypes = _scanDocHandler.GetLastNDocTypesUsed(10);
@@ -165,20 +178,36 @@ namespace ScanMonitorApp
                 mr.docTypeName = s;
                 _listOfPossibleDocMatches.Add(mr);
             }
-                
+
+#if TEST_PERF_SHOWDOCFIRSTTIME
+            Stopwatch stopWatch5 = new Stopwatch();
+            stopWatch5.Start();
+#endif
+
             // Display image of first page
             DisplayScannedDocImage(1);
+
+#if TEST_PERF_SHOWDOCFIRSTTIME
+            Stopwatch stopWatch6 = new Stopwatch();
+            stopWatch6.Start();
+#endif
 
             // Show type and date
             ShowDocumentTypeAndDate(_latestMatchResult.docTypeName);
 #if TEST_PERF_SHOWDOCFIRSTTIME
             stopWatch1.Stop();
-            logger.Info("ShowDocFirstTime : {0:0.00} uS", stopWatch1.ElapsedTicks * 1000000.0 / Stopwatch.Frequency);
+            logger.Info("ShowDocFirstTime: A {0:0.00}, B {1:0.00}, C {2:0.00}, D {3:0.00}, E {4:0.00}, F {5:0.00}", stopWatch1.ElapsedTicks * 1000.0 / Stopwatch.Frequency,
+                stopWatch2.ElapsedTicks * 1000.0 / Stopwatch.Frequency, stopWatch3.ElapsedTicks * 1000.0 / Stopwatch.Frequency,
+                stopWatch4.ElapsedTicks * 1000.0 / Stopwatch.Frequency, stopWatch5.ElapsedTicks * 1000.0 / Stopwatch.Frequency,
+                stopWatch6.ElapsedTicks * 1000.0 / Stopwatch.Frequency);
 #endif
         }
 
         private void ShowDocumentTypeAndDate(string docTypeName)
         {
+            // Show email password
+            txtEmailPassword.Password = _scanDocHandler.GetEmailPassword();
+
             // Get the current doc type
             _curSelectedDocType = _docTypesMatcher.GetDocType(docTypeName);
 
@@ -189,7 +218,7 @@ namespace ScanMonitorApp
 
             // Extract date info again and update latest match result
             int bestDateIdx = 0;
-            List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(_curDocScanPages, 
+            List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(_curDocScanPages,
                                                     (_curSelectedDocType == null) ? "" : _curSelectedDocType.dateExpression,
                                                     out bestDateIdx);
             _latestMatchResult.datesFoundInDoc = extractedDates;
@@ -289,7 +318,7 @@ namespace ScanMonitorApp
                         SetFieldEnable(btnDeleteDoc, false);
                         break;
                     case FiledDocInfo.DocFinalStatus.STATUS_DELETED_AFTER_EDIT:
-                        statusStr = "DELETED AFTER EDIT";
+                        statusStr = "REPLACED/EDITED";
                         foreColour = Brushes.Red;
                         SetFieldEnable(btnProcessDoc, false);
                         SetFieldEnable(btnDeleteDoc, false);
@@ -429,7 +458,7 @@ namespace ScanMonitorApp
             // Show back/next buttons
             btnBackPage.IsEnabled = (pageNum > 1);
             btnNextPage.IsEnabled = (pageNum < _curDocScanDocInfo.numPagesWithText);
-            lblPageNum.Content = pageNum.ToString() + " / " + _curDocScanDocInfo.numPagesWithText.ToString() + ((_curDocScanDocInfo.numPages > _curDocScanDocInfo.numPagesWithText) ? "*" : "") ;
+            lblPageNum.Content = pageNum.ToString() + " / " + _curDocScanDocInfo.numPagesWithText.ToString() + ((_curDocScanDocInfo.numPages > _curDocScanDocInfo.numPagesWithText) ? "*" : "");
         }
 
         #endregion
@@ -453,17 +482,12 @@ namespace ScanMonitorApp
             Stopwatch stopWatch1 = new Stopwatch();
             stopWatch1.Start();
 #endif
-#if PERFORMANCE_CHECK
-            stopWatch1.Stop();
-            Stopwatch stopWatch2 = new Stopwatch();
-            stopWatch2.Start();
-#endif
             ShowDocToBeFiled(_curDocToBeFiledIdxInList + 1);
 #if PERFORMANCE_CHECK
-            stopWatch2.Stop();
+            stopWatch1.Stop();
             DateTime dtEndDebug = DateTime.Now;
-            Dispatcher.BeginInvoke(new Action(() => logger.Info("DisplayUpdate: {0}ms", (DateTime.Now-dtDebug).TotalMilliseconds)), DispatcherPriority.ContextIdle, null);
-            logger.Info("CheckForNewDocs : {0}ms, ShowDocToBeFiled : {1}ms, DateTime CrossCheck {2}ms", stopWatch1.ElapsedMilliseconds, stopWatch2.ElapsedMilliseconds, (dtEndDebug - dtDebug).TotalMilliseconds);
+            //Dispatcher.BeginInvoke(new Action(() => logger.Info("DisplayUpdate: {0}ms", (DateTime.Now-dtDebug).TotalMilliseconds)), DispatcherPriority.ContextIdle, null);
+            logger.Info("ShowDocToBeFiled : {0}ms, DateTime CrossCheck {1}ms", stopWatch1.ElapsedMilliseconds, (dtEndDebug - dtDebug).TotalMilliseconds);
 #endif
         }
 
@@ -500,7 +524,7 @@ namespace ScanMonitorApp
         private void btnDayUp_Click(object sender, RoutedEventArgs e)
         {
             DateTime dt = GetDateFromRollers();
-            SetDateRollers(dt.Year, dt.Month, dt.Day+1, dateRollerChange.drc_dayPlus);
+            SetDateRollers(dt.Year, dt.Month, dt.Day + 1, dateRollerChange.drc_dayPlus);
         }
 
         private void btnMonthUp_Click(object sender, RoutedEventArgs e)
@@ -754,8 +778,8 @@ namespace ScanMonitorApp
         private void FillTimeMenu()
         {
             List<TimeSpan> tss = new List<TimeSpan>();
-            for (int timeIdx = 0; timeIdx < 30; timeIdx++ )
-                tss.Add(new TimeSpan(7+timeIdx/2, (timeIdx%2)*30, 0));
+            for (int timeIdx = 0; timeIdx < 30; timeIdx++)
+                tss.Add(new TimeSpan(7 + timeIdx / 2, (timeIdx % 2) * 30, 0));
             menuEventTimeList.Items.Clear();
             foreach (TimeSpan ts in tss)
             {
@@ -839,9 +863,9 @@ namespace ScanMonitorApp
                     return;
                 }
             }
-            
+
             PdfEditorWindow pew = new PdfEditorWindow();
-            pew.OpenEmbeddedPdfEditor(fileToEdit, HandlePdfEditSaveComplete, Properties.Settings.Default.DocArchiveFolder);
+            pew.OpenEmbeddedPdfEditor(fileToEdit, HandlePdfEditSaveComplete, "");
             pew.ShowDialog();
         }
 
@@ -1007,6 +1031,29 @@ namespace ScanMonitorApp
             }
         }
 
+        private void btnSettings_Click(object sender, RoutedEventArgs e)
+        {
+            SettingsView sv = new SettingsView();
+            string oldViewOrder = Properties.Settings.Default.UnfiledDocListOrder;
+            sv.ShowDialog();
+            if (Properties.Settings.Default.UnfiledDocListOrder != oldViewOrder)
+                ShowDocToBeFiled(_curDocToBeFiledIdxInList);
+        }
+
+        private void btnQuickDocType_Click(object sender, RoutedEventArgs e)
+        {
+            txtDocTypeName.IsEnabled = true;
+
+        }
+
+        private void txtDocTypeName_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (isQuickDocTypeMode() && !txtDestFilePrefix.IsEnabled)
+            {
+                txtDestFilePrefix.Text = DocType.GetFileNamePrefix(txtDocTypeName.Text);
+            }
+        }
+
         #endregion
 
         #region Handle deletion of document
@@ -1128,6 +1175,27 @@ namespace ScanMonitorApp
             // Save time as filed
             _lastDocFiledAsDateTime = GetDateFromRollers();
 
+            // Warn if date outside ranges
+            if (_lastDocFiledAsDateTime > DateTime.Now)
+            {
+                MessageBoxButton btnMessageBox = MessageBoxButton.YesNoCancel;
+                MessageBoxImage icnMessageBox = MessageBoxImage.Question;
+                MessageBoxResult rsltMessageBox = MessageBox.Show("Date is in the future - is this Correct?", "Date Question", btnMessageBox, icnMessageBox);
+                if ((rsltMessageBox == MessageBoxResult.Cancel) || (rsltMessageBox == MessageBoxResult.No))
+                    return;
+            }
+
+            // Warn if more than X years old
+            const int MAX_YEARS_OLD = 10;
+            if (_lastDocFiledAsDateTime < (DateTime.Now - new TimeSpan(365 * MAX_YEARS_OLD, 0, 0, 0)))
+            {
+                MessageBoxButton btnMessageBox = MessageBoxButton.YesNoCancel;
+                MessageBoxImage icnMessageBox = MessageBoxImage.Question;
+                MessageBoxResult rsltMessageBox = MessageBox.Show("Date is several years ago - is this Correct?", "Date Question", btnMessageBox, icnMessageBox);
+                if ((rsltMessageBox == MessageBoxResult.Cancel) || (rsltMessageBox == MessageBoxResult.No))
+                    return;
+            }
+
             // Process the doc
             rsltText = "";
             FiledDocInfo fdi = _curFiledDocInfo;
@@ -1204,6 +1272,9 @@ namespace ScanMonitorApp
             lblStatusBarProcStatus.Content = "Processing ...";
             lblStatusBarProcStatus.Foreground = Brushes.Black;
             _scanDocHandler.StartProcessFilingOfDoc(SetStatusText, FilingCompleteCallback, _curDocScanDocInfo, fdi, txtEmailPassword.Password, out rsltText);
+
+            // Save password to db
+            _scanDocHandler.SetEmailPassword(txtEmailPassword.Password);
         }
 
         #endregion
@@ -1343,9 +1414,9 @@ namespace ScanMonitorApp
 
                     // Find number matching money format
                     string noCurrencyStr = extractedText;
-                    if ((currencyPos >= 0) && (extractedText.Length > currencyPos+1))
+                    if ((currencyPos >= 0) && (extractedText.Length > currencyPos + 1))
                     {
-                        noCurrencyStr = extractedText.Substring(currencyPos+1);
+                        noCurrencyStr = extractedText.Substring(currencyPos + 1);
                         int whitespacePos = noCurrencyStr.IndexOf(' ');
                         if (whitespacePos > 0)
                             noCurrencyStr = noCurrencyStr.Substring(0, whitespacePos);
@@ -1431,7 +1502,7 @@ namespace ScanMonitorApp
             {
                 string docFormat = ((_curSelectedDocType == null) || isQuickDocTypeMode()) ? "" : _curSelectedDocType.renameFileTo;
                 string dfn = ScanDocHandler.FormatFileNameFromMacros(_curDocScanDocInfo.origFileName, docFormat, GetDateFromRollers(), txtDestFilePrefix.Text, txtDestFileSuffix.Text, txtDocTypeName.Text.Trim());
-                if (((string)lblDestFileName.Content) != dfn) 
+                if (((string)lblDestFileName.Content) != dfn)
                     lblDestFileName.Content = dfn;
             }
             else
@@ -1543,12 +1614,12 @@ namespace ScanMonitorApp
         {
             lblStatusBarProcStatus.Content = str;
         }
-    
+
         public void FilingCompleteCallback(string str)
         {
             lblStatusBarProcStatus.Content = str;
             // Show next document
-            ShowDocToBeFiled(_curDocToBeFiledIdxInList-1);
+            ShowDocToBeFiled(_curDocToBeFiledIdxInList - 1);
         }
 
         private static DateTime GetEventDateAndTime(DateTime dateFromPicker, string timeField)
@@ -1585,30 +1656,6 @@ namespace ScanMonitorApp
         }
 
         #endregion
-
-        private void btnSettings_Click(object sender, RoutedEventArgs e)
-        {
-            SettingsView sv = new SettingsView();
-            string oldViewOrder = Properties.Settings.Default.UnfiledDocListOrder;
-            sv.ShowDialog();
-            if (Properties.Settings.Default.UnfiledDocListOrder != oldViewOrder)
-                ShowDocToBeFiled(_curDocToBeFiledIdxInList);
-        }
-
-        private void btnQuickDocType_Click(object sender, RoutedEventArgs e)
-        {
-            txtDocTypeName.IsEnabled = true;
-
-        }
-
-        private void txtDocTypeName_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (isQuickDocTypeMode() && !txtDestFilePrefix.IsEnabled)
-            {
-                txtDestFilePrefix.Text = DocType.GetFileNamePrefix(txtDocTypeName.Text);
-            }
-        }
-
     }
 
     class DocTypeCacheEntry : INotifyPropertyChanged

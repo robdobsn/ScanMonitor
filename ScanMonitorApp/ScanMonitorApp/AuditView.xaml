@@ -21,6 +21,11 @@
                     <GridViewColumn Header="MovedTo" DisplayMemberBinding="{Binding MovedToFileName}"/>
                 </GridView>
             </ListView.View>
+            <ListView.ContextMenu>
+                <ContextMenu>
+                    <MenuItem x:Name="listViewCtxtLocate" Header="Info" Click="listViewCtxtLocate_Click"/>
+                </ContextMenu>
+            </ListView.ContextMenu>
         </ListView>
         <GridSplitter Grid.Column="1" Margin="0,0,413,0" Width="0"/>
         <Image x:Name="auditFileImage" Margin="10" Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"/>
@@ -34,8 +39,8 @@
             <TextBox x:Name="txtPageText" Margin="84,298,0,0" TextWrapping="Wrap"/>
         </Grid>
         <TextBox x:Name="txtStart" HorizontalAlignment="Left" Height="31" Margin="396,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="56"/>
-        <Button x:Name="btnGo" Content="Show" HorizontalAlignment="Left" Height="31" Margin="334,11,0,0" VerticalAlignment="Top" Width="57" Click="btnGo_Click"/>
-        <ProgressBar x:Name="progBar" HorizontalAlignment="Left" Height="8" Margin="132,46,0,0" VerticalAlignment="Top" Width="543"/>
+        <Button x:Name="btnGo" Content="Latest" HorizontalAlignment="Left" Height="31" Margin="334,11,0,0" VerticalAlignment="Top" Width="57" Click="btnGo_Click"/>
+        <ProgressBar x:Name="progBar" HorizontalAlignment="Stretch" Height="8" Margin="137,46,0,0" VerticalAlignment="Top"/>
         <Label x:Name="lblTotalsInfo" Content="" HorizontalAlignment="Left" Height="31" Margin="132,10,0,0" VerticalAlignment="Top" Width="197"/>
         <Button x:Name="btnOpenOrig" Content="Original" HorizontalAlignment="Left" Height="31" Margin="10,39,0,0" Grid.Row="1" VerticalAlignment="Top" Width="78" Click="btnOpenOrig_Click"/>
         <Button x:Name="btnOpenArchive" Content="Archive" HorizontalAlignment="Left" Height="31" Margin="10,75,0,0" Grid.Row="1" VerticalAlignment="Top" Width="78" Click="btnOpenArchive_Click"/>
@@ -43,9 +48,12 @@
         <ComboBox x:Name="comboListView" HorizontalAlignment="Left" Height="30" Margin="10,11,0,0" VerticalAlignment="Top" Width="117" SelectedIndex="0">
             <ComboBoxItem Tag="filed">Filed</ComboBoxItem>
             <ComboBoxItem Tag="filedNotFound">Filed-NotFound</ComboBoxItem>
+            <ComboBoxItem Tag="filedAutoLocate">Filed-AutoLocate</ComboBoxItem>
             <ComboBoxItem Tag="all">All</ComboBoxItem>
         </ComboBox>
         <Button x:Name="btnNext" Content="Next" HorizontalAlignment="Left" Height="31" Margin="457,10,0,0" VerticalAlignment="Top" Width="57" Click="btnNext_Click"/>
+        <TextBox x:Name="txtSearch" HorizontalAlignment="Stretch" Height="31" Margin="520,10,62,0" TextWrapping="Wrap" VerticalAlignment="Top"/>
+        <Button x:Name="btnSearch" Content="Search" HorizontalAlignment="Right" Height="31" Margin="617,10,0,0" VerticalAlignment="Top" Width="57" Click="btnSearch_Click"/>
 
     </Grid>
 </Window>

@@ -1,4 +1,5 @@
-﻿using NLog;
+﻿using Microsoft.WindowsAPICodePack.Dialogs;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -69,6 +70,7 @@ namespace ScanMonitorApp
             object[] args = (object[])e.Argument;
             string rsltFilter = (string)args[0];
             int includeInListFromIdxNonInclusive = (int)args[1];
+            string srchText = (string)args[2];
 
             // Start filling list from the end
             int nEndIdx = includeInListFromIdxNonInclusive-1;
@@ -86,7 +88,10 @@ namespace ScanMonitorApp
                 }
 
                 // Update status
-                worker.ReportProgress((int)(numFound * 100 / MAX_NUM_DOCS_TO_ADD_TO_LIST));
+                if (srchText != "")
+                    worker.ReportProgress((int)((nEndIdx-nDocIdx) * 100 / nEndIdx));
+                else
+                    worker.ReportProgress((int)(numFound * 100 / MAX_NUM_DOCS_TO_ADD_TO_LIST));
 
                 // Get scan doc info and filed doc info
                 ScanDocInfo sdi = sdiList[nDocIdx];
@@ -98,6 +103,7 @@ namespace ScanMonitorApp
                 {
                     case "filed":
                     case "filedNotFound":
+                    case "filedAutoLocate":
                         if (fdi == null)
                         {
                             bInclude = false;
@@ -115,6 +121,17 @@ namespace ScanMonitorApp
                 {
                     nDocIdx--;
                     continue;
+                }
+
+                // Check it contains required text - if requested
+                if (srchText != "")
+                {
+                    ScanPages scanPages = _scanDocHandler.GetScanPages(sdi.uniqName);
+                    if ((scanPages == null) || (!scanPages.ContainText(srchText)))
+                        {
+                            nDocIdx--;
+                            continue;
+                        }
                 }
 
                 // Show this record
@@ -143,12 +160,12 @@ namespace ScanMonitorApp
                 }
 
                 // Check special result filters
-                if ((fdi != null) && !filedFileNotFound && (rsltFilter == "filedNotFound"))
+                if ((fdi != null) && !filedFileNotFound && ((rsltFilter == "filedNotFound") || (rsltFilter == "filedAutoLocate")))
                 {
                     nDocIdx--;
                     continue;
                 }
-               
+
                 audDat.FinalStatus = statStr;
                 audDat.FiledDocPresent = (fdi == null) ? "" : (filedFileNotFound ? "Not found" : "Ok");
 
@@ -157,21 +174,29 @@ namespace ScanMonitorApp
                 string archiveFileName = System.IO.Path.Combine(Properties.Settings.Default.DocArchiveFolder, sdi.uniqName + ".pdf");
                 if ((filedFileNotFound) && (File.Exists(archiveFileName)))
                 {
-                    using (var md5 = MD5.Create())
+                    long fileLen = 0;
+                    byte[] md5Val = ScanDocHandler.GenHashOnFileExcludingMetadata(archiveFileName, out fileLen);
+                    List<ExistingFileInfoRec> efirList = _scanDocHandler.FindExistingFileRecsByHash(md5Val);
+                    foreach (ExistingFileInfoRec efir in efirList)
                     {
-                        using (var stream = File.OpenRead(archiveFileName))
+                        // Check for a file length within 10% (metadata may have changed)
+                        if ((fileLen > efir.fileLength * 9 / 10) && (fileLen < efir.fileLength * 11 / 10))
                         {
-                            List<ExistingFileInfoRec> efirList = _scanDocHandler.FindExistingFileRecsByHash(md5.ComputeHash(stream));
-                            foreach (ExistingFileInfoRec efir in efirList)
-                                if (stream.Length == efir.fileLength)
-                                {
-                                    movedToFileName = efir.filename;
-                                    break;
-                                }
+                            movedToFileName = efir.filename;
+                            break;
                         }
                     }
                 }
                 audDat.MovedToFileName = movedToFileName;
+
+                // Check for auto locate
+                if ((fdi != null) && filedFileNotFound && (rsltFilter == "filedAutoLocate") && (movedToFileName != ""))
+                {
+                    // Re-file at the new location
+                    fdi.filedAs_pathAndFileName = movedToFileName;
+                    _scanDocHandler.AddOrUpdateFiledDocRecInDb(fdi);
+                    audDat.MovedToFileName = "FIXED " + movedToFileName;
+                }
 
                 this.Dispatcher.BeginInvoke((Action)delegate()
                     {
@@ -198,6 +223,9 @@ namespace ScanMonitorApp
         void PopulateList_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             progBar.Value = (100);
+            btnGo.Content = "Latest";
+            btnNext.IsEnabled = true;
+            btnSearch.IsEnabled = true;
         }
 
         private void auditListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -288,13 +316,23 @@ namespace ScanMonitorApp
 
         private void btnGo_Click(object sender, RoutedEventArgs e)
         {
+            // Stop if required
+            if (_bwThreadForPopulateList.IsBusy)
+            {
+                _bwThreadForPopulateList.CancelAsync();
+                return;
+            }
+
             // Clear list
             _auditDataColl.Clear();
 
-            int startVal = 1000000;
+            int startVal = 100000000;
             if (!_bwThreadForPopulateList.IsBusy)
             {
-                object[] args = { GetListViewType(), startVal };
+                btnGo.Content = "Stop";
+                btnNext.IsEnabled = false;
+                btnSearch.IsEnabled = false;
+                object[] args = { GetListViewType(), startVal, "" };
                 _bwThreadForPopulateList.RunWorkerAsync(args);
             }
         }
@@ -304,11 +342,14 @@ namespace ScanMonitorApp
             // Clear list
             _auditDataColl.Clear();
 
-            int startVal = 1000000;
+            int startVal = 100000000;
             Int32.TryParse(txtStart.Text, out startVal);
             if (!_bwThreadForPopulateList.IsBusy)
             {
-                object[] args = { GetListViewType(), startVal };
+                btnGo.Content = "Stop";
+                btnNext.IsEnabled = false;
+                btnSearch.IsEnabled = false;
+                object[] args = { GetListViewType(), startVal, "" };
                 _bwThreadForPopulateList.RunWorkerAsync(args);
             }
         }
@@ -359,10 +400,64 @@ namespace ScanMonitorApp
             this.WindowState = System.Windows.WindowState.Maximized;
             if (!_bwThreadForPopulateList.IsBusy)
             {
-                object[] args = { GetListViewType(), 100000 };
+                btnGo.Content = "Stop";
+                btnNext.IsEnabled = false;
+                btnSearch.IsEnabled = false;
+                object[] args = { GetListViewType(), 100000000, "" };
                 _bwThreadForPopulateList.RunWorkerAsync(args);
             }
 
+        }
+
+        private void btnSearch_Click(object sender, RoutedEventArgs e)
+        {
+            // Clear list
+            _auditDataColl.Clear();
+
+            int startVal = 100000000;
+            string srchText = txtSearch.Text;
+            if (!_bwThreadForPopulateList.IsBusy)
+            {
+                btnGo.Content = "Stop";
+                btnNext.IsEnabled = false;
+                btnSearch.IsEnabled = false;
+                object[] args = { GetListViewType(), startVal, srchText };
+                _bwThreadForPopulateList.RunWorkerAsync(args);
+            }
+        }
+
+        private void listViewCtxtLocate_Click(object sender, RoutedEventArgs e)
+        {
+            AuditData selectedRow = auditListView.SelectedItem as AuditData;
+            if (selectedRow != null)
+            {
+                string uniqName = selectedRow.UniqName;
+                ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(uniqName);
+                if (scanDocAllInfo.filedDocInfo != null)
+                {
+                    CommonOpenFileDialog cofd = new CommonOpenFileDialog("Locate the file");
+                    cofd.Multiselect = false;
+                    cofd.InitialDirectory = System.IO.Path.GetDirectoryName(scanDocAllInfo.filedDocInfo.filedAs_pathAndFileName);
+                    cofd.Filters.Add(new CommonFileDialogFilter("Any", ".*"));
+                    CommonFileDialogResult result = cofd.ShowDialog(this);
+                    if (result == CommonFileDialogResult.Ok)
+                    {
+                        // Re-file at the new location
+                        scanDocAllInfo.filedDocInfo.filedAs_pathAndFileName = cofd.FileName;
+                        _scanDocHandler.AddOrUpdateFiledDocRecInDb(scanDocAllInfo.filedDocInfo);
+                        selectedRow.MovedToFileName = "MOVEDTO " + cofd.FileName;
+
+                        // Check if archived file is present
+                        string archiveFileName = System.IO.Path.Combine(Properties.Settings.Default.DocArchiveFolder, scanDocAllInfo.scanDocInfo.uniqName + ".pdf");
+                        if (!File.Exists(archiveFileName))
+                        {
+                            string tmpStr = "";
+                            ScanDocHandler.CopyFile(cofd.FileName, archiveFileName, ref tmpStr);
+                            selectedRow.MovedToFileName = "ARCVD & " + selectedRow.MovedToFileName;
+                        }
+                    }
+                }
+            }
         }
 
         //private void auditListView_Loaded(object sender, RoutedEventArgs e)
