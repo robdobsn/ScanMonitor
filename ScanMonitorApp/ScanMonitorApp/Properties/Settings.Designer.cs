@@ -25,7 +25,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\\\\SCAN2\\Users\\Rob\\Documents\\ScanSnap;\\\\SCAN1\\Users\\Rob\\Documents\\ScanSnap")]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\SCAN2\\Users\\Rob\\Documents\\ScanSnap")]
         public string FoldersToMonitor {
             get {
                 return ((string)(this["FoldersToMonitor"]));
@@ -298,7 +298,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("60")]
+        [global::System.Configuration.DefaultSettingValueAttribute("10")]
         public int FolderMonitorSeconds {
             get {
                 return ((int)(this["FolderMonitorSeconds"]));
@@ -334,7 +334,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("docType")]
+        [global::System.Configuration.DefaultSettingValueAttribute("original")]
         public string UnfiledDocListOrder {
             get {
                 return ((string)(this["UnfiledDocListOrder"]));
@@ -359,13 +359,25 @@ namespace ScanMonitorApp.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Main\\RobAndJudyPersonal;\\\\MACALLAN\\Main\\Rob Business;\\\\MACALLAN\\Main\\j" +
-            "udyw\\driveg\\Marketry")]
+            "udyw\\driveg\\Marketry;\\\\MACALLAN\\Main\\Peter Wilson documents")]
         public string FoldersToSearchForFiledDocs {
             get {
                 return ((string)(this["FoldersToSearchForFiledDocs"]));
             }
             set {
                 this["FoldersToSearchForFiledDocs"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("ScanSwSettings")]
+        public string DbCollectionForSwSettings {
+            get {
+                return ((string)(this["DbCollectionForSwSettings"]));
+            }
+            set {
+                this["DbCollectionForSwSettings"] = value;
             }
         }
     }

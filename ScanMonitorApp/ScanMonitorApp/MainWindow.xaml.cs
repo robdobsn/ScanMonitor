@@ -57,6 +57,8 @@ namespace ScanMonitorApp
         private ScanFileMonitor _scanFileMonitor = null;
         private ScanDocHandler _scanDocHandler;
 
+        private System.Windows.Threading.DispatcherTimer _uiUpdateTimer = new System.Windows.Threading.DispatcherTimer();
+
 #if USE_NOTIFY_ICON
         private System.Windows.Forms.NotifyIcon _notifyIcon;
 
@@ -327,7 +329,13 @@ namespace ScanMonitorApp
 
         private void MetroWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            Thread.Sleep(2000);
+
+            // UI update timer
+            _uiUpdateTimer.Tick += new EventHandler(uiUpdateTimer_Tick);
+            _uiUpdateTimer.Interval = new TimeSpan(0, 0, 1);
+            _uiUpdateTimer.Start();
+
+            // Show filing view
             DocFilingView dfv = new DocFilingView(_scanDocHandler, _docTypesMatcher);
             dfv.ShowDialog();
         }
@@ -347,6 +355,22 @@ namespace ScanMonitorApp
         {
             try
             {
+                //const bool TEST = true;
+                //string fddd = @"\\MACALLAN\Main\RobAndJudyPersonal\Grace and Joe\Joe's own files\Diary\Joe's Notes & Stories - 2012-13 Diary Entries.pdf";
+                //if (TEST)
+                //{
+                //    byte[] md5Val = new byte[0];
+                //    long fileLen = 0;
+                //    md5Val = ScanDocHandler.GenHashOnFileExcludingMetadata(fddd, out fileLen);
+                //    if (md5Val.Length > 0)
+                //    {
+                //        AddFileToDb(fddd, md5Val, fileLen);
+                //        filesAdded++;
+                //    }
+
+                //}
+                //else
+                //{
                 if (!Directory.Exists(startingFolder))
                     return;
                 foreach (string fileFilter in fileFilters)
@@ -357,18 +381,91 @@ namespace ScanMonitorApp
                         if ((worker.CancellationPending == true))
                         {
                             e.Cancel = true;
-                            object[] rslt = {"Cancelled", filesAdded} ;
+                            object[] rslt = { "Cancelled", filesAdded };
                             e.Result = rslt;
                             return;
                         }
+
+                        byte[] md5Val = new byte[0];
+                        long fileLen = 0;
+                        md5Val = ScanDocHandler.GenHashOnFileExcludingMetadata(f, out fileLen);
+                        if (md5Val.Length > 0)
+                        {
+                            AddFileToDb(f, md5Val, fileLen);
+                            filesAdded++;
+                        }
+
+
+                        /*
+                        bool addResult = false;
+                        byte[] md5Val;
                         using (var md5 = MD5.Create())
                         {
                             using (var stream = File.OpenRead(f))
                             {
-                                AddFileToDb(f, md5.ComputeHash(stream), stream.Length);
+                                md5Val = md5.ComputeHash(stream);
+                                AddFileToDb(f, md5Val, stream.Length);
                                 filesAdded++;
+                                addResult = true;
                             }
                         }
+
+                        bool readFileToMem = false;
+                        bool foundStrInFile = false;
+                        string extractedText = "";
+                        try
+                        {
+                            byte[] fileData = File.ReadAllBytes(f);
+                            readFileToMem = true;
+                            bool completeMatch = false;
+                            int matchPos = 0;
+                            for (int testPos = 0; testPos < fileData.Length - pdfImageTagBytes.Length; testPos++)
+                            {
+                                completeMatch = true;
+                                for (int i = 0; i < pdfImageTagBytes.Length; i++)
+                                    if (fileData[testPos + i] != pdfImageTagBytes[i])
+                                    {
+                                        completeMatch = false;
+                                        break;
+                                    }
+                                if (completeMatch)
+                                {
+                                    matchPos = testPos;
+                                    extractedText += Encoding.UTF8.GetString(fileData, matchPos, 70);
+                                    break;
+                                }
+                            }
+                        }
+                        finally
+                        {
+                        }
+                            * */
+                        /*
+                        string path = @"C:\Users\rob_2\Documents\md5files.tsv";
+                        if (!File.Exists(path))
+                        {
+                            // Create a file to write to. 
+                            using (StreamWriter sw = File.CreateText(path))
+                            {
+                                sw.WriteLine("Filename\tMD5\tMD5OK\tpartial\tonlen\ttotlen");
+                            }
+                        }
+                        using (StreamWriter sw = File.AppendText(path))
+                        {
+                            if (md5CreatedOk)
+                            {
+                                sw.Write(f + "\t");
+                                for (int i = 0; i < md5Val.Length; i++)
+                                    sw.Write(String.Format("#{0:X},",md5Val[i]));
+                                sw.WriteLine("\tTRUE");
+                                sw.WriteLine(partialMD5.ToString() + "\t" + md5OnLen.ToString() + "\t" + fileLen.ToString());
+                            }
+                            else
+                            {
+                                sw.WriteLine(f + "\t\tFALSE\t\t\t\t");
+                            }
+                        }	
+                        */
                     }
                 }
                 foreach (string d in Directory.GetDirectories(startingFolder))
@@ -382,6 +479,7 @@ namespace ScanMonitorApp
                         return;
                     }
                 }
+//TEST                }
             }
             catch (System.Exception excpt)
             {
@@ -490,5 +588,11 @@ namespace ScanMonitorApp
             butRecomputeMD5.Content = "Recompute MD5";
         }
 
+        private void uiUpdateTimer_Tick(object sender, EventArgs e)
+        {
+            // Updating the Label which displays the current second
+            if (_scanFileMonitor != null)
+                statusFilingMonitor.Content = _scanFileMonitor.GetCurrentInfo();
+        }
     }
 }

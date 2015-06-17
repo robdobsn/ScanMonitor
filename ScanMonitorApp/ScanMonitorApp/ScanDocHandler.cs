@@ -15,6 +15,7 @@ using System.ComponentModel;
 using System.Threading;
 using System.Net.Mail;
 using System.Net;
+using System.Security.Cryptography;
 
 namespace ScanMonitorApp
 {
@@ -44,9 +45,15 @@ namespace ScanMonitorApp
 
         public ScanDocHandler(ReportStatus reportStatusFn, DocTypesMatcher docTypesMatcher, ScanDocHandlerConfig scanConfig, string dbConnectionStr)
         {
+            // Setup
             _reportStatusFn = reportStatusFn;
             _docTypesMatcher = docTypesMatcher;
             _scanConfig = scanConfig;
+
+            // Init db
+            InitDatabase(dbConnectionStr);
+
+            // Create info cache etc
             _scanDocInfoCache = new ScanDocInfoCache(this);
             _scanDocLikelyDocType = new ScanDocLikelyDocType(this, _docTypesMatcher);
 
@@ -57,8 +64,6 @@ namespace ScanMonitorApp
             _fileProcessBkgndWorker.ProgressChanged += new ProgressChangedEventHandler(FileProcessProgressChanged);
             _fileProcessBkgndWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(FileProcessRunWorkerCompleted);
 
-            // Init db
-            InitDatabase(dbConnectionStr);
         }
 
         #endregion
@@ -138,6 +143,45 @@ namespace ScanMonitorApp
         public MongoClient GetMongoClient()
         {
             return _dbClient;
+        }
+
+        #endregion
+
+        #region Scan Sw Settings
+
+        public MongoCollection<ScanSwSettings> GetScanSwSettingsCollection()
+        {
+            var server = _dbClient.GetServer();
+            var database = server.GetDatabase(_scanConfig._dbNameForDocs); // the name of the database
+            return database.GetCollection<ScanSwSettings>(Properties.Settings.Default.DbCollectionForSwSettings);
+        }
+
+        public string GetEmailPassword()
+        {
+            // Get first matching document
+            MongoCollection<ScanSwSettings> collection_swsettings = GetScanSwSettingsCollection();
+            ScanSwSettings swSettings = collection_swsettings.FindOne();
+            if (swSettings == null)
+                return "";
+            return swSettings._emailPassword;
+        }
+
+        public bool SetEmailPassword(string pw)
+        {
+            // Mongo save
+            try
+            {
+                ScanSwSettings settings = new ScanSwSettings(pw);
+                MongoCollection<ScanSwSettings> collection_swsettings = GetScanSwSettingsCollection();
+                collection_swsettings.RemoveAll();
+                collection_swsettings.Save(settings);
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Cannot update password in db {0}", excp.Message);
+                return false;
+            }
+            return true;
         }
 
         #endregion
@@ -341,7 +385,7 @@ namespace ScanMonitorApp
                 MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
                 collection_fdinfo.Save(filedDocInfo);
                 // Log it
-                logger.Info("Added/updated fileddoc record for {0}", filedDocInfo.uniqName);
+                logger.Info("Added/updated fileddoc record for {0} filedAt {1}", filedDocInfo.uniqName, filedDocInfo.filedAs_pathAndFileName);
                 // Update cache
                 _scanDocInfoCache.UpdateDocInfo(filedDocInfo.uniqName);
             }
@@ -447,6 +491,11 @@ namespace ScanMonitorApp
         public int GetCountOfUnfiledDocs()
         {
             return _scanDocInfoCache.GetCountOfUnfiledDocs();
+        }
+
+        public string GetHashOfUnfiledDocs()
+        {
+            return _scanDocInfoCache.GetHashOfUnfiledDocs();
         }
 
         public string GetUniqNameOfDocToBeFiled(int docIdx)
@@ -849,7 +898,18 @@ namespace ScanMonitorApp
                 {
                     if (Properties.Settings.Default.TestModeFileTo == "")
                     {
-                        File.Delete(sdi.origFileName);
+                        // Special case code here to handle a bug that resulted in origFileName being in the archive folder
+                        string origName = System.IO.Path.GetDirectoryName(sdi.origFileName).ToLower();
+                        string testName = Properties.Settings.Default.DocArchiveFolder.ToLower();
+                        if (testName == origName)
+                        {
+                            string removalFileName = Path.Combine(@"\\SCAN2\Users\Rob\Documents\ScanSnap", Path.GetFileName(sdi.origFileName));
+                            File.Delete(removalFileName);
+                        }
+                        else
+                        {
+                            File.Delete(sdi.origFileName);
+                        }
                     }
                     else
                     {
@@ -970,6 +1030,73 @@ namespace ScanMonitorApp
         #endregion
 
         #region Utility Functions
+
+        public static byte[] GenHashOnFileExcludingMetadata(string filename, out long fileLen)
+        {
+            bool md5CreatedOk = false;
+            byte[] md5Val = new byte[0];
+            byte[] pdfImageTagBytes = Encoding.ASCII.GetBytes("<</Subtype/Image/Length");
+            using (var md5 = MD5.Create())
+            {
+                try
+                {
+                    FileInfo finfo = new FileInfo(filename);
+                    fileLen = finfo.Length;
+                    if (finfo.Length < 100000000)
+                    {
+                        byte[] fileData = File.ReadAllBytes(filename);
+                        bool completeMatch = false;
+                        int matchPos = 0;
+                        // Find the tell-tale PDF scanned file string of bytes
+                        for (int testPos = 0; testPos < fileData.Length - pdfImageTagBytes.Length; testPos++)
+                        {
+                            completeMatch = true;
+                            for (int i = 0; i < pdfImageTagBytes.Length; i++)
+                                if (fileData[testPos + i] != pdfImageTagBytes[i])
+                                {
+                                    completeMatch = false;
+                                    break;
+                                }
+                            if (completeMatch)
+                            {
+                                matchPos = testPos;
+                                string extractedText = Encoding.UTF8.GetString(fileData, matchPos + pdfImageTagBytes.Length, 20);
+                                Match match = Regex.Match(extractedText, @"\s*?(\d+)",RegexOptions.IgnoreCase);
+                                if (match.Success)
+                                {
+                                    // Finally, we get the Group value and display it.
+                                    int imgLen = 0;
+                                    bool rslt = Int32.TryParse(match.Groups[1].Value, out imgLen);
+                                    if (rslt && (imgLen < fileData.Length - matchPos - 100))
+                                    {
+                                        md5Val = md5.ComputeHash(fileData, matchPos, imgLen);
+                                        md5CreatedOk = true;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+
+                    }
+
+                    if (!md5CreatedOk)
+                    {
+                        using (var stream = File.OpenRead(filename))
+                        {
+                            md5Val = md5.ComputeHash(stream);
+                            md5CreatedOk = true;
+                        }
+                    }
+                }
+                finally
+                {
+
+                }
+            }
+            if (md5CreatedOk)
+                return md5Val;
+            return new byte[0];
+        }
 
         private static string ReplaceStringAnyCase(string input, string pattern, string replacement)
         {

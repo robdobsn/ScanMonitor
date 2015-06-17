@@ -15,7 +15,8 @@ namespace ScanMonitorApp
         // Cache scan and filing info
         private Dictionary<string, ScanDocAllInfo> _cacheScanDocAllInfo = new Dictionary<string, ScanDocAllInfo>();
         private ScanDocHandler _scanDocHandler = null;
-        private List<string> _uniqNamesOfDocsToBeFiled = new List<string>();
+        private List<string> _unfiledDocsUniqNames = new List<string>();
+        private string _unfiledDocsHashStr = "";
         private BackgroundWorker _bwUnfiledListUpdateThread;
         private static readonly object _lockForUnfiledListAccess = new object();
         private bool _threadRunning = true;
@@ -84,7 +85,7 @@ namespace ScanMonitorApp
             List<string> listCopy = new List<string>();
             lock (_lockForUnfiledListAccess)
             {
-                listCopy = new List<string>(_uniqNamesOfDocsToBeFiled);
+                listCopy = new List<string>(_unfiledDocsUniqNames);
             }
             return listCopy;
         }
@@ -94,6 +95,7 @@ namespace ScanMonitorApp
             BackgroundWorker worker = sender as BackgroundWorker;
             while (_threadRunning)
             {
+
                 // Get doc uniq names for scanned docs
                 MongoCollection<ScanDocInfo> collection_sdinfo = _scanDocHandler.GetDocInfoCollection();
                 MongoCursor<ScanDocInfo> scannedDocs = collection_sdinfo.FindAll();
@@ -114,7 +116,11 @@ namespace ScanMonitorApp
                 // Obtain lock to access
                 lock (_lockForUnfiledListAccess)
                 {
-                    _uniqNamesOfDocsToBeFiled = unfiledDocs;
+                    _unfiledDocsUniqNames = unfiledDocs;
+                    if (unfiledDocs.Count > 1000)
+                        _unfiledDocsHashStr = unfiledDocs.Count.ToString() + unfiledDocs[0] + unfiledDocs[unfiledDocs.Count - 1];
+                    else
+                        _unfiledDocsHashStr = string.Join("", unfiledDocs);
                 }
 
                 // See if the ScanDocAllInfo cache needs to be primed
@@ -149,9 +155,19 @@ namespace ScanMonitorApp
             int listCount = 0;
             lock (_lockForUnfiledListAccess)
             {
-                listCount = _uniqNamesOfDocsToBeFiled.Count();
+                listCount = _unfiledDocsUniqNames.Count();
             }
             return listCount;
+        }
+
+        public string GetHashOfUnfiledDocs()
+        {
+            string rtnStr = "";
+            lock (_lockForUnfiledListAccess)
+            {
+                rtnStr = _unfiledDocsHashStr;
+            }
+            return rtnStr;
         }
 
         public string GetUniqNameOfDocToBeFiled(int docIdx)
@@ -162,8 +178,8 @@ namespace ScanMonitorApp
                 // Handle range errors
                 if (docIdx < 0)
                     docIdx = 0;
-                if ((docIdx >= 0) && (docIdx < _uniqNamesOfDocsToBeFiled.Count()))
-                     uniqName = _uniqNamesOfDocsToBeFiled[docIdx];
+                if ((docIdx >= 0) && (docIdx < _unfiledDocsUniqNames.Count()))
+                     uniqName = _unfiledDocsUniqNames[docIdx];
             }
             return uniqName;
         }
@@ -172,7 +188,7 @@ namespace ScanMonitorApp
         {
             lock (_lockForUnfiledListAccess)
             {
-                _uniqNamesOfDocsToBeFiled.Remove(uniqName);
+                _unfiledDocsUniqNames.Remove(uniqName);
             }            
         }
 

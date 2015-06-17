@@ -3,7 +3,7 @@
   <Profiles />
   <Settings>
     <Setting Name="FoldersToMonitor" Type="System.String" Scope="User">
-      <Value Profile="(Default)">\\SCAN2\Users\Rob\Documents\ScanSnap;\\SCAN1\Users\Rob\Documents\ScanSnap</Value>
+      <Value Profile="(Default)">\\SCAN2\Users\Rob\Documents\ScanSnap</Value>
     </Setting>
     <Setting Name="DocAdminImgFolderBase" Type="System.String" Scope="User">
       <Value Profile="(Default)">\\MACALLAN\Admin\ScanAdmin\ScannedDocImgs</Value>
@@ -72,7 +72,7 @@
       <Value Profile="(Default)" />
     </Setting>
     <Setting Name="FolderMonitorSeconds" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">60</Value>
+      <Value Profile="(Default)">10</Value>
     </Setting>
     <Setting Name="UnfiledDocCheckSeconds" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">10</Value>
@@ -81,13 +81,16 @@
       <Value Profile="(Default)">600</Value>
     </Setting>
     <Setting Name="UnfiledDocListOrder" Type="System.String" Scope="User">
-      <Value Profile="(Default)">docType</Value>
+      <Value Profile="(Default)">original</Value>
     </Setting>
     <Setting Name="DbCollectionForExistingFiles" Type="System.String" Scope="User">
       <Value Profile="(Default)">ExistingFileInfo</Value>
     </Setting>
     <Setting Name="FoldersToSearchForFiledDocs" Type="System.String" Scope="User">
-      <Value Profile="(Default)">\\MACALLAN\Main\RobAndJudyPersonal;\\MACALLAN\Main\Rob Business;\\MACALLAN\Main\judyw\driveg\Marketry</Value>
+      <Value Profile="(Default)">\\MACALLAN\Main\RobAndJudyPersonal;\\MACALLAN\Main\Rob Business;\\MACALLAN\Main\judyw\driveg\Marketry;\\MACALLAN\Main\Peter Wilson documents</Value>
+    </Setting>
+    <Setting Name="DbCollectionForSwSettings" Type="System.String" Scope="User">
+      <Value Profile="(Default)">ScanSwSettings</Value>
     </Setting>
   </Settings>
 </SettingsFile>

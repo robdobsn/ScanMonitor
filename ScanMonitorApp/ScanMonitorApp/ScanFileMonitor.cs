@@ -22,8 +22,11 @@ namespace ScanMonitorApp
         private ScanDocHandler _scanDocHandler;
         private bool _testMode = false;
         private static readonly object _lockForDocProcessing = new object();
-        private static bool _requestDocProcessingForNewFile = false;
+        private static bool _fileIsBeingProcessed = false;
         BackgroundWorker _bwFileMonitorThread;
+        private volatile string _lastFileProcessed = "";
+        private volatile string _lastTimeFilesChecked = "";
+        private volatile string _lastStatusOfFileProcessing = "";
 
         public ScanFileMonitor(ReportStatus reportStatusFn, ScanDocHandler scanDocHandler)
         {
@@ -77,6 +80,11 @@ namespace ScanMonitorApp
                 }
             }
             return watcherCount;
+        }
+
+        public string GetCurrentInfo()
+        {
+            return _lastFileProcessed + " " + _lastTimeFilesChecked + " " + _lastStatusOfFileProcessing;
         }
 
         public void WatchFolderChanged(string fileName, WatcherChangeTypes changeInfo)
@@ -134,7 +142,7 @@ namespace ScanMonitorApp
         private void HandleNewPdfFile(string fileName)
         {
             // Set flag to request that any regular processing of files stops while the new file is processed
-            _requestDocProcessingForNewFile = true;
+            _fileIsBeingProcessed = true;
 
             // Try to obtain a lock on the lock object but with a timeout to ensure we don't wait here for a long time
             if(Monitor.TryEnter(_lockForDocProcessing, new TimeSpan(0, 0, 10)))
@@ -142,6 +150,7 @@ namespace ScanMonitorApp
                 try 
                 {
                     HandleASinglePdfFile(fileName);
+                    _lastFileProcessed = System.IO.Path.GetFileName(fileName) + " at " + DateTime.Now.ToShortTimeString() + " on " + DateTime.Now.ToShortDateString();
                 }
                 finally 
                 {
@@ -150,7 +159,7 @@ namespace ScanMonitorApp
             }
 
             // Clear flag indicating request to stop
-            _requestDocProcessingForNewFile = false;
+            _fileIsBeingProcessed = false;
         }
 
         private void HandleASinglePdfFile(string fileName)
@@ -200,54 +209,61 @@ namespace ScanMonitorApp
                     break;
                 }
 
-                // Obtain lock to allow processing
-                lock (_lockForDocProcessing)
+                // Don't check for files while another is being processed
+                int filesCheckedLastPass = 0;
+                if (!_fileIsBeingProcessed)
                 {
-                    // Check for new files
-                    for (int folderIdx = 0; folderIdx < _foldersToMonitor.Count; folderIdx++)
+                    // Obtain lock to allow processing
+                    lock (_lockForDocProcessing)
                     {
-                        List<FileSystemInfo> fsInfos = GetListOfFilesInWatchedFolder(_foldersToMonitor[folderIdx]);
-
-                        // Check if each file in the folder is already in the database
-                        foreach (FileSystemInfo fsi in fsInfos)
+                        // Check for new files
+                        for (int folderIdx = 0; folderIdx < _foldersToMonitor.Count; folderIdx++)
                         {
-                            // Check for cancellation
-                            if ((worker.CancellationPending == true))
-                            {
-                                e.Cancel = true;
-                                break;
-                            }
+                            List<FileSystemInfo> fsInfos = GetListOfFilesInWatchedFolder(_foldersToMonitor[folderIdx]);
+                            filesCheckedLastPass += fsInfos.Count;
+                            _lastTimeFilesChecked = "Last check at " + DateTime.Now.ToShortTimeString() + " on " + DateTime.Now.ToShortDateString();
 
-                            try
+                            // Check if each file in the folder is already in the database
+                            foreach (FileSystemInfo fsi in fsInfos)
                             {
-                                DateTime fileDateTime = File.GetCreationTime(fsi.FullName);
-                                string uniqName = ScanDocInfo.GetUniqNameForFile(fsi.FullName, fileDateTime);
-
-                                // Check if doc not already in database
-                                ScanDocInfo sdi = _scanDocHandler.GetScanDocInfo(uniqName);
-                                if (sdi == null)
+                                // Check for cancellation
+                                if ((worker.CancellationPending == true))
                                 {
-                                    // Process the doc
-                                    HandleASinglePdfFile(fsi.FullName);
+                                    e.Cancel = true;
+                                    break;
                                 }
-                            }
-                            catch (Exception excp)
-                            {
-                                logger.Error("Failed to process file {0}", excp.Message);
-                            }
 
+                                try
+                                {
+                                    DateTime fileDateTime = File.GetCreationTime(fsi.FullName);
+                                    string uniqName = ScanDocInfo.GetUniqNameForFile(fsi.FullName, fileDateTime);
+
+                                    // Check if doc not already in database
+                                    ScanDocInfo sdi = _scanDocHandler.GetScanDocInfo(uniqName);
+                                    if (sdi == null)
+                                    {
+                                        // Process the doc
+                                        HandleASinglePdfFile(fsi.FullName);
+                                    }
+                                }
+                                catch (Exception excp)
+                                {
+                                    logger.Error("Failed to process file {0}", excp.Message);
+                                }
+
+                                // Check if we should terminate to allow a new file to be processed
+                                if (_fileIsBeingProcessed)
+                                    break;
+                            }
                             // Check if we should terminate to allow a new file to be processed
-                            if (_requestDocProcessingForNewFile)
+                            if (_fileIsBeingProcessed)
                                 break;
                         }
-                        // Check if we should terminate to allow a new file to be processed
-                        if (_requestDocProcessingForNewFile)
-                            break;
                     }
                 }
-                
-                // Clear any request
-                _requestDocProcessingForNewFile = false;
+
+                // Store info on number of files checked on the last pass
+                _lastStatusOfFileProcessing = filesCheckedLastPass.ToString() + " unfiled on last pass";
 
                 // Wait a while to avoid thrashing constantly
                 for (int i = 0; i < Properties.Settings.Default.FolderMonitorSeconds; i++)

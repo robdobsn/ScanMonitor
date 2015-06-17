@@ -34,7 +34,8 @@ namespace ScanMonitorApp
         {
             int selIdx = comboListOrder.SelectedIndex;
             Properties.Settings.Default.UnfiledDocListOrder = ((ComboBoxItem)comboListOrder.SelectedItem).Tag.ToString();
-            Properties.Settings.Default.Save();
+            // Removed save to defaults so that we always go back to original order
+//            Properties.Settings.Default.Save();
             Close();
         }
 

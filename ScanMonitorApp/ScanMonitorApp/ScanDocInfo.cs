@@ -234,6 +234,23 @@ namespace ScanMonitorApp
             scanPagesText = spagesText;
             pageRotations = pageRots;
         }
+
+        public bool ContainText(string srchText)
+        {
+            srchText = srchText.Trim();
+            for (int pageIdx = 0; pageIdx < scanPagesText.Count; pageIdx++)
+            {
+                List<ScanTextElem> scanPageText = scanPagesText[pageIdx];
+                for (int elemIdx = 0; elemIdx < scanPageText.Count; elemIdx++)
+                {
+                    ScanTextElem textElem = scanPageText[elemIdx];
+                    int mtchPos = textElem.text.IndexOf(srchText, StringComparison.OrdinalIgnoreCase);
+                    if (mtchPos >= 0)
+                        return true;
+                }
+            }
+            return false;
+        }
     }
 
     public class ScanTextElem
@@ -255,5 +272,14 @@ namespace ScanMonitorApp
         public long fileLength;
     }
 
+    public class ScanSwSettings
+    {
+        public ScanSwSettings(string emailPassword)
+        {
+            _emailPassword = emailPassword;
+        }
+        public ObjectId Id;
+        public string _emailPassword;
+    }
 
 }
