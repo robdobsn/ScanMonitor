@@ -126,12 +126,23 @@ namespace ScanMonitorApp
                 // Check it contains required text - if requested
                 if (srchText != "")
                 {
-                    ScanPages scanPages = _scanDocHandler.GetScanPages(sdi.uniqName);
-                    if ((scanPages == null) || ((!scanPages.ContainText(srchText)) && !(System.IO.Path.GetFileName(fdi.filedAs_pathAndFileName).ToLower().Contains(srchText.ToLower()))))
-                        {
-                            nDocIdx--;
-                            continue;
-                        }
+                    bInclude = false;
+                    if ((fdi != null) && (fdi.filedAs_pathAndFileName != null) && (fdi.filedAs_pathAndFileName.Trim() != ""))
+                    {
+                        if (System.IO.Path.GetFileName(fdi.filedAs_pathAndFileName).ToLower().Contains(srchText.ToLower()))
+                            bInclude = true;
+                    }
+                    if (!bInclude)
+                    {
+                        ScanPages scanPages = _scanDocHandler.GetScanPages(sdi.uniqName);
+                        if ((scanPages != null) && (scanPages.ContainText(srchText)))
+                            bInclude = true;
+                    }
+                    if (!bInclude)
+                    {
+                        nDocIdx--;
+                        continue;
+                    }
                 }
 
                 // Show this record
