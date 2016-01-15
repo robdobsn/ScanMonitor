@@ -596,7 +596,10 @@ namespace ScanMonitorApp
         private void OpenFile(string fileName)
         {
             if (CheckIfThreadBusy())
+            {
+                MessageBox.Show("ThreadBusy");
                 return;
+            }
 
             // Add pages to list of pages
             _pdfPageList.Clear();
@@ -627,7 +630,16 @@ namespace ScanMonitorApp
         private void AddPages_DoWork(object sender, DoWorkEventArgs e)
         {
             BackgroundWorker worker = sender as BackgroundWorker;
-            _pdfRasterizer = new ScanMonitorApp.PdfRasterizer(_curFileNames[_curBackgroundLoadingFileIdx], POINTS_PER_INCH);
+            try
+            {
+                _pdfRasterizer = new ScanMonitorApp.PdfRasterizer(_curFileNames[_curBackgroundLoadingFileIdx], POINTS_PER_INCH);
+            }
+            catch(Exception excp)
+            {
+                logger.Error("PDF Editor requires Ghostscript {0}", excp.Message);
+                MessageBox.Show("PDF Editor requires Ghostscript to be installed");
+                return;
+            }
 
             try
             {
@@ -671,6 +683,10 @@ namespace ScanMonitorApp
                     Thread.Sleep(50);
                     (sender as BackgroundWorker).ReportProgress(i * 100 / _pdfRasterizer.NumPages(), null);
                 }
+            }
+            catch(Exception excp)
+            {
+                logger.Error("PDF Editor AddPages_DoWork failed excp {0}", excp.Message);
             }
             finally
             {

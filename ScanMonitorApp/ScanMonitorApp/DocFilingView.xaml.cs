@@ -111,7 +111,7 @@ namespace ScanMonitorApp
         {
             if (txtDestFileSuffix.Text.Trim() == "")
                 if (_lastHashOfUnfiledDocs != _scanDocHandler.GetHashOfUnfiledDocs())
-                    ShowDocToBeFiled(_scanDocHandler.GetCountOfUnfiledDocs() - 1);
+                    ShowDocToBeFiled(_curDocToBeFiledIdxInList);
         }
 
         #endregion
