@@ -462,7 +462,7 @@ namespace ScanMonitorApp
             }
             else if (_curDocScanDocInfo != null)
             {
-                if (!File.Exists(_curDocScanDocInfo.origFileName))
+                if (!File.Exists(_curDocScanDocInfo.GetOrigFileNameWin()))
                 {
                     string archiveFileName = ScanDocHandler.GetArchiveFileName(_curDocScanDocInfo.uniqName);
                     if (!File.Exists(archiveFileName))
@@ -977,7 +977,7 @@ namespace ScanMonitorApp
                 return;
 
             // Check file to edit is present
-            string fileToEdit = _curDocScanDocInfo.origFileName;
+            string fileToEdit = _curDocScanDocInfo.GetOrigFileNameWin();
             if (!File.Exists(fileToEdit))
             {
                 string archiveFileName = ScanDocHandler.GetArchiveFileName(_curDocScanDocInfo.uniqName);
@@ -1000,7 +1000,7 @@ namespace ScanMonitorApp
             // machine to do it
 
             // Delete the original
-            bool deletedOk = _scanDocHandler.DeleteFile(_curDocScanDocInfo.uniqName, _curFiledDocInfo, _curDocScanDocInfo.origFileName, true);
+            bool deletedOk = _scanDocHandler.DeleteFile(_curDocScanDocInfo.uniqName, _curFiledDocInfo, _curDocScanDocInfo.GetOrigFileNameWin(), true);
             if (!deletedOk)
             {
                 lblStatusBarProcStatus.Content = "Last filing: Failed to remove original";
@@ -1134,7 +1134,7 @@ namespace ScanMonitorApp
         {
             if (_curDocScanDocInfo != null)
             {
-                ScanDocHandler.ShowFileInExplorer(_curDocScanDocInfo.origFileName.Replace("/", @"\"));
+                ScanDocHandler.ShowFileInExplorer(_curDocScanDocInfo.GetOrigFileNameWin());
             }
 
         }
@@ -1197,10 +1197,10 @@ namespace ScanMonitorApp
             if (rslt == MessageDialog.MsgDlgRslt.RSLT_YES)
             {
                 // Delete file
-                bool deletedOk = _scanDocHandler.DeleteFile(_curDocScanDocInfo.uniqName, _curFiledDocInfo, _curDocScanDocInfo.origFileName, false);
+                bool deletedOk = _scanDocHandler.DeleteFile(_curDocScanDocInfo.uniqName, _curFiledDocInfo, _curDocScanDocInfo.GetOrigFileNameWin(), false);
                 if (!deletedOk)
                 {
-                    if (!File.Exists(_curDocScanDocInfo.origFileName))
+                    if (!File.Exists(_curDocScanDocInfo.GetOrigFileNameWin()))
                     {
                         rslt = MessageDialog.Show("Original File " + _curDocScanDocInfo.uniqName + " not found\n" + "Remove file from to-file-list?", "Yes", "No", "Cancel", btnDeleteDoc, this);
                         if (rslt == MessageDialog.MsgDlgRslt.RSLT_YES)
@@ -1625,7 +1625,7 @@ namespace ScanMonitorApp
             if (_curDocScanDocInfo != null)
             {
                 string docFormat = ((_curSelectedDocType == null) || isQuickDocTypeMode()) ? "" : _curSelectedDocType.renameFileTo;
-                string dfn = ScanDocHandler.FormatFileNameFromMacros(_curDocScanDocInfo.origFileName, docFormat, GetDateFromRollers(), txtDestFilePrefix.Text, txtDestFileSuffix.Text, txtDocTypeName.Text.Trim());
+                string dfn = ScanDocHandler.FormatFileNameFromMacros(_curDocScanDocInfo.GetOrigFileNameWin(), docFormat, GetDateFromRollers(), txtDestFilePrefix.Text, txtDestFileSuffix.Text, txtDocTypeName.Text.Trim());
                 if (((string)lblDestFileName.Content) != dfn)
                     lblDestFileName.Content = dfn;
             }

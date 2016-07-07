@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using NLog;
 using MongoDB.Driver;
-using System.IO;
 using MongoDB.Driver.Builders;
 using MongoDB.Driver.Linq;
 using Newtonsoft.Json;
@@ -468,7 +466,7 @@ namespace ScanMonitorApp
             }
             catch (Exception excp)
             {
-                logger.Error("Cannot empty existing-file db");
+                logger.Error("Cannot empty existing-file db " + excp.Message);
             }
         }
 
@@ -530,14 +528,14 @@ namespace ScanMonitorApp
                 try
                 {
                     // Check file exists
-                    if (!File.Exists(fullSourceName))
+                    if (!Delimon.Win32.IO.File.Exists(fullSourceName))
                     {
                         logger.Error("Trying to delete non-existent file {0}", fullSourceName);
                         fileDeleteOk = true;
                     }
                     else if (Properties.Settings.Default.TestModeFileTo == "")
                     {
-                        File.Delete(fullSourceName);
+                        Delimon.Win32.IO.File.Delete(fullSourceName);
                     }
                     else
                     {
@@ -576,7 +574,7 @@ namespace ScanMonitorApp
             string destPathOnly = "";
             try
             {
-                destPathOnly = Path.GetDirectoryName(destDocPathAndFileName);
+                destPathOnly = Delimon.Win32.IO.Path.GetDirectoryName(destDocPathAndFileName);
             }
             catch
             {
@@ -584,7 +582,7 @@ namespace ScanMonitorApp
             }
 
             // Check folder exists
-            if (!Directory.Exists(destPathOnly))
+            if (!Delimon.Win32.IO.Directory.Exists(destPathOnly))
             {
                 rsltText = "Dest folder not found";
                 return false;
@@ -594,7 +592,7 @@ namespace ScanMonitorApp
             try
             {
                 System.IO.FileInfo fi = new System.IO.FileInfo(destDocPathAndFileName);
-                if (Path.GetFileNameWithoutExtension(fi.FullName) == "")
+                if (Delimon.Win32.IO.Path.GetFileNameWithoutExtension(fi.FullName) == "")
                 {
                     rsltText = "The file name cannot be blank";
                     return false;
@@ -617,7 +615,7 @@ namespace ScanMonitorApp
             }
 
             // Check if dest file exists
-            if (File.Exists(destDocPathAndFileName))
+            if (Delimon.Win32.IO.File.Exists(destDocPathAndFileName))
             {
                 rsltText = "A destination file of this name already exists";
                 return false;
@@ -865,15 +863,15 @@ namespace ScanMonitorApp
             // Check for test mode
             if (Properties.Settings.Default.TestModeFileTo == "")
             {
-                if (File.Exists(sdi.origFileName))
+                if (Delimon.Win32.IO.File.Exists(sdi.GetOrigFileNameWin()))
                 {
-                    bResult = CopyFile(sdi.origFileName, fdi.filedAs_pathAndFileName, ref _docFilingStatusStr);
+                    bResult = CopyFile(sdi.GetOrigFileNameWin(), fdi.filedAs_pathAndFileName, ref _docFilingStatusStr);
                     bDelete = true;
                 }
                 else
                 {
                     string archiveFileName = ScanDocHandler.GetArchiveFileName(sdi.uniqName);
-                    if (File.Exists(archiveFileName))
+                    if (Delimon.Win32.IO.File.Exists(archiveFileName))
                     {
                         bResult = CopyFile(archiveFileName, fdi.filedAs_pathAndFileName, ref _docFilingStatusStr);
                     }
@@ -888,8 +886,8 @@ namespace ScanMonitorApp
             }
             else
             {
-                string toFile = Path.Combine(Properties.Settings.Default.TestModeFileTo, Path.GetFileName(fdi.filedAs_pathAndFileName));
-                bResult = CopyFile(sdi.origFileName, toFile, ref _docFilingStatusStr);
+                string toFile = Delimon.Win32.IO.Path.Combine(Properties.Settings.Default.TestModeFileTo, Delimon.Win32.IO.Path.GetFileName(fdi.filedAs_pathAndFileName));
+                bResult = CopyFile(sdi.GetOrigFileNameWin(), toFile, ref _docFilingStatusStr);
             }
             if (bResult && bDelete)
             {
@@ -899,26 +897,26 @@ namespace ScanMonitorApp
                     if (Properties.Settings.Default.TestModeFileTo == "")
                     {
                         // Special case code here to handle a bug that resulted in origFileName being in the archive folder
-                        string origName = System.IO.Path.GetDirectoryName(sdi.origFileName).ToLower();
+                        string origName = System.IO.Path.GetDirectoryName(sdi.GetOrigFileNameWin()).ToLower();
                         string testName = Properties.Settings.Default.DocArchiveFolder.ToLower();
                         if (testName == origName)
                         {
-                            string removalFileName = Path.Combine(@"\\SCAN2\Users\Rob\Documents\ScanSnap", Path.GetFileName(sdi.origFileName));
-                            File.Delete(removalFileName);
+                            string removalFileName = Delimon.Win32.IO.Path.Combine(@"\\SCAN2\Users\Rob\Documents\ScanSnap", Delimon.Win32.IO.Path.GetFileName(sdi.GetOrigFileNameWin()));
+                            Delimon.Win32.IO.File.Delete(removalFileName);
                         }
                         else
                         {
-                            File.Delete(sdi.origFileName);
+                            Delimon.Win32.IO.File.Delete(sdi.GetOrigFileNameWin());
                         }
                     }
                     else
                     {
-                        logger.Info("TEST would be deleting {0}", sdi.origFileName);
+                        logger.Info("TEST would be deleting {0}", sdi.GetOrigFileNameWin());
                     }
                 }
                 catch (Exception e)
                 {
-                    logger.Error("Failed to delete file {0} excp {1}", sdi.origFileName, e.Message);
+                    logger.Error("Failed to delete file {0} excp {1}", sdi.GetOrigFileNameWin(), e.Message);
                 }
             }
             if (!bResult)
@@ -968,7 +966,7 @@ namespace ScanMonitorApp
 
             // Make a copy of the file in the archive location
             string archiveFileName = ScanDocHandler.GetArchiveFileName(uniqName);
-            if (!File.Exists(archiveFileName))
+            if (!Delimon.Win32.IO.File.Exists(archiveFileName))
             {
                 string statusStr = "";
                 bool bResult = CopyFile(fileName, archiveFileName, ref statusStr);
@@ -995,7 +993,7 @@ namespace ScanMonitorApp
             // Extract images from file
             if (bExtractImages)
             {
-                bool procImages = (!bDontOverwriteExistingImages) | (!File.Exists(PdfRasterizer.GetFilenameOfImageOfPage(_scanConfig._docAdminImgFolderBase, uniqName, 1, false)));
+                bool procImages = (!bDontOverwriteExistingImages) | (!Delimon.Win32.IO.File.Exists(PdfRasterizer.GetFilenameOfImageOfPage(_scanConfig._docAdminImgFolderBase, uniqName, 1, false)));
                 if (procImages)
                 {
                     PdfRasterizer rs = new PdfRasterizer(fileName, THUMBNAIL_POINTS_PER_INCH);
@@ -1012,7 +1010,7 @@ namespace ScanMonitorApp
             }
 
             // Form partial document info
-            DateTime fileDateTime = File.GetCreationTime(fileName);
+            DateTime fileDateTime = Delimon.Win32.IO.File.GetCreationTime(fileName);
             ScanDocInfo scanDocInfo = new ScanDocInfo(uniqName, totalNumPages, scanPages.scanPagesText.Count, fileDateTime, fileName.Replace('\\', '/'), false);
 
             // Add records to mongo databases
@@ -1033,7 +1031,7 @@ namespace ScanMonitorApp
 
         public static string GetArchiveFileName(string uniqName)
         {
-            return Path.Combine(Properties.Settings.Default.DocArchiveFolder, uniqName + ".pdf");
+            return Delimon.Win32.IO.Path.Combine(Properties.Settings.Default.DocArchiveFolder, uniqName + ".pdf");
         }
 
         public static byte[] GenHashOnFileExcludingMetadata(string filename, out long fileLen)
@@ -1041,15 +1039,16 @@ namespace ScanMonitorApp
             bool md5CreatedOk = false;
             byte[] md5Val = new byte[0];
             byte[] pdfImageTagBytes = Encoding.ASCII.GetBytes("<</Subtype/Image/Length");
+            fileLen = 0;
             using (var md5 = MD5.Create())
             {
                 try
                 {
-                    FileInfo finfo = new FileInfo(filename);
+                    Delimon.Win32.IO.FileInfo finfo = new Delimon.Win32.IO.FileInfo(filename);
                     fileLen = finfo.Length;
                     if (finfo.Length < 100000000)
                     {
-                        byte[] fileData = File.ReadAllBytes(filename);
+                        byte[] fileData = Delimon.Win32.IO.File.ReadAllBytes(filename);
                         bool completeMatch = false;
                         int matchPos = 0;
                         // Find the tell-tale PDF scanned file string of bytes
@@ -1066,7 +1065,7 @@ namespace ScanMonitorApp
                             {
                                 matchPos = testPos;
                                 string extractedText = Encoding.UTF8.GetString(fileData, matchPos + pdfImageTagBytes.Length, 20);
-                                Match match = Regex.Match(extractedText, @"\s*?(\d+)",RegexOptions.IgnoreCase);
+                                Match match = Regex.Match(extractedText, @"\s*?(\d+)", RegexOptions.IgnoreCase);
                                 if (match.Success)
                                 {
                                     // Finally, we get the Group value and display it.
@@ -1081,21 +1080,20 @@ namespace ScanMonitorApp
                                 break;
                             }
                         }
-
                     }
 
                     if (!md5CreatedOk)
                     {
-                        using (var stream = File.OpenRead(filename))
+                        using (var stream = Delimon.Win32.IO.File.OpenRead(filename))
                         {
                             md5Val = md5.ComputeHash(stream);
                             md5CreatedOk = true;
                         }
                     }
                 }
-                finally
+                catch(Exception excp)
                 {
-
+                    logger.Error("Exception in GenHashOnFileExcludingMetadata " + excp.Message);
                 }
             }
             if (md5CreatedOk)
@@ -1113,7 +1111,7 @@ namespace ScanMonitorApp
 
         private static string MakeValidFileName(string name)
         {
-            return Path.GetInvalidFileNameChars().Aggregate(name, (current, c) => current.Replace(c.ToString(), string.Empty));
+            return Delimon.Win32.IO.Path.GetInvalidFileNameChars().Aggregate(name, (current, c) => current.Replace(c.ToString(), string.Empty));
         }
 
         public static string FormatFileNameFromMacros(string origName, string renameTo, DateTime fileAsDateTime, string prefix, string suffix, string docTypeName)
@@ -1137,7 +1135,7 @@ namespace ScanMonitorApp
             fileName = ReplaceStringAnyCase(fileName, "[SUBJECT]", suffix);
             fileName = ReplaceStringAnyCase(fileName, "[DOCTYPE]", docTypeName);
             fileName = fileName.Trim();
-            fileName = fileName + Path.GetExtension(origName);
+            fileName = fileName + Delimon.Win32.IO.Path.GetExtension(origName);
             return MakeValidFileName(fileName);
         }
 
@@ -1146,7 +1144,7 @@ namespace ScanMonitorApp
             bool bResult = false;
             try
             {
-                File.Copy(srcName, destName);
+                Delimon.Win32.IO.File.Copy(srcName, destName, false);
                 bResult = true;
             }
             catch (Exception e)

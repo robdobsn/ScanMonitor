@@ -386,15 +386,21 @@ namespace ScanMonitorApp
                             return;
                         }
 
-                        byte[] md5Val = new byte[0];
-                        long fileLen = 0;
-                        md5Val = ScanDocHandler.GenHashOnFileExcludingMetadata(f, out fileLen);
-                        if (md5Val.Length > 0)
+                        try
                         {
-                            AddFileToDb(f, md5Val, fileLen);
-                            filesAdded++;
+                            byte[] md5Val = new byte[0];
+                            long fileLen = 0;
+                            md5Val = ScanDocHandler.GenHashOnFileExcludingMetadata(f, out fileLen);
+                            if (md5Val.Length > 0)
+                            {
+                                AddFileToDb(f, md5Val, fileLen);
+                                filesAdded++;
+                            }
                         }
-
+                        catch (Exception excp)
+                        {
+                            logger.Error("Error in RecurseFoldersAddingFilesToDb " + f + " error " + excp.Message);
+                        }
 
                         /*
                         bool addResult = false;

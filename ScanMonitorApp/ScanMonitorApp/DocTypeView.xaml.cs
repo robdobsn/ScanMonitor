@@ -1660,7 +1660,7 @@ namespace ScanMonitorApp
             {
                 string uniqName = selectedRow.uniqName;
                 ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(uniqName);
-                ScanDocHandler.ShowFileInExplorer(scanDocAllInfo.scanDocInfo.origFileName.Replace("/", @"\"));
+                ScanDocHandler.ShowFileInExplorer(scanDocAllInfo.scanDocInfo.GetOrigFileNameWin());
             }
         }
 

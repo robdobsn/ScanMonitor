@@ -45,6 +45,11 @@ namespace ScanMonitorApp
         public string origFileName { get; set; }
         public bool flagForHelpFiling { get; set; }
 
+        public string GetOrigFileNameWin()
+        {
+            return origFileName.Replace("/", @"\");
+        }
+
         public static string GetUniqNameForFile(string fileName, DateTime dt)
         {
             // If not prepend date and time

@@ -104,13 +104,14 @@ namespace ScanMonitorApp
                     case "filed":
                     case "filedNotFound":
                     case "filedAutoLocate":
+                    case "filedRemaining":
                         if (fdi == null)
                         {
                             bInclude = false;
                         }
                         else
                         {
-                            if (fdi.filedAt_finalStatus != FiledDocInfo.DocFinalStatus.STATUS_FILED)
+                            if ((rsltFilter != "filedRemaining") && (fdi.filedAt_finalStatus != FiledDocInfo.DocFinalStatus.STATUS_FILED))
                                 bInclude = false;
                         }
                         break;
@@ -143,6 +144,17 @@ namespace ScanMonitorApp
                         nDocIdx--;
                         continue;
                     }
+                }
+
+                // Check if we are looking for filedRemaining (i.e. it has been filed (or deleted) but the original still exists on the scan machine)
+                if (rsltFilter == "filedRemaining")
+                {
+                    if (!File.Exists(sdi.GetOrigFileNameWin()))
+                    {
+                        nDocIdx--;
+                        continue;
+                    }
+
                 }
 
                 // Show this record
@@ -209,6 +221,53 @@ namespace ScanMonitorApp
                     audDat.MovedToFileName = "FIXED " + movedToFileName;
                 }
 
+                // Check for Filed-Remaining (i.e. was not removed from scanning computer)
+                else if ((fdi != null) && (!filedFileNotFound) && (rsltFilter == "filedRemaining"))
+                {
+                    //string rsltStr = ScanUtils.AttemptToDeleteFile(sdi.origFileName);
+                    //                    audDat.MovedToFileName = "Original file delete attempt " + rsltStr;
+                    if (sdi.GetOrigFileNameWin().ToLower().Contains("macallan"))
+                    {
+                        audDat.MovedToFileName = "Ignoring as this was filed from macallan - probably when PDF editor worked from there " + sdi.GetOrigFileNameWin();
+                    }
+                    else
+                    {
+                        if (fdi.filedAs_pathAndFileName == "")
+                        {
+                            audDat.MovedToFileName = "Going to delete as unfiled " + sdi.GetOrigFileNameWin();
+                        }
+                        else
+                        {
+                            long fileLen1 = 0;
+                            long fileLen2 = 0;
+                            byte[] md5Val1 = ScanDocHandler.GenHashOnFileExcludingMetadata(fdi.filedAs_pathAndFileName, out fileLen1);
+                            byte[] md5Val2 = ScanDocHandler.GenHashOnFileExcludingMetadata(sdi.GetOrigFileNameWin(), out fileLen2);
+                            
+                            if (md5Val1.SequenceEqual(md5Val2))
+                            {
+                                audDat.MovedToFileName = "Deleted (same md5 as filed) " + sdi.GetOrigFileNameWin();
+                                try
+                                {
+                                    File.Delete(sdi.GetOrigFileNameWin());
+                                }
+                                catch (Exception ess)
+                                {
+                                    logger.Error("Failed to delete", sdi.GetOrigFileNameWin());
+                                }
+                            }
+                            else if ((fileLen1 > fileLen2 * 9 / 10) && (fileLen1 < fileLen2 * 11 / 10))
+                            {
+                                audDat.MovedToFileName = "Probably same (filed " + fileLen1.ToString() + "/orig " + fileLen2.ToString() + ")" + sdi.GetOrigFileNameWin();
+                            }
+                            else
+                            {
+                                audDat.MovedToFileName = "File differs frm that filed (filed " + fileLen1.ToString() + "/orig " + fileLen2.ToString() + ")" + sdi.GetOrigFileNameWin();
+                            }
+                        }
+                    }
+                }
+
+                // Add to the audit data collection
                 this.Dispatcher.BeginInvoke((Action)delegate()
                     {
                         _auditDataColl.Add(audDat);
@@ -372,7 +431,7 @@ namespace ScanMonitorApp
             {
                 string uniqName = selectedRow.UniqName;
                 ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(uniqName);
-                ScanDocHandler.ShowFileInExplorer(scanDocAllInfo.scanDocInfo.origFileName.Replace("/", @"\"));
+                ScanDocHandler.ShowFileInExplorer(scanDocAllInfo.scanDocInfo.GetOrigFileNameWin());
             }
         }
 
