@@ -1689,6 +1689,10 @@ namespace ScanMonitorApp
 
             // Show dest file name (which can change based on date)
             DisplayDestFileName();
+
+            // Update filing path if it hasn't been overridden
+            if (!btnMoveToUndo.IsEnabled)
+                ShowFilingPath();
         }
 
         public static Point ConvertImagePointToDocPoint(Image img, double x, double y)
