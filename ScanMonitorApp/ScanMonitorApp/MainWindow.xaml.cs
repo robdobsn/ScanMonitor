@@ -529,7 +529,7 @@ namespace ScanMonitorApp
             {
                 if (butRecomputeMD5.Content.ToString().ToLower().Contains("cancel"))
                 {
-                    _bwThread_forAuditLoading.CancelAsync();
+                    _bwThread_forFileHashCreation.CancelAsync();
                     hashCreateStatus.Content = "Cancelling...";
                 }
                 return;
