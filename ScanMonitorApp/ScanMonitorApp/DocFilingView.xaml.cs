@@ -1123,6 +1123,9 @@ namespace ScanMonitorApp
         private void DocTypeSubMenuItem_Click(object sender, RoutedEventArgs e)
         {
             MenuItem menuItem = sender as MenuItem;
+            // Ignore if not tip of menu hierarchy
+            if (menuItem.HasItems)
+                return;
             ContextMenu contextMenu = menuItem.CommandParameter as ContextMenu;
             btnDocTypeSel.ContextMenu.IsOpen = false;
             object tag = menuItem.Tag;

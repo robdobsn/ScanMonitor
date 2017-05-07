@@ -56,7 +56,7 @@
         <Grid x:Name="docToFileInfoGrid" Margin="5,0,10,0" Grid.Column="1" Grid.Row="1" Grid.RowSpan="2">
             <Button x:Name="btnDocTypeSel" Content="Type" Height="50" Margin="10,10,0,0" VerticalAlignment="Top" FontSize="22" HorizontalContentAlignment="Left" HorizontalAlignment="Left" Width="107" Style="{DynamicResource SquareButtonStyle}" Click="btnDocTypeSel_Click">
                 <Button.ContextMenu>
-                    <ContextMenu x:Name="btnDocTypeSelContextMenu" FontSize="16" HorizontalAlignment="Right">
+                    <ContextMenu x:Name="btnDocTypeSelContextMenu" FontSize="15" HorizontalAlignment="Right">
                     </ContextMenu>
                 </Button.ContextMenu>
             </Button>

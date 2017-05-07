@@ -33,6 +33,7 @@ namespace ScanMonitorApp
         private DocTypesMatcher _docTypesMatcher;
         BackgroundWorker _bwThreadForPopulateList;
         const int MAX_NUM_DOCS_TO_ADD_TO_LIST = 500;
+        const string SRCH_DOC_TYPE_ANY = "<<<ANY>>>";
 
         public AuditView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher)
         {
@@ -71,6 +72,9 @@ namespace ScanMonitorApp
             string rsltFilter = (string)args[0];
             int includeInListFromIdxNonInclusive = (int)args[1];
             string srchText = (string)args[2];
+            string srchDocType = "";
+            if (args.Length > 3)
+                srchDocType = (string)args[3];
 
             // Start filling list from the end
             int nEndIdx = includeInListFromIdxNonInclusive-1;
@@ -146,6 +150,16 @@ namespace ScanMonitorApp
                     }
                 }
 
+                // Check it has the right type - if requested
+                if (srchDocType != "" && srchDocType != SRCH_DOC_TYPE_ANY)
+                {
+                    if ((fdi != null) && (fdi.filedAs_docType != srchDocType))
+                    {
+                        nDocIdx--;
+                        continue;
+                    }
+                }
+
                 // Check if we are looking for filedRemaining (i.e. it has been filed (or deleted) but the original still exists on the scan machine)
                 if (rsltFilter == "filedRemaining")
                 {
@@ -191,6 +205,8 @@ namespace ScanMonitorApp
 
                 audDat.FinalStatus = statStr;
                 audDat.FiledDocPresent = (fdi == null) ? "" : (filedFileNotFound ? "Not found" : "Ok");
+
+                audDat.DocTypeFiledAs = (fdi == null) ? "" : fdi.filedAs_docType;
 
                 // See if we can find a file which matches this one in the existing files database
                 string movedToFileName = "";
@@ -402,7 +418,7 @@ namespace ScanMonitorApp
                 btnGo.Content = "Stop";
                 btnNext.IsEnabled = false;
                 btnSearch.IsEnabled = false;
-                object[] args = { GetListViewType(), startVal, "" };
+                object[] args = { GetListViewType(), startVal, "", "" };
                 _bwThreadForPopulateList.RunWorkerAsync(args);
             }
         }
@@ -419,7 +435,7 @@ namespace ScanMonitorApp
                 btnGo.Content = "Stop";
                 btnNext.IsEnabled = false;
                 btnSearch.IsEnabled = false;
-                object[] args = { GetListViewType(), startVal, "" };
+                object[] args = { GetListViewType(), startVal, "", "" };
                 _bwThreadForPopulateList.RunWorkerAsync(args);
             }
         }
@@ -468,13 +484,14 @@ namespace ScanMonitorApp
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            lblDocTypeToSearchFor.Content = SRCH_DOC_TYPE_ANY;
             this.WindowState = System.Windows.WindowState.Maximized;
             if (!_bwThreadForPopulateList.IsBusy)
             {
                 btnGo.Content = "Stop";
                 btnNext.IsEnabled = false;
                 btnSearch.IsEnabled = false;
-                object[] args = { GetListViewType(), 100000000, "" };
+                object[] args = { GetListViewType(), 100000000, "", "" };
                 _bwThreadForPopulateList.RunWorkerAsync(args);
             }
 
@@ -487,12 +504,13 @@ namespace ScanMonitorApp
 
             int startVal = 100000000;
             string srchText = txtSearch.Text;
+            string srchDocType = lblDocTypeToSearchFor.Content.ToString();
             if (!_bwThreadForPopulateList.IsBusy)
             {
                 btnGo.Content = "Stop";
                 btnNext.IsEnabled = false;
                 btnSearch.IsEnabled = false;
-                object[] args = { GetListViewType(), startVal, srchText };
+                object[] args = { GetListViewType(), startVal, srchText, srchDocType };
                 _bwThreadForPopulateList.RunWorkerAsync(args);
             }
         }
@@ -542,6 +560,100 @@ namespace ScanMonitorApp
         //    }
         //}
 
+        private void btnDocTypeSel_Click(object sender, RoutedEventArgs e)
+        {
+            // Clear menu
+            btnDocTypeSelContextMenu.Items.Clear();
+
+            // Reload menu
+            const int MAX_MENU_LEVELS = 6;
+            List<string> docTypeStrings = new List<string>();
+            List<DocType> docTypeList = _docTypesMatcher.ListDocTypes();
+            foreach (DocType dt in docTypeList)
+            {
+                if (!dt.isEnabled)
+                    continue;
+                docTypeStrings.Add(dt.docTypeName);
+            }
+            docTypeStrings.Sort();
+            docTypeStrings.Insert(0, SRCH_DOC_TYPE_ANY);
+            string[] prevMenuStrs = null;
+            MenuItem[] prevMenuItems = new MenuItem[MAX_MENU_LEVELS];
+            foreach (string docTypeString in docTypeStrings)
+            {
+                string[] elemsS = docTypeString.Split(new string[] { " - " }, StringSplitOptions.RemoveEmptyEntries);
+                if ((elemsS.Length <= 0) || (elemsS.Length > MAX_MENU_LEVELS))
+                    continue;
+                for (int i = 0; i < elemsS.Length; i++)
+                    elemsS[i] = elemsS[i].Trim();
+                int reqMenuLev = -1;
+                for (int menuLev = 0; menuLev < elemsS.Length; menuLev++)
+                {
+                    if ((prevMenuStrs == null) || (menuLev >= prevMenuStrs.Length))
+                    {
+                        reqMenuLev = menuLev;
+                        break;
+                    }
+                    if (prevMenuStrs[menuLev] != elemsS[menuLev])
+                    {
+                        reqMenuLev = menuLev;
+                        break;
+                    }
+                }
+                // Check if identical to previous type - discard if so
+                if (reqMenuLev == -1)
+                    continue;
+                // Create new menu items
+                for (int createLev = reqMenuLev; createLev < elemsS.Length; createLev++)
+                {
+                    MenuItem newMenuItem = new MenuItem();
+                    newMenuItem.Header = elemsS[createLev];
+                    if (createLev == elemsS.Length - 1)
+                    {
+                        newMenuItem.Tag = docTypeString;
+                        newMenuItem.Click += DocTypeSubMenuItem_Click;
+                        newMenuItem.MouseDoubleClick += DocTypeSubMenuItem_DoubleClick;
+                    }
+                    // Add the menu item to the appropriate level
+                    if (createLev == 0)
+                        btnDocTypeSelContextMenu.Items.Add(newMenuItem);
+                    else
+                        prevMenuItems[createLev - 1].Items.Add(newMenuItem);
+                    prevMenuItems[createLev] = newMenuItem;
+                }
+                // Update lists
+                prevMenuStrs = elemsS;
+            }
+            // Show menu
+            if (!btnDocTypeSel.ContextMenu.IsOpen)
+                btnDocTypeSel.ContextMenu.IsOpen = true;
+        }
+
+        private void DocTypeSubMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            MenuItem menuItem = sender as MenuItem;
+            // Ignore if not tip of menu hierarchy
+            if (menuItem.HasItems)
+                return;
+            btnDocTypeSel.ContextMenu.IsOpen = false;
+            object tag = menuItem.Tag;
+            if (tag.GetType() == typeof(string))
+                lblDocTypeToSearchFor.Content = (string)tag;
+        }
+
+        private void DocTypeSubMenuItem_DoubleClick(object sender, RoutedEventArgs e)
+        {
+            MenuItem menuItem = sender as MenuItem;
+            btnDocTypeSel.ContextMenu.IsOpen = false;
+            object tag = menuItem.Tag;
+            if (tag.GetType() == typeof(string))
+                lblDocTypeToSearchFor.Content = (string)tag;
+        }
+
+        private void auditFileImage_Loaded(object sender, RoutedEventArgs e)
+        {
+            
+        }
     }
 
     public class AuditData
@@ -550,6 +662,7 @@ namespace ScanMonitorApp
         public string FinalStatus { get; set; }
         public string FiledDocPresent { get; set; }
         public string MovedToFileName { get; set; }
+        public string DocTypeFiledAs { get; set; }
     }
 
 }
