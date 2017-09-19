@@ -132,6 +132,9 @@
       <DependentUpon>DocTypeView.xaml</DependentUpon>
     </Compile>
     <Compile Include="DragDropExtension.cs" />
+    <Compile Include="GoToPage.xaml.cs">
+      <DependentUpon>GoToPage.xaml</DependentUpon>
+    </Compile>
     <Compile Include="LocationRectangleHandler.cs" />
     <Compile Include="MessageDialog.xaml.cs">
       <DependentUpon>MessageDialog.xaml</DependentUpon>
@@ -173,6 +176,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="DocTypeView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="GoToPage.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

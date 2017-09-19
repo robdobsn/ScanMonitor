@@ -25,8 +25,8 @@ namespace ScanMonitorApp
             RSLT_NONE, RSLT_YES, RSLT_NO, RSLT_CANCEL
         }
         public MsgDlgRslt dlgResult = MsgDlgRslt.RSLT_NONE;
-        private UIElement _fromElem;
-        private Window _fromWin;
+        private UIElement _fromElem = null;
+        private Window _fromWin = null;
 
         public MessageDialog(string message, string yesButtonText, string noButtonText, string cancelButtonText, UIElement fromElem, Window fromWin)
         {

@@ -266,9 +266,9 @@ namespace ScanMonitorApp
                                 {
                                     File.Delete(sdi.GetOrigFileNameWin());
                                 }
-                                catch (Exception ess)
+                                catch (Exception)
                                 {
-                                    logger.Error("Failed to delete", sdi.GetOrigFileNameWin());
+                                    logger.Error("Failed to delete %s", sdi.GetOrigFileNameWin());
                                 }
                             }
                             else if ((fileLen1 > fileLen2 * 9 / 10) && (fileLen1 < fileLen2 * 11 / 10))

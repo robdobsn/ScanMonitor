@@ -1787,6 +1787,16 @@ namespace ScanMonitorApp
         }
 
         #endregion
+
+        private void lblStatusBarFileNo_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            GoToPage gtp = new GoToPage(_curDocToBeFiledIdxInList+1, lblStatusBarFileNo, this);
+            gtp.ShowDialog();
+            if (gtp.dlgResult)
+            {
+                ShowDocToBeFiled(gtp.pageNum-1);
+            }
+        }
     }
 
     class DocTypeCacheEntry : INotifyPropertyChanged
