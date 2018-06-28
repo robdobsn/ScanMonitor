@@ -180,7 +180,7 @@ namespace ScanMonitorApp
             IMongoCollection<DocType> collection_doctypes = GetDocTypesCollection();
             var foundDocTypes = collection_doctypes.Find(a => a.docTypeName == docTypeName);
             if (foundDocTypes.Count() == 0)
-                return new DocType();
+                return null;
 
             // Return first found
             return foundDocTypes.First<DocType>();
