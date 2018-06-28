@@ -150,7 +150,9 @@ namespace ScanMonitorApp
             ScanDocAllInfo allInfo = _scanDocHandler.GetScanDocAllInfoCached(uniqName);
             if ((allInfo != null) && (allInfo.scanPages != null))
             {
-                DocTypeMatchResult matchRes = _docTypesMatcher.GetMatchingDocType(allInfo.scanPages, null);
+                Task<DocTypeMatchResult> rslt = _docTypesMatcher.GetMatchingDocType(allInfo.scanPages, null);
+                rslt.Wait(30000);
+                DocTypeMatchResult matchRes = rslt.Result;
                 lock (_lockForDocTypeListAccess)
                 {
                     bool addReqd = false;

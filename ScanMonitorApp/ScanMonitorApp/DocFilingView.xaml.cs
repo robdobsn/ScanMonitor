@@ -229,9 +229,15 @@ namespace ScanMonitorApp
             DocTypeMatchResult latestMatchResult;
             List<DocTypeMatchResult> possMatches = new List<DocTypeMatchResult>();
             if (_curDocScanPages != null)
-                latestMatchResult = _docTypesMatcher.GetMatchingDocType(_curDocScanPages, possMatches);
+            {
+                Task<DocTypeMatchResult> rslt = _docTypesMatcher.GetMatchingDocType(_curDocScanPages, possMatches);
+                rslt.Wait(30000);
+                latestMatchResult = rslt.Result;
+            }
             else
+            {
                 latestMatchResult = new DocTypeMatchResult();
+            }
 
             // Check for a new doc - so cancel processing this one
             if (!_newCurDocProcessingCancel)

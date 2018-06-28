@@ -90,25 +90,58 @@ namespace ScanMonitorApp
             return listCopy;
         }
 
+        private async Task<List<string>> GetListOfScanDocNames()
+        {
+            // Get doc uniq names for scanned docs
+            IMongoCollection<ScanDocInfo> collection_sdinfo = _scanDocHandler.GetDocInfoCollection();
+            List<string> scannedDocUniqNames = new List<string>();
+            using (IAsyncCursor<ScanDocInfo> cursor = await collection_sdinfo.FindAsync(_ => true))
+            {
+                while (await cursor.MoveNextAsync())
+                {
+                    IEnumerable<ScanDocInfo> batch = cursor.Current;
+                    foreach (ScanDocInfo sdi in batch)
+                    {
+                        scannedDocUniqNames.Add(sdi.uniqName);
+                    }
+                }
+            }
+            return scannedDocUniqNames;
+        }
+
+        private async Task<List<string>> GetListOfFiledDocNames()
+        {
+            // Get doc uniq names for filed docs
+            IMongoCollection<FiledDocInfo> collection_fdinfo = _scanDocHandler.GetFiledDocsCollection();
+            List<string> filedDocUniqNames = new List<string>();
+            using (IAsyncCursor<FiledDocInfo> cursor = await collection_fdinfo.FindAsync(_ => true))
+            {
+                while (await cursor.MoveNextAsync())
+                {
+                    IEnumerable<FiledDocInfo> batch = cursor.Current;
+                    foreach (FiledDocInfo fdi in batch)
+                    {
+                        filedDocUniqNames.Add(fdi.uniqName);
+                    }
+                }
+            }
+            return filedDocUniqNames;
+        }
+
         private void UnfiledListUpdateThread_DoWork(object sender, DoWorkEventArgs e)
         {
             BackgroundWorker worker = sender as BackgroundWorker;
             while (_threadRunning)
             {
-
                 // Get doc uniq names for scanned docs
-                MongoCollection<ScanDocInfo> collection_sdinfo = _scanDocHandler.GetDocInfoCollection();
-                MongoCursor<ScanDocInfo> scannedDocs = collection_sdinfo.FindAll();
-                List<string> scannedDocUniqNames = new List<string>();
-                foreach (ScanDocInfo sdi in scannedDocs)
-                    scannedDocUniqNames.Add(sdi.uniqName);
+                Task<List<string>> scanDocNamesRslt = GetListOfScanDocNames();
+                scanDocNamesRslt.Wait(60000);
+                List<string> scannedDocUniqNames = scanDocNamesRslt.Result;
 
                 // Get doc uniq names for filed docs
-                MongoCollection<FiledDocInfo> collection_fdinfo = _scanDocHandler.GetFiledDocsCollection();
-                MongoCursor<FiledDocInfo> filedDocs = collection_fdinfo.FindAll();
-                List<string> filedDocUniqNames = new List<string>();
-                foreach (FiledDocInfo fdi in filedDocs)
-                    filedDocUniqNames.Add(fdi.uniqName);
+                Task<List<string>> filedDocNamesRslt = GetListOfFiledDocNames();
+                filedDocNamesRslt.Wait(60000);
+                List<string> filedDocUniqNames = filedDocNamesRslt.Result;
 
                 // Create list of unfiled doc uniq names
                 List<string> unfiledDocs = scannedDocUniqNames.Except(filedDocUniqNames).ToList();

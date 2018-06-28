@@ -31,26 +31,26 @@ namespace ScanMonitorApp
                 var connectionString = dbConnectionStr;
                 _dbClient = new MongoClient(connectionString);
                 var collection_doctypes = GetDocTypesCollection();
-                collection_doctypes.EnsureIndex(new IndexKeysBuilder()
-                            .Ascending("docTypeName"), IndexOptions.SetUnique(true));
+                var keys = Builders<DocType>.IndexKeys.Ascending("docTypeName");
+                var opts = new CreateIndexOptions<DocType> { Unique = true };
+                collection_doctypes.Indexes.CreateOneAsync(keys, opts);
                 return true;
             }
             catch (Exception excp)
             {
                 logger.Error("Failed to add index DB may not be started, excp {0}", excp.Message);
+                return false;
             }
-            return false;
         }
 
         #endregion
 
         #region DocTypes Database Access
 
-        private MongoCollection<DocType> GetDocTypesCollection()
+        private IMongoCollection<DocType> GetDocTypesCollection()
         {
             // Setup db connection
-            var server = _dbClient.GetServer();
-            var database = server.GetDatabase(Properties.Settings.Default.DbNameForDocs); // the name of the database
+            var database = _dbClient.GetDatabase(Properties.Settings.Default.DbNameForDocs); // the name of the database
             return database.GetCollection<DocType>(Properties.Settings.Default.DbCollectionForDocTypes);
         }
 
@@ -59,8 +59,8 @@ namespace ScanMonitorApp
             // Mongo delete
             try
             {
-                MongoCollection<DocType> collection_docTypes = GetDocTypesCollection();
-                collection_docTypes.Remove(Query.EQ("docTypeName", docTypeName));
+                IMongoCollection<DocType> collection_docTypes = GetDocTypesCollection();
+                collection_docTypes.DeleteOne(a => a.docTypeName == docTypeName);
                 // Log it
                 logger.Info("Deleted doctype {0}", docTypeName);
             }
@@ -74,66 +74,72 @@ namespace ScanMonitorApp
             return true;
         }
 
-        public DocTypeMatchResult GetMatchingDocType(ScanPages scanPages, List<DocTypeMatchResult> listOfPossibleMatches = null)
+        public async Task<DocTypeMatchResult> GetMatchingDocType(ScanPages scanPages, List<DocTypeMatchResult> listOfPossibleMatches = null)
         {
             // Get list of types
             DocTypeMatchResult bestMatchResult = new DocTypeMatchResult();
             var collection_doctypes = GetDocTypesCollection();
-            MongoCursor<DocType> foundSdf = collection_doctypes.Find(Query.EQ("isEnabled", true));
 #if TEST_PERF_GETMATCHINGDOCTYPE
-            Stopwatch stopWatch1 = new Stopwatch();
-            Stopwatch stopWatch2 = new Stopwatch();
+                Stopwatch stopWatch1 = new Stopwatch();
+                Stopwatch stopWatch2 = new Stopwatch();
 #endif
-            foreach (DocType doctype in foundSdf)
+            using (IAsyncCursor<DocType> cursor = await collection_doctypes.FindAsync(Builders<DocType>.Filter.Where(a => a.isEnabled == true)))
             {
 #if TEST_PERF_GETMATCHINGDOCTYPE
                 stopWatch1.Start();
 #endif
-                // Check if document matches
-                DocTypeMatchResult matchResult = CheckIfDocMatches(scanPages, doctype, false, null);
+                while (await cursor.MoveNextAsync())
+                {
+                    IEnumerable<DocType> batch = cursor.Current;
+                    foreach (DocType docType in batch)
+                    {
+                        // Check if document matches
+                        DocTypeMatchResult matchResult = CheckIfDocMatches(scanPages, docType, false, null);
 
 #if TEST_PERF_GETMATCHINGDOCTYPE
-                stopWatch1.Stop();
-                stopWatch2.Start();
+                        stopWatch1.Stop();
+                        stopWatch2.Start();
 #endif
 
-                // Find the best match
-                bool bThisIsBestMatch = false;
-                if (bestMatchResult.matchCertaintyPercent < matchResult.matchCertaintyPercent)
-                    bThisIsBestMatch = true;
-                else if (bestMatchResult.matchCertaintyPercent == matchResult.matchCertaintyPercent)
-                    if (bestMatchResult.matchFactor < matchResult.matchFactor)
-                        bThisIsBestMatch = true;
+                        // Find the best match
+                        bool bThisIsBestMatch = false;
+                        if (bestMatchResult.matchCertaintyPercent < matchResult.matchCertaintyPercent)
+                            bThisIsBestMatch = true;
+                        else if (bestMatchResult.matchCertaintyPercent == matchResult.matchCertaintyPercent)
+                            if (bestMatchResult.matchFactor < matchResult.matchFactor)
+                                bThisIsBestMatch = true;
 
-                // Redo match to get date and time info
-                if (bThisIsBestMatch)
-                {
-                    matchResult = CheckIfDocMatches(scanPages, doctype, true, null);
-                    bestMatchResult = matchResult;
+                        // Redo match to get date and time info
+                        if (bThisIsBestMatch)
+                        {
+                            matchResult = CheckIfDocMatches(scanPages, docType, true, null);
+                            bestMatchResult = matchResult;
+                        }
+
+                        // Check if this should be returned in the list of best matches
+                        if (listOfPossibleMatches != null)
+                            if ((matchResult.matchCertaintyPercent > 0) || (matchResult.matchFactor > 0))
+                                listOfPossibleMatches.Add(matchResult);
+                    }
                 }
-
-                // Check if this should be returned in the list of best matches
-                if (listOfPossibleMatches != null)
-                    if ((matchResult.matchCertaintyPercent > 0) || (matchResult.matchFactor > 0))
-                        listOfPossibleMatches.Add(matchResult);
 
 #if TEST_PERF_GETMATCHINGDOCTYPE
                 stopWatch2.Stop();
 #endif
-            }
 #if TEST_PERF_GETMATCHINGDOCTYPE
-            logger.Info("T1 : {0}ms, T2 : {1}ms", stopWatch1.ElapsedMilliseconds, stopWatch2.ElapsedMilliseconds);
+                logger.Info("T1 : {0}ms, T2 : {1}ms", stopWatch1.ElapsedMilliseconds, stopWatch2.ElapsedMilliseconds);
 #endif
 
 
-            // If no exact match get date info from entire doc
-            if (bestMatchResult.matchCertaintyPercent != 100)
-            {
-                int bestDateIdx = 0;
-                List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(scanPages, "", out bestDateIdx);
-                bestMatchResult.datesFoundInDoc = extractedDates;
-                if (extractedDates.Count > 0)
-                    bestMatchResult.docDate = extractedDates[bestDateIdx].dateTime;
+                // If no exact match get date info from entire doc
+                if (bestMatchResult.matchCertaintyPercent != 100)
+                {
+                    int bestDateIdx = 0;
+                    List<ExtractedDate> extractedDates = DocTextAndDateExtractor.ExtractDatesFromDoc(scanPages, "", out bestDateIdx);
+                    bestMatchResult.datesFoundInDoc = extractedDates;
+                    if (extractedDates.Count > 0)
+                        bestMatchResult.docDate = extractedDates[bestDateIdx].dateTime;
+                }
             }
 
             // If list of best matches to be returned then sort that list now
@@ -155,8 +161,8 @@ namespace ScanMonitorApp
         public List<DocType> ListDocTypes()
         {
             // Get list of documents
-            MongoCollection<DocType> collection_doctypes = GetDocTypesCollection();
-            return collection_doctypes.FindAll().ToList<DocType>();
+            IMongoCollection<DocType> collection_doctypes = GetDocTypesCollection();
+            return collection_doctypes.Find(_ => true).ToList<DocType>();
         }
 
         public string GetDocTypeJson(string docTypeName)
@@ -166,9 +172,18 @@ namespace ScanMonitorApp
 
         public DocType GetDocType(string docTypeName)
         {
+            // Check empty
+            if (docTypeName.Length == 0)
+                return new DocType();
+
             // Get first matching document
-            MongoCollection<DocType> collection_doctypes = GetDocTypesCollection();
-            return collection_doctypes.FindOne(Query.EQ("docTypeName", docTypeName));
+            IMongoCollection<DocType> collection_doctypes = GetDocTypesCollection();
+            var foundDocTypes = collection_doctypes.Find(a => a.docTypeName == docTypeName);
+            if (foundDocTypes.Count() == 0)
+                return new DocType();
+
+            // Return first found
+            return foundDocTypes.First<DocType>();
         }
 
         public bool AddOrUpdateDocTypeRecInDb(DocType docType)
@@ -176,8 +191,8 @@ namespace ScanMonitorApp
             // Mongo append
             try
             {
-                MongoCollection<DocType> collection_docTypes = GetDocTypesCollection();
-                collection_docTypes.Save(docType);
+                IMongoCollection<DocType> collection_docTypes = GetDocTypesCollection();
+                collection_docTypes.ReplaceOne(a => a.Id == docType.Id, docType, new UpdateOptions { IsUpsert = true });
                 // Log it
                 logger.Info("Added/updated doctype record for {0}", docType.docTypeName);
             }
@@ -579,19 +594,18 @@ namespace ScanMonitorApp
 
         #region Substitution Macros (Paths)
 
-        private MongoCollection<PathSubstMacro> GetPathSubstCollection()
+        private IMongoCollection<PathSubstMacro> GetPathSubstCollection()
         {
             // Setup db connection
-            var server = _dbClient.GetServer();
-            var database = server.GetDatabase(Properties.Settings.Default.DbNameForDocs); // the name of the database
+            var database = _dbClient.GetDatabase(Properties.Settings.Default.DbNameForDocs); // the name of the database
             return database.GetCollection<PathSubstMacro>(Properties.Settings.Default.DbCollectionForPathMacros);
         }
 
         public List<PathSubstMacro> ListPathSubstMacros()
         {
             // Get list
-            MongoCollection<PathSubstMacro> collection_pathSubst = GetPathSubstCollection();
-            return collection_pathSubst.FindAll().ToList<PathSubstMacro>();
+            IMongoCollection<PathSubstMacro> collection_pathSubst = GetPathSubstCollection();
+            return collection_pathSubst.Find(_ => true).ToList<PathSubstMacro>();
         }
 
         public bool AddOrUpdateSubstMacroRecInDb(PathSubstMacro pathSubstMacro)
@@ -599,8 +613,8 @@ namespace ScanMonitorApp
             // Mongo append
             try
             {
-                MongoCollection<PathSubstMacro> collection_pathSubst = GetPathSubstCollection();
-                collection_pathSubst.Save(pathSubstMacro);
+                IMongoCollection<PathSubstMacro> collection_pathSubst = GetPathSubstCollection();
+                collection_pathSubst.ReplaceOne(a => a.Id == pathSubstMacro.Id, pathSubstMacro, new UpdateOptions { IsUpsert = true });
                 // Log it
                 logger.Info("Added/updated pathSubstMacro record for {0}", pathSubstMacro.origText);
             }
@@ -616,9 +630,8 @@ namespace ScanMonitorApp
 
         public void DeletePathSubstMacro(PathSubstMacro pathSubstMacro)
         {
-            MongoCollection<PathSubstMacro> collection_pathSubst = GetPathSubstCollection();
-            var query = Query<PathSubstMacro>.EQ(e => e.Id, pathSubstMacro.Id);
-            collection_pathSubst.Remove(query);
+            IMongoCollection<PathSubstMacro> collection_pathSubst = GetPathSubstCollection();
+            collection_pathSubst.DeleteOne<PathSubstMacro>(e => e.Id == pathSubstMacro.Id);
         }
 
         public string ComputeMinimalPath(string folderName)

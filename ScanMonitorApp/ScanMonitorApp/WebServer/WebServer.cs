@@ -13,7 +13,7 @@ namespace ScanMonitorApp
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private readonly HttpListener _listener = new HttpListener();
-        private readonly Func<HttpListenerRequest, string> _responderMethod;
+        //private readonly Func<HttpListenerRequest, string> _responderMethod;
         private List<WebEndPoint> _allowedEndPoints = new List<WebEndPoint> ();
         private string _urlBase;
 

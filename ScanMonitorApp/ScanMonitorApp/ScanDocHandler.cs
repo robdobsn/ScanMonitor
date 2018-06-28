@@ -83,15 +83,15 @@ namespace ScanMonitorApp
             }
 
             // Setup indexes
-            MongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
-            collection_sdinfo.EnsureIndex(new IndexKeysBuilder().Ascending("uniqName"), IndexOptions.SetUnique(true));
-            MongoCollection<ScanPages> collection_spages = GetDocPagesCollection();
-            collection_spages.EnsureIndex(new IndexKeysBuilder().Ascending("uniqName"), IndexOptions.SetUnique(true));
-            MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
-            collection_fdinfo.EnsureIndex(new IndexKeysBuilder().Ascending("uniqName"), IndexOptions.SetUnique(true));
-            MongoCollection<ExistingFileInfoRec> collection_existingFiles = GetExistingFileInfoCollection();
-            collection_existingFiles.EnsureIndex(new IndexKeysBuilder().Ascending("filename"), IndexOptions.SetUnique(false));
-            collection_existingFiles.EnsureIndex(new IndexKeysBuilder().Ascending("md5Hash"), IndexOptions.SetUnique(false));
+            IMongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
+            collection_sdinfo.Indexes.CreateOneAsync(Builders<ScanDocInfo>.IndexKeys.Ascending("uniqName"), new CreateIndexOptions<ScanDocInfo> { Unique = true });
+            IMongoCollection<ScanPages> collection_spages = GetDocPagesCollection();
+            collection_spages.Indexes.CreateOneAsync(Builders<ScanPages>.IndexKeys.Ascending("uniqName"), new CreateIndexOptions<ScanPages> { Unique = true });
+            IMongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
+            collection_fdinfo.Indexes.CreateOneAsync(Builders<FiledDocInfo>.IndexKeys.Ascending("uniqName"), new CreateIndexOptions<FiledDocInfo> { Unique = true });
+            IMongoCollection<ExistingFileInfoRec> collection_existingFiles = GetExistingFileInfoCollection();
+            collection_existingFiles.Indexes.CreateOneAsync(Builders<ExistingFileInfoRec>.IndexKeys.Ascending("filename"), new CreateIndexOptions<ExistingFileInfoRec> { Unique = false });
+            collection_existingFiles.Indexes.CreateOneAsync(Builders<ExistingFileInfoRec>.IndexKeys.Ascending("md5Hash"), new CreateIndexOptions<ExistingFileInfoRec> { Unique = false });
         }
 
         public bool CheckMongoConnection()
@@ -100,11 +100,10 @@ namespace ScanMonitorApp
             try
             {
                 // Check connection active
-                MongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
+                IMongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
 
                 // Check if record exists already
-                MongoCursor<ScanDocInfo> foundSdf = collection_sdinfo.Find(Query.EQ("uniqName", ""));
-                ScanDocInfo foundRec = foundSdf.First();
+                collection_sdinfo.Find(_ => true).FirstOrDefault<ScanDocInfo>();
                 bOk = true;
             }
             catch (Exception excp)
@@ -124,12 +123,21 @@ namespace ScanMonitorApp
                 return null;
 
             // Get first matching documents
-            MongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
-            ScanDocInfo scanDoc = collection_sdinfo.FindOne(Query.EQ("uniqName", uniqName));
-            MongoCollection<ScanPages> collection_spages = GetDocPagesCollection();
-            ScanPages scanPages = collection_spages.FindOne(Query.EQ("uniqName", uniqName));
-            MongoCollection<FiledDocInfo> collection_filedinfo = GetFiledDocsCollection();
-            FiledDocInfo filedDocInfo = collection_filedinfo.FindOne(Query.EQ("uniqName", uniqName));
+            IMongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
+            var foundScanDoc = collection_sdinfo.Find(a => a.uniqName == uniqName);
+            if (foundScanDoc.Count() == 0)
+                return null;
+            ScanDocInfo scanDoc = foundScanDoc.First<ScanDocInfo>();
+            IMongoCollection<ScanPages> collection_spages = GetDocPagesCollection();
+            ScanPages scanPages = null;
+            var foundScanPages = collection_spages.Find(a => a.uniqName == uniqName);
+            if (foundScanPages.Count() > 0)
+                scanPages = foundScanPages.First<ScanPages>();
+            FiledDocInfo filedDocInfo = null;
+            IMongoCollection<FiledDocInfo> collection_filedinfo = GetFiledDocsCollection();
+            var foundFiledDocInfo = collection_filedinfo.Find(a => a.uniqName == uniqName);
+            if (foundFiledDocInfo.Count() > 0)
+                filedDocInfo = foundFiledDocInfo.First<FiledDocInfo>();
             return new ScanDocAllInfo(scanDoc, scanPages, filedDocInfo);
         }
 
@@ -147,18 +155,20 @@ namespace ScanMonitorApp
 
         #region Scan Sw Settings
 
-        public MongoCollection<ScanSwSettings> GetScanSwSettingsCollection()
+        public IMongoCollection<ScanSwSettings> GetScanSwSettingsCollection()
         {
-            var server = _dbClient.GetServer();
-            var database = server.GetDatabase(_scanConfig._dbNameForDocs); // the name of the database
+            var database = _dbClient.GetDatabase(_scanConfig._dbNameForDocs); // the name of the database
             return database.GetCollection<ScanSwSettings>(Properties.Settings.Default.DbCollectionForSwSettings);
         }
 
         public string GetEmailPassword()
         {
             // Get first matching document
-            MongoCollection<ScanSwSettings> collection_swsettings = GetScanSwSettingsCollection();
-            ScanSwSettings swSettings = collection_swsettings.FindOne();
+            IMongoCollection<ScanSwSettings> collection_swsettings = GetScanSwSettingsCollection();
+            var foundSwSettings = collection_swsettings.Find(_ => true);
+            if (foundSwSettings.Count() == 0)
+                return "";
+            var swSettings = foundSwSettings.First<ScanSwSettings>();
             if (swSettings == null)
                 return "";
             return swSettings._emailPassword;
@@ -170,9 +180,9 @@ namespace ScanMonitorApp
             try
             {
                 ScanSwSettings settings = new ScanSwSettings(pw);
-                MongoCollection<ScanSwSettings> collection_swsettings = GetScanSwSettingsCollection();
-                collection_swsettings.RemoveAll();
-                collection_swsettings.Save(settings);
+                IMongoCollection<ScanSwSettings> collection_swsettings = GetScanSwSettingsCollection();
+                collection_swsettings.DeleteMany(_ => true);
+                collection_swsettings.InsertOne(settings);
             }
             catch (Exception excp)
             {
@@ -186,10 +196,9 @@ namespace ScanMonitorApp
 
         #region ScanDocInfo Collection Handling
 
-        public MongoCollection<ScanDocInfo> GetDocInfoCollection()
+        public IMongoCollection<ScanDocInfo> GetDocInfoCollection()
         {
-            var server = _dbClient.GetServer();
-            var database = server.GetDatabase(_scanConfig._dbNameForDocs); // the name of the database
+            var database = _dbClient.GetDatabase(_scanConfig._dbNameForDocs); // the name of the database
             return database.GetCollection<ScanDocInfo>(_scanConfig._dbCollectionForDocInfo);
         }
 
@@ -203,8 +212,8 @@ namespace ScanMonitorApp
         public List<ScanDocInfo> GetListOfScanDocs()
         {
             // Get list of documents
-            MongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
-            return collection_sdinfo.FindAll().ToList();
+            IMongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
+            return collection_sdinfo.Find(_ => true).ToList();
         }
 
         public string GetScanDocJson(string uniqName)
@@ -216,8 +225,8 @@ namespace ScanMonitorApp
         public ScanDocInfo GetScanDocInfo(string uniqName)
         {
             // Get first matching documents
-            MongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
-            ScanDocInfo scanDoc = collection_sdinfo.FindOne(Query.EQ("uniqName", uniqName));
+            IMongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
+            ScanDocInfo scanDoc = collection_sdinfo.Find(a => a.uniqName == uniqName).FirstOrDefault<ScanDocInfo>();
             return scanDoc;
         }
 
@@ -226,8 +235,8 @@ namespace ScanMonitorApp
             // Mongo append
             try
             {
-                MongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
-                collection_sdinfo.Insert(scanDocInfo);
+                IMongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
+                collection_sdinfo.InsertOne(scanDocInfo);
                 // Log it
                 logger.Info("Added scandocinfo record for {0}", scanDocInfo.uniqName);
 
@@ -248,12 +257,10 @@ namespace ScanMonitorApp
             try
             {
                 // Get collection
-                MongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
+                IMongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
 
                 // Check if record exists already
-                MongoCursor<ScanDocInfo> foundSdf = collection_sdinfo.Find(Query.EQ("uniqName", uniqName));
-                foreach (ScanDocInfo foundRec in foundSdf)
-                    return false;
+                return collection_sdinfo.Count(a => a.uniqName == uniqName) > 0;
             }
             catch (Exception excp)
             {
@@ -262,10 +269,9 @@ namespace ScanMonitorApp
                     logger.Error("Mongo db error checking doc exists {0} coll {1} excp {2}", _scanConfig._dbNameForDocs, _scanConfig._dbCollectionForDocInfo, excp.Message);
                     _lastTimeMongoDbConnErrLogged = DateTime.Now;
                 }
-                return false;
             }
             // Ok to add to db
-            return true;
+            return false;
         }
 
         public bool AddOrUpdateScanDocRecInDb(ScanDocInfo scanDocInfo)
@@ -273,8 +279,8 @@ namespace ScanMonitorApp
             // Mongo save
             try
             {
-                MongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
-                collection_sdinfo.Save(scanDocInfo);
+                IMongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
+                collection_sdinfo.ReplaceOne(a => a.Id == scanDocInfo.Id, scanDocInfo, new UpdateOptions { IsUpsert = true });
                 // Log it
                 logger.Info("Added/updated scandocinfo record for {0}", scanDocInfo.uniqName);
                 // Update cache
@@ -296,17 +302,16 @@ namespace ScanMonitorApp
 
         #region ScanDocPages Collection Handling
 
-        private MongoCollection<ScanPages> GetDocPagesCollection()
+        private IMongoCollection<ScanPages> GetDocPagesCollection()
         {
-            var server = _dbClient.GetServer();
-            var database = server.GetDatabase(_scanConfig._dbNameForDocs); // the name of the database
+            var database = _dbClient.GetDatabase(_scanConfig._dbNameForDocs); // the name of the database
             return database.GetCollection<ScanPages>(_scanConfig._dbCollectionForDocPages);
         }
 
         public ScanPages GetScanPages(string uniqName)
         {
-            MongoCollection<ScanPages> collection_spages = GetDocPagesCollection();
-            return collection_spages.FindOne(Query.EQ("uniqName", uniqName));
+            IMongoCollection<ScanPages> collection_spages = GetDocPagesCollection();
+            return collection_spages.Find(a => a.uniqName == uniqName).FirstOrDefault<ScanPages>();
         }
 
         public void AddScanPagesRecToMongo(ScanPages scanPages)
@@ -314,8 +319,8 @@ namespace ScanMonitorApp
             // Mongo append
             try
             {
-                MongoCollection<ScanPages> collection_spages = GetDocPagesCollection();
-                collection_spages.Insert(scanPages);
+                IMongoCollection<ScanPages> collection_spages = GetDocPagesCollection();
+                collection_spages.InsertOne(scanPages);
                 // Log it
                 logger.Info("Added scandocpages record for {0}", scanPages.uniqName);
             }
@@ -331,40 +336,38 @@ namespace ScanMonitorApp
 
         #region FiledDocs Collection Handling
 
-        public MongoCollection<FiledDocInfo> GetFiledDocsCollection()
+        public IMongoCollection<FiledDocInfo> GetFiledDocsCollection()
         {
-            var server = _dbClient.GetServer();
-            var database = server.GetDatabase(_scanConfig._dbNameForDocs); // the name of the database
+            var database = _dbClient.GetDatabase(_scanConfig._dbNameForDocs); // the name of the database
             return database.GetCollection<FiledDocInfo>(_scanConfig._dbCollectionForFiledDocs);
         }
 
         public List<FiledDocInfo> GetListOfFiledDocs()
         {
             // Get list of documents
-            MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
-            return collection_fdinfo.FindAll().ToList();
+            IMongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
+            return collection_fdinfo.Find(_ => true).ToList();
         }
 
         public FiledDocInfo GetFiledDocInfo(string uniqName)
         {
-            MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
-            FiledDocInfo fdi = collection_fdinfo.FindOne(Query.EQ("uniqName", uniqName));
+            IMongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
+            FiledDocInfo fdi = collection_fdinfo.Find(a => a.uniqName == uniqName).FirstOrDefault<FiledDocInfo>();
             return fdi;
         }
 
         public bool AddFiledDocRecToMongo(FiledDocInfo filedDocInfo)
         {
             // Mongo append
-            bool bOk = false;
             try
             {
-                MongoCollection<FiledDocInfo> collection_fileddoc = GetFiledDocsCollection();
-                WriteConcernResult rslt = collection_fileddoc.Insert(filedDocInfo);
-                bOk = rslt.Ok;
+                IMongoCollection<FiledDocInfo> collection_fileddoc = GetFiledDocsCollection();
+                collection_fileddoc.ReplaceOne(a => a.Id == filedDocInfo.Id, filedDocInfo, new UpdateOptions { IsUpsert = true });
                 // Log it
                 logger.Info("Added fileddoc record for {0}", filedDocInfo.uniqName);
                 // Update cache
                 _scanDocInfoCache.UpdateDocInfo(filedDocInfo.uniqName);
+                return true;
             }
             catch (Exception excp)
             {
@@ -372,7 +375,7 @@ namespace ScanMonitorApp
                             _scanConfig._dbNameForDocs, _scanConfig._dbCollectionForFiledDocs, filedDocInfo.uniqName,
                             excp.Message);
             }
-            return bOk;
+            return false;
         }
 
         public bool AddOrUpdateFiledDocRecInDb(FiledDocInfo filedDocInfo)
@@ -380,8 +383,8 @@ namespace ScanMonitorApp
             // Mongo save
             try
             {
-                MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
-                collection_fdinfo.Save(filedDocInfo);
+                IMongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
+                collection_fdinfo.ReplaceOne(a => a.Id == filedDocInfo.Id, filedDocInfo, new UpdateOptions { IsUpsert = true });
                 // Log it
                 logger.Info("Added/updated fileddoc record for {0} filedAt {1}", filedDocInfo.uniqName, filedDocInfo.filedAs_pathAndFileName);
                 // Update cache
@@ -405,7 +408,7 @@ namespace ScanMonitorApp
             {
                 try
                 {
-                    MongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
+                    IMongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
                     List<string> partres = (from fd in collection_fdinfo.AsQueryable<FiledDocInfo>() orderby fd.filedAt_dateAndTime descending select (string)fd.filedAs_docType).Take<string>(200).ToList<string>();
                     partres = partres.Select(s => s).Distinct<string>().ToList<string>();
                     docTypesList = partres.Take(numToReturn).ToList<string>();
@@ -427,24 +430,22 @@ namespace ScanMonitorApp
 
         #region Existing File Hash Information
 
-        public MongoCollection<ExistingFileInfoRec> GetExistingFileInfoCollection()
+        public IMongoCollection<ExistingFileInfoRec> GetExistingFileInfoCollection()
         {
-            var server = _dbClient.GetServer();
-            var database = server.GetDatabase(_scanConfig._dbNameForDocs); // the name of the database
+            var database = _dbClient.GetDatabase(_scanConfig._dbNameForDocs); // the name of the database
             return database.GetCollection<ExistingFileInfoRec>(_scanConfig._dbCollectionForExistingFiles);
         }
 
         public bool AddExistingFileRecToMongo(ExistingFileInfoRec infoRec)
         {
             // Mongo append
-            bool bOk = false;
             try
             {
-                MongoCollection<ExistingFileInfoRec> collection_existingFile = GetExistingFileInfoCollection();
-                WriteConcernResult rslt = collection_existingFile.Insert(infoRec);
-                bOk = rslt.Ok;
+                IMongoCollection<ExistingFileInfoRec> collection_existingFile = GetExistingFileInfoCollection();
+                collection_existingFile.InsertOne(infoRec);
                 // Log it
                 //logger.Info("Added existing-file-info record for {0}", System.IO.Path.GetFileName(infoRec.filename));
+                return true;
             }
             catch (Exception excp)
             {
@@ -452,15 +453,15 @@ namespace ScanMonitorApp
                             _scanConfig._dbNameForDocs, _scanConfig._dbCollectionForExistingFiles, infoRec.filename,
                             excp.Message);
             }
-            return bOk;
+            return false;
         }
 
         public void EmptyExistingFileRecDB()
         {
             try
             {
-                MongoCollection<ExistingFileInfoRec> collection_existingFile = GetExistingFileInfoCollection();
-                collection_existingFile.Drop();
+                IMongoCollection<ExistingFileInfoRec> collection_existingFile = GetExistingFileInfoCollection();
+                collection_existingFile.DeleteMany(_ => true);
                 // Log it
                 logger.Info("Emptied existing file db");
             }
@@ -472,8 +473,8 @@ namespace ScanMonitorApp
 
         public List<ExistingFileInfoRec> FindExistingFileRecsByHash(byte[] md5Hash)
         {
-            MongoCollection<ExistingFileInfoRec> collection_existingFile = GetExistingFileInfoCollection();
-            List<ExistingFileInfoRec> efirList = collection_existingFile.Find(Query.EQ("md5Hash", md5Hash)).ToList();
+            IMongoCollection<ExistingFileInfoRec> collection_existingFile = GetExistingFileInfoCollection();
+            List<ExistingFileInfoRec> efirList = collection_existingFile.Find(a => a.md5Hash == md5Hash).ToList();
             return efirList;
         }
 
@@ -961,7 +962,7 @@ namespace ScanMonitorApp
                                 bool bAddToDocInfoDb, bool bAddToDocPagesDb)
         {
             // First check if doc details are already in db
-            if (!ScanDocInfoRecordExists(uniqName))
+            if (ScanDocInfoRecordExists(uniqName))
                 return false;
 
             // Make a copy of the file in the archive location
