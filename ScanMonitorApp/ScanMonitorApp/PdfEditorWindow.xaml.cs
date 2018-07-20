@@ -657,7 +657,7 @@ namespace ScanMonitorApp
                         break;
                     }
 
-                    System.Drawing.Image pageImg = _pdfRasterizer.GetPageImage(i + 1, false);
+                    System.Drawing.Image pageImg = (System.Drawing.Image)_pdfRasterizer.GetPageImage(i + 1, false).Clone();
 
                     object[] args = new object[4];
                     args[0] = i;

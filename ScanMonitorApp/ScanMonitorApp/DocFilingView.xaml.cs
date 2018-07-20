@@ -1019,18 +1019,20 @@ namespace ScanMonitorApp
             }
 
             // Process the output files
-            using (new WaitCursor())
-            {
-                foreach (string fileName in savedFileNames)
-                {
-                    DateTime fileDateTime = File.GetCreationTime(fileName);
-                    string uniqName = ScanDocInfo.GetUniqNameForFile(fileName, fileDateTime);
-                    _scanDocHandler.ProcessPdfFile(fileName, uniqName, true, true, true, true, true, true);
-                }
+            // CHANGE: ROB 2018/07/20 - leave it to the scan folder monitor to add any additional files (if document split, etc)
+            //         This is to avoid a race condition
+            //using (new WaitCursor())
+            //{
+            //    foreach (string fileName in savedFileNames)
+            //    {
+            //        DateTime fileDateTime = File.GetCreationTime(fileName);
+            //        string uniqName = ScanDocInfo.GetUniqNameForFile(fileName, fileDateTime);
+            //        _scanDocHandler.ProcessPdfFile(fileName, uniqName, true, true, true, true, true, true);
+            //    }
 
-                // Wait for a bit to let the database catch up
-                Thread.Sleep(2000);
-            }
+            //    // Wait for a bit to let the database catch up
+            //    Thread.Sleep(2000);
+            //}
 
             // Goto a file if there is one
             ShowDocToBeFiled(_curDocToBeFiledIdxInList);
