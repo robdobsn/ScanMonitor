@@ -1,4 +1,5 @@
 ﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -18,6 +19,8 @@ namespace ScanMonitorApp
             scanPages = spages;
             filedDocInfo = fdi;
         }
+        [BsonId]
+        [BsonIgnoreIfDefault]
         public ObjectId Id;
         public ScanDocInfo scanDocInfo { get; set; }
         public ScanPages scanPages { get; set; }
@@ -37,6 +40,8 @@ namespace ScanMonitorApp
             origFileName = a_origFileName;
             flagForHelpFiling = a_flagForHelpFiling;
         }
+        [BsonId]
+        [BsonIgnoreIfDefault]
         public ObjectId Id;
         public string uniqName { get; set; }
         public int numPages { get; set; }
@@ -189,6 +194,8 @@ namespace ScanMonitorApp
             filedAt_finalStatus = a_filedAt_finalStatus;            
         }
 
+        [BsonId]
+        [BsonIgnoreIfDefault]
         public ObjectId Id;
 
         // uniqname file
@@ -221,6 +228,8 @@ namespace ScanMonitorApp
 
     public class ScanPages
     {
+        [BsonId]
+        [BsonIgnoreIfDefault]
         public ObjectId Id;
         public string uniqName { get; set; }
         public List<List<ScanTextElem>> scanPagesText { get; set; }
@@ -271,6 +280,8 @@ namespace ScanMonitorApp
 
     public class ExistingFileInfoRec
     {
+        [BsonId]
+        [BsonIgnoreIfDefault]
         public ObjectId Id;
         public string filename;
         public byte[] md5Hash;
@@ -283,6 +294,8 @@ namespace ScanMonitorApp
         {
             _emailPassword = emailPassword;
         }
+        [BsonId]
+        [BsonIgnoreIfDefault]
         public ObjectId Id;
         public string _emailPassword;
     }

@@ -121,7 +121,7 @@ namespace ScanMonitorApp
         {
             bool fileCheckOk = false;
             // Verify that the file contains text - wait until it does
-            for (int checkIdx = 0; checkIdx < 4; checkIdx++)
+            for (int checkIdx = 0; checkIdx < 20; checkIdx++)
             {
                 // Check file is ready to be accessed
                 fileCheckOk = CheckFileReadyToBeAccessed(fileName);
@@ -129,7 +129,7 @@ namespace ScanMonitorApp
                     break;
 
                 // Sleep to allow the remote computer to finish processing - it may be doing OCR etc
-                Thread.Sleep(5000);
+                Thread.Sleep(1000);
             }
             if (!fileCheckOk)
             {

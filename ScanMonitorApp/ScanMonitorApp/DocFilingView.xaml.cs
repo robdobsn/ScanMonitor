@@ -54,7 +54,7 @@ namespace ScanMonitorApp
         private ObservableCollection<DocTypeMatchResult> _listOfPossibleDocMatches = new ObservableCollection<DocTypeMatchResult>();
         private DateTime _lastDocFiledAsDateTime = DateTime.Now;
         private enum TouchFromPageText { TOUCH_NONE, TOUCH_DATE, TOUCH_SUFFIX, TOUCH_MONEY, TOUCH_EVENT_NAME, TOUCH_EVENT_DATE, TOUCH_EVENT_DESC, TOUCH_EVENT_LOCN }
-        private TouchFromPageText _touchFromPageText = TouchFromPageText.TOUCH_NONE;
+        private TouchFromPageText _touchFromPageText = TouchFromPageText.TOUCH_SUFFIX;
         private System.Windows.Threading.DispatcherTimer _timerForNewDocumentCheck;
         private string _overrideFolderForFiling = "";
         private string _lastHashOfUnfiledDocs = "";
@@ -381,7 +381,7 @@ namespace ScanMonitorApp
             chkFollowUpA.IsChecked = false;
             chkFollowUpB.IsChecked = false;
             chkCalendarEntry.IsChecked = false;
-            _touchFromPageText = TouchFromPageText.TOUCH_NONE;
+            _touchFromPageText = TouchFromPageText.TOUCH_SUFFIX;
 
             // Display email addresses
             List<MailAddress> mailTo = ScanDocHandler.GetEmailToAddresses();
@@ -984,10 +984,10 @@ namespace ScanMonitorApp
 
             // Check file to edit is present
             string fileToEdit = _curDocScanDocInfo.GetOrigFileNameWin();
-            if (!File.Exists(fileToEdit))
+            if (!File.Exists(fileToEdit))   
             {
-                string archiveFileName = ScanDocHandler.GetArchiveFileName(_curDocScanDocInfo.uniqName);
-                if (!File.Exists(archiveFileName))
+                fileToEdit = ScanDocHandler.GetArchiveFileName(_curDocScanDocInfo.uniqName);
+                if (!File.Exists(fileToEdit))
                 {
                     MessageDialog.Show("Neither original not archive file can be found", "", "OK", "", null, this);
                     return;
@@ -995,7 +995,7 @@ namespace ScanMonitorApp
             }
 
             PdfEditorWindow pew = new PdfEditorWindow();
-            pew.OpenEmbeddedPdfEditor(fileToEdit, HandlePdfEditSaveComplete, "");
+            pew.OpenEmbeddedPdfEditor(fileToEdit, HandlePdfEditSaveComplete, Properties.Settings.Default.PdfEditorOutFolder);
             pew.ShowDialog();
         }
 
@@ -1010,6 +1010,7 @@ namespace ScanMonitorApp
             if (!deletedOk)
             {
                 lblStatusBarProcStatus.Content = "Last filing: Failed to remove original";
+                logger.Error("PDFSaveComplete failed to delete {0}", _curDocScanDocInfo.GetOrigFileNameWin());
                 lblStatusBarProcStatus.Foreground = Brushes.Red;
             }
             else
@@ -1018,21 +1019,13 @@ namespace ScanMonitorApp
                 lblStatusBarProcStatus.Foreground = Brushes.Black;
             }
 
-            // Process the output files
-            // CHANGE: ROB 2018/07/20 - leave it to the scan folder monitor to add any additional files (if document split, etc)
-            //         This is to avoid a race condition
-            //using (new WaitCursor())
-            //{
-            //    foreach (string fileName in savedFileNames)
-            //    {
-            //        DateTime fileDateTime = File.GetCreationTime(fileName);
-            //        string uniqName = ScanDocInfo.GetUniqNameForFile(fileName, fileDateTime);
-            //        _scanDocHandler.ProcessPdfFile(fileName, uniqName, true, true, true, true, true, true);
-            //    }
-
-            //    // Wait for a bit to let the database catch up
-            //    Thread.Sleep(2000);
-            //}
+            // Process the output files in a worker thread
+            if (!_scanDocHandler.backgroundProcessPdfFiles(savedFileNames))
+            {
+                logger.Error("PDFSaveComplete failed process output files as background worker busy");
+                lblStatusBarProcStatus.Content = "Last filing: File processor busy";
+                lblStatusBarProcStatus.Foreground = Brushes.Red;
+            }
 
             // Goto a file if there is one
             ShowDocToBeFiled(_curDocToBeFiledIdxInList);
@@ -1418,10 +1411,6 @@ namespace ScanMonitorApp
 
         private void imageDocToFile_MouseMove(object sender, MouseEventArgs e)
         {
-            // Only show tooltips when there is no touch select going on
-            if (_touchFromPageText != TouchFromPageText.TOUCH_NONE)
-                return;
-
             // Check if window is in foreground - remove popup if it isn't
             if (!IsActive)
             {
@@ -1438,7 +1427,10 @@ namespace ScanMonitorApp
                 if ((_curDocDisplay_pageNum > 0) && (_curDocDisplay_pageNum <= _curDocScanPages.scanPagesText.Count))
                 {
                     if (!imageDocToFileToolTip.IsOpen)
+                    {
                         imageDocToFileToolTip.IsOpen = true;
+                        imageDocToFileToolTip.IsHitTestVisible = false;
+                    }
                     imageDocToFileToolTip.HorizontalOffset = curMousePoint.X - 50;
                     imageDocToFileToolTip.VerticalOffset = curMousePoint.Y;
                     List<ScanTextElem> scanTextElems = _curDocScanPages.scanPagesText[_curDocDisplay_pageNum - 1];
@@ -1582,8 +1574,8 @@ namespace ScanMonitorApp
                 }
             }
 
-            // Cancel touch activity
-            _touchFromPageText = TouchFromPageText.TOUCH_NONE;
+            // Back to default touch activity
+            _touchFromPageText = TouchFromPageText.TOUCH_SUFFIX;
         }
 
         #endregion

@@ -92,5 +92,8 @@
     <Setting Name="DbCollectionForSwSettings" Type="System.String" Scope="User">
       <Value Profile="(Default)">ScanSwSettings</Value>
     </Setting>
+    <Setting Name="PdfEditorOutFolder" Type="System.String" Scope="User">
+      <Value Profile="(Default)">\\MACALLAN\Admin\ScanAdmin\PdfOutFolder</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

@@ -14,6 +14,7 @@ using System.Threading;
 using System.Net.Mail;
 using System.Net;
 using System.Security.Cryptography;
+using System.IO;
 
 namespace ScanMonitorApp
 {
@@ -38,6 +39,8 @@ namespace ScanMonitorApp
         private ScanDocInfoCache _scanDocInfoCache = null;
         private ScanDocLikelyDocType _scanDocLikelyDocType = null;
         private List<string> _lastNDocTypesFiled = new List<string>();
+        // Background worker for multiple files - used by PDF editor save
+        private BackgroundWorker _multiHandlerBkgndWorker = new BackgroundWorker();
 
         #region Init
 
@@ -61,6 +64,12 @@ namespace ScanMonitorApp
             _fileProcessBkgndWorker.DoWork += new DoWorkEventHandler(FileProcessDoWork);
             _fileProcessBkgndWorker.ProgressChanged += new ProgressChangedEventHandler(FileProcessProgressChanged);
             _fileProcessBkgndWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(FileProcessRunWorkerCompleted);
+
+
+            // Init worker for PDF file saves
+            _multiHandlerBkgndWorker.WorkerSupportsCancellation = false;
+            _multiHandlerBkgndWorker.WorkerReportsProgress = false;
+            _multiHandlerBkgndWorker.DoWork += new DoWorkEventHandler(MultiHandlerDoWork);
 
         }
 
@@ -224,7 +233,7 @@ namespace ScanMonitorApp
 
         public ScanDocInfo GetScanDocInfo(string uniqName)
         {
-            // Get first matching documents
+            // Get first matching document
             IMongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
             ScanDocInfo scanDoc = collection_sdinfo.Find(a => a.uniqName == uniqName).FirstOrDefault<ScanDocInfo>();
             return scanDoc;
@@ -280,7 +289,7 @@ namespace ScanMonitorApp
             try
             {
                 IMongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
-                collection_sdinfo.ReplaceOne(a => a.Id == scanDocInfo.Id, scanDocInfo, new UpdateOptions { IsUpsert = true });
+                collection_sdinfo.ReplaceOne(a => a.uniqName == scanDocInfo.uniqName, scanDocInfo, new UpdateOptions { IsUpsert = true });
                 // Log it
                 logger.Info("Added/updated scandocinfo record for {0}", scanDocInfo.uniqName);
                 // Update cache
@@ -362,7 +371,7 @@ namespace ScanMonitorApp
             try
             {
                 IMongoCollection<FiledDocInfo> collection_fileddoc = GetFiledDocsCollection();
-                collection_fileddoc.ReplaceOne(a => a.Id == filedDocInfo.Id, filedDocInfo, new UpdateOptions { IsUpsert = true });
+                collection_fileddoc.InsertOne(filedDocInfo);
                 // Log it
                 logger.Info("Added fileddoc record for {0}", filedDocInfo.uniqName);
                 // Update cache
@@ -384,7 +393,7 @@ namespace ScanMonitorApp
             try
             {
                 IMongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
-                collection_fdinfo.ReplaceOne(a => a.Id == filedDocInfo.Id, filedDocInfo, new UpdateOptions { IsUpsert = true });
+                collection_fdinfo.ReplaceOne(a => a.uniqName == filedDocInfo.uniqName, filedDocInfo, new UpdateOptions { IsUpsert = true });
                 // Log it
                 logger.Info("Added/updated fileddoc record for {0} filedAt {1}", filedDocInfo.uniqName, filedDocInfo.filedAs_pathAndFileName);
                 // Update cache
@@ -708,7 +717,7 @@ namespace ScanMonitorApp
             }
 
             // Complete the status information
-            FiledDocInfo fdi = (FiledDocInfo)args[1]; 
+            FiledDocInfo fdi = (FiledDocInfo)args[1];
             FiledDocInfo.DocFinalStatus dfs = FiledDocInfo.DocFinalStatus.STATUS_FILED;
             _docFilingStatusStr = "Updating db ...";
             worker.ReportProgress(0, _docFilingStatusStr);
@@ -821,14 +830,14 @@ namespace ScanMonitorApp
         public void AddMeetingRequestToMsg(MailMessage msg, FiledDocInfo fdi)
         {
             StringBuilder str = new StringBuilder();
-            str.AppendLine("BEGIN:VCALENDAR");                  
+            str.AppendLine("BEGIN:VCALENDAR");
             str.AppendLine("VERSION:2.0");
             str.AppendLine("METHOD:REQUEST");
             str.AppendLine("BEGIN:VEVENT");
             str.AppendLine(string.Format("DTSTART:{0:yyyyMMddTHHmmssZ}", fdi.filedAs_eventDateTime));
             str.AppendLine(string.Format("DTSTAMP:{0:yyyyMMddTHHmmssZ}", fdi.filedAs_eventDateTime.ToUniversalTime()));
             str.AppendLine(string.Format("DTEND:{0:yyyyMMddTHHmmssZ}", fdi.filedAs_eventDateTime.Add(fdi.filedAs_eventDuration)));
-            str.AppendLine(string.Format("LOCATION: {0}", fdi.filedAs_eventLocation)); 
+            str.AppendLine(string.Format("LOCATION: {0}", fdi.filedAs_eventLocation));
             str.AppendLine(string.Format("UID:{0}", Guid.NewGuid()));
             str.AppendLine(string.Format("DESCRIPTION:{0}", fdi.filedAs_eventDescr));
             str.AppendLine(string.Format("X-ALT-DESC;FMTTYPE=text/html:{0}", fdi.filedAs_eventDescr));
@@ -1092,7 +1101,7 @@ namespace ScanMonitorApp
                         }
                     }
                 }
-                catch(Exception excp)
+                catch (Exception excp)
                 {
                     logger.Error("Exception in GenHashOnFileExcludingMetadata " + excp.Message);
                 }
@@ -1232,6 +1241,39 @@ namespace ScanMonitorApp
             psi.WindowStyle = ProcessWindowStyle.Normal;
             psi.Arguments = string.Format("/e,{1}\"{0}\"", fileName, selParent ? "/select," : "");
             Process.Start(psi);
+        }
+
+        #endregion
+
+        #region Multiple file processing (for PDF editor)
+
+        public bool backgroundProcessPdfFiles(List<String> filesToProcess)
+        {
+            if (_multiHandlerBkgndWorker.IsBusy)
+            {
+                return false;
+            }
+
+            object[] args = new object[] { filesToProcess };
+            _multiHandlerBkgndWorker.RunWorkerAsync(args);
+            return true;
+        }
+
+        private void MultiHandlerDoWork(object sender, DoWorkEventArgs e)
+        {
+            BackgroundWorker worker = sender as BackgroundWorker;
+
+            // Get args
+            object[] args = (object[])e.Argument;
+            e.Result = args;
+
+            // Process the files
+            foreach (string fileName in (List<string>)(args[0]))
+            {
+                DateTime fileDateTime = File.GetCreationTime(fileName);
+                string uniqName = ScanDocInfo.GetUniqNameForFile(fileName, fileDateTime);
+                ProcessPdfFile(fileName, uniqName, true, true, true, true, true, true);
+            }
         }
 
         #endregion

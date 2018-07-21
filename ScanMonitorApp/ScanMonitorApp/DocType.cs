@@ -8,6 +8,7 @@ using NLog;
 using System.Windows.Controls;
 using System.IO;
 using System.Windows.Media.Imaging;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace ScanMonitorApp
 {
@@ -46,6 +47,8 @@ namespace ScanMonitorApp
             return rtn.Trim();
         }
 
+        [BsonId]
+        [BsonIgnoreIfDefault]
         public ObjectId Id;
         public string docTypeName { get; set; }
         public string matchExpression { get; set; }
@@ -197,6 +200,8 @@ namespace ScanMonitorApp
 
     public class PathSubstMacro
     {
+        [BsonId]
+        [BsonIgnoreIfDefault]
         public ObjectId Id;
         public string origText { get; set; }
         public string replaceText { get; set; }

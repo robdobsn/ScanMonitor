@@ -192,7 +192,7 @@ namespace ScanMonitorApp
             try
             {
                 IMongoCollection<DocType> collection_docTypes = GetDocTypesCollection();
-                collection_docTypes.ReplaceOne(a => a.Id == docType.Id, docType, new UpdateOptions { IsUpsert = true });
+                collection_docTypes.ReplaceOne(a => a.docTypeName == docType.docTypeName, docType, new UpdateOptions { IsUpsert = true });
                 // Log it
                 logger.Info("Added/updated doctype record for {0}", docType.docTypeName);
             }
@@ -614,7 +614,7 @@ namespace ScanMonitorApp
             try
             {
                 IMongoCollection<PathSubstMacro> collection_pathSubst = GetPathSubstCollection();
-                collection_pathSubst.ReplaceOne(a => a.Id == pathSubstMacro.Id, pathSubstMacro, new UpdateOptions { IsUpsert = true });
+                collection_pathSubst.ReplaceOne(a => a.origText == pathSubstMacro.origText, pathSubstMacro, new UpdateOptions { IsUpsert = true });
                 // Log it
                 logger.Info("Added/updated pathSubstMacro record for {0}", pathSubstMacro.origText);
             }
