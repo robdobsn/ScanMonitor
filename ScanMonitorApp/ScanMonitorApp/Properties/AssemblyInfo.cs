@@ -10,9 +10,9 @@ using System.Windows;
 [assembly: AssemblyTitle("ScanMonitorApp")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("Rob Dobson")]
 [assembly: AssemblyProduct("ScanMonitorApp")]
-[assembly: AssemblyCopyright("Copyright ©  2014")]
+[assembly: AssemblyCopyright("Copyright © 2019")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
