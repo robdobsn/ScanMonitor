@@ -230,23 +230,23 @@ namespace ScanMonitorApp
 
         private void butAddOldDocTypes_Click(object sender, RoutedEventArgs e)
         {
-            // Configure open file dialog box
-            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
-            dlg.FileName = Properties.Settings.Default.OldRulesFile;
-            dlg.InitialDirectory = System.IO.Path.GetDirectoryName(dlg.FileName);
-            dlg.DefaultExt = ".xml"; // Default file extension
-            dlg.Filter = "XML documents (.xml)|*.xml"; // Filter files by extension 
+            //// Configure open file dialog box
+            //Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+            //dlg.FileName = Properties.Settings.Default.OldRulesFile;
+            //dlg.InitialDirectory = System.IO.Path.GetDirectoryName(dlg.FileName);
+            //dlg.DefaultExt = ".xml"; // Default file extension
+            //dlg.Filter = "XML documents (.xml)|*.xml"; // Filter files by extension 
 
-            // Show open file dialog box
-            Nullable<bool> result = dlg.ShowDialog();
+            //// Show open file dialog box
+            //Nullable<bool> result = dlg.ShowDialog();
 
-            // Process open file dialog box results 
-            if (result == true)
-            {
-                // Open document 
-                string filename = dlg.FileName;
-                MigrateFromOldApp.AddOldDocTypes(filename, _docTypesMatcher);
-            }
+            //// Process open file dialog box results 
+            //if (result == true)
+            //{
+            //    // Open document 
+            //    string filename = dlg.FileName;
+            //    MigrateFromOldApp.AddOldDocTypes(filename, _docTypesMatcher);
+            //}
         }
 
         private void butViewAuditData_Click(object sender, RoutedEventArgs e)
@@ -264,39 +264,39 @@ namespace ScanMonitorApp
 
         private void butAddOldLogRecs_Click(object sender, RoutedEventArgs e)
         {
-            // Configure open file dialog box
-            Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
-            dlg.FileName = System.IO.Path.GetFileName(Properties.Settings.Default.OldScanLogFile);
-            dlg.InitialDirectory = System.IO.Path.GetDirectoryName(Properties.Settings.Default.OldScanLogFile);
-            dlg.DefaultExt = ".log"; // Default file extension
-            dlg.Filter = "Log documents (.log)|*.log"; // Filter files by extension 
+            //// Configure open file dialog box
+            //Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+            //dlg.FileName = System.IO.Path.GetFileName(Properties.Settings.Default.OldScanLogFile);
+            //dlg.InitialDirectory = System.IO.Path.GetDirectoryName(Properties.Settings.Default.OldScanLogFile);
+            //dlg.DefaultExt = ".log"; // Default file extension
+            //dlg.Filter = "Log documents (.log)|*.log"; // Filter files by extension 
 
-            // Show open file dialog box
-            Nullable<bool> result = false;
-            try
-            {
-                result = dlg.ShowDialog();
-            }
-            catch(Exception excp)
-            {
-                logger.Error("Exception {0}", excp.Message);
-            }
+            //// Show open file dialog box
+            //Nullable<bool> result = false;
+            //try
+            //{
+            //    result = dlg.ShowDialog();
+            //}
+            //catch(Exception excp)
+            //{
+            //    logger.Error("Exception {0}", excp.Message);
+            //}
 
-            // Process open file dialog box results 
-            if (result == true)
-            {
-                // Open document 
-                string filename = dlg.FileName;
+            //// Process open file dialog box results 
+            //if (result == true)
+            //{
+            //    // Open document 
+            //    string filename = dlg.FileName;
 
-                // Matcher thread
-                _bwThread_forAuditLoading = new BackgroundWorker();
-                _bwThread_forAuditLoading.WorkerSupportsCancellation = false;
-                _bwThread_forAuditLoading.WorkerReportsProgress = false;
-                _bwThread_forAuditLoading.DoWork += new DoWorkEventHandler(LoadAuditFileToDb_DoWork);
-                _bwThread_forAuditLoading.RunWorkerCompleted += new RunWorkerCompletedEventHandler(LoadAuditFileToDb_RunWorkerCompleted);
-                _bwThread_forAuditLoading.RunWorkerAsync(filename);
-                butAddOldLogRecs.IsEnabled = false;
-            }
+            //    // Matcher thread
+            //    _bwThread_forAuditLoading = new BackgroundWorker();
+            //    _bwThread_forAuditLoading.WorkerSupportsCancellation = false;
+            //    _bwThread_forAuditLoading.WorkerReportsProgress = false;
+            //    _bwThread_forAuditLoading.DoWork += new DoWorkEventHandler(LoadAuditFileToDb_DoWork);
+            //    _bwThread_forAuditLoading.RunWorkerCompleted += new RunWorkerCompletedEventHandler(LoadAuditFileToDb_RunWorkerCompleted);
+            //    _bwThread_forAuditLoading.RunWorkerAsync(filename);
+            //    butAddOldLogRecs.IsEnabled = false;
+            //}
         }
 
         private void LoadAuditFileToDb_DoWork(object sender, DoWorkEventArgs e)

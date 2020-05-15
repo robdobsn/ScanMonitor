@@ -12,7 +12,7 @@ namespace ScanMonitorApp.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "15.7.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "16.5.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -20,18 +20,6 @@ namespace ScanMonitorApp.Properties {
         public static Settings Default {
             get {
                 return defaultInstance;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\\\\SCAN2\\Users\\Rob\\Documents\\ScanSnap")]
-        public string FoldersToMonitor {
-            get {
-                return ((string)(this["FoldersToMonitor"]));
-            }
-            set {
-                this["FoldersToMonitor"] = value;
             }
         }
         
@@ -142,18 +130,6 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("SCAN2")]
-        public string PCtoRunMonitorOn {
-            get {
-                return ((string)(this["PCtoRunMonitorOn"]));
-            }
-            set {
-                this["PCtoRunMonitorOn"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("[PREFIX] [Y-M-D] [SUBJECT]")]
         public string DefaultRenameTo {
             get {
@@ -197,30 +173,6 @@ namespace ScanMonitorApp.Properties {
             }
             set {
                 this["BasePathForFilingFolderSelection"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\\\\macallan\\main\\RobAndJudyPersonal\\IT\\Scanning\\rules.xml")]
-        public string OldRulesFile {
-            get {
-                return ((string)(this["OldRulesFile"]));
-            }
-            set {
-                this["OldRulesFile"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\\\\N7700PRO\\Archive\\ScanAdmin\\ScanLogs\\ScanLog.log")]
-        public string OldScanLogFile {
-            get {
-                return ((string)(this["OldScanLogFile"]));
-            }
-            set {
-                this["OldScanLogFile"] = value;
             }
         }
         
@@ -358,19 +310,6 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Main\\RobAndJudyPersonal;\\\\MACALLAN\\Main\\Rob Business;\\\\MACALLAN\\Main\\j" +
-            "udyw\\driveg\\Marketry;\\\\MACALLAN\\Main\\Peter Wilson documents")]
-        public string FoldersToSearchForFiledDocs {
-            get {
-                return ((string)(this["FoldersToSearchForFiledDocs"]));
-            }
-            set {
-                this["FoldersToSearchForFiledDocs"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("ScanSwSettings")]
         public string DbCollectionForSwSettings {
             get {
@@ -390,6 +329,43 @@ namespace ScanMonitorApp.Properties {
             }
             set {
                 this["PdfEditorOutFolder"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("c:\\Users\\Rob\\Documents\\ScanSnap")]
+        public string FoldersToMonitor {
+            get {
+                return ((string)(this["FoldersToMonitor"]));
+            }
+            set {
+                this["FoldersToMonitor"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("SCAN2")]
+        public string PCtoRunMonitorOn {
+            get {
+                return ((string)(this["PCtoRunMonitorOn"]));
+            }
+            set {
+                this["PCtoRunMonitorOn"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Main\\RobAndJudyPersonal;\\\\MACALLAN\\Main\\Rob Business;\\\\MACALLAN\\Main\\P" +
+            "eter Wilson documents")]
+        public string FoldersToSearchForFiledDocs {
+            get {
+                return ((string)(this["FoldersToSearchForFiledDocs"]));
+            }
+            set {
+                this["FoldersToSearchForFiledDocs"] = value;
             }
         }
     }

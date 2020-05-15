@@ -2,9 +2,6 @@
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="ScanMonitorApp.Properties" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
-    <Setting Name="FoldersToMonitor" Type="System.String" Scope="User">
-      <Value Profile="(Default)">\\SCAN2\Users\Rob\Documents\ScanSnap</Value>
-    </Setting>
     <Setting Name="DocAdminImgFolderBase" Type="System.String" Scope="User">
       <Value Profile="(Default)">\\MACALLAN\Admin\ScanAdmin\ScannedDocImgs</Value>
     </Setting>
@@ -32,9 +29,6 @@
     <Setting Name="PickThumbHeight" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">150</Value>
     </Setting>
-    <Setting Name="PCtoRunMonitorOn" Type="System.String" Scope="User">
-      <Value Profile="(Default)">SCAN2</Value>
-    </Setting>
     <Setting Name="DefaultRenameTo" Type="System.String" Scope="User">
       <Value Profile="(Default)">[PREFIX] [Y-M-D] [SUBJECT]</Value>
     </Setting>
@@ -46,12 +40,6 @@
     </Setting>
     <Setting Name="BasePathForFilingFolderSelection" Type="System.String" Scope="User">
       <Value Profile="(Default)">\\MACALLAN\Main\RobAndJudyPersonal</Value>
-    </Setting>
-    <Setting Name="OldRulesFile" Type="System.String" Scope="User">
-      <Value Profile="(Default)">\\macallan\main\RobAndJudyPersonal\IT\Scanning\rules.xml</Value>
-    </Setting>
-    <Setting Name="OldScanLogFile" Type="System.String" Scope="User">
-      <Value Profile="(Default)">\\N7700PRO\Archive\ScanAdmin\ScanLogs\ScanLog.log</Value>
     </Setting>
     <Setting Name="DocArchiveFolder" Type="System.String" Scope="User">
       <Value Profile="(Default)">\\MACALLAN\Admin\ScanAdmin\ScanDocBackups</Value>
@@ -86,14 +74,20 @@
     <Setting Name="DbCollectionForExistingFiles" Type="System.String" Scope="User">
       <Value Profile="(Default)">ExistingFileInfo</Value>
     </Setting>
-    <Setting Name="FoldersToSearchForFiledDocs" Type="System.String" Scope="User">
-      <Value Profile="(Default)">\\MACALLAN\Main\RobAndJudyPersonal;\\MACALLAN\Main\Rob Business;\\MACALLAN\Main\judyw\driveg\Marketry;\\MACALLAN\Main\Peter Wilson documents</Value>
-    </Setting>
     <Setting Name="DbCollectionForSwSettings" Type="System.String" Scope="User">
       <Value Profile="(Default)">ScanSwSettings</Value>
     </Setting>
     <Setting Name="PdfEditorOutFolder" Type="System.String" Scope="User">
       <Value Profile="(Default)">\\MACALLAN\Admin\ScanAdmin\PdfOutFolder</Value>
+    </Setting>
+    <Setting Name="FoldersToMonitor" Type="System.String" Scope="User">
+      <Value Profile="(Default)">c:\Users\Rob\Documents\ScanSnap</Value>
+    </Setting>
+    <Setting Name="PCtoRunMonitorOn" Type="System.String" Scope="User">
+      <Value Profile="(Default)">SCAN2</Value>
+    </Setting>
+    <Setting Name="FoldersToSearchForFiledDocs" Type="System.String" Scope="User">
+      <Value Profile="(Default)">\\MACALLAN\Main\RobAndJudyPersonal;\\MACALLAN\Main\Rob Business;\\MACALLAN\Main\Peter Wilson documents</Value>
     </Setting>
   </Settings>
 </SettingsFile>

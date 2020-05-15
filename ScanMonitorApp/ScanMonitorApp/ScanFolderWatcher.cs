@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Permissions;
@@ -55,19 +56,22 @@ namespace ScanMonitorApp
         private void OnCreated(object source, FileSystemEventArgs e)
         {
             logger.Info("File: " + e.FullPath + " " + e.ChangeType.ToString());
+            //Debug.Assert(false);
 //            _callbackOnChanged(e.FullPath, e.ChangeType);
         }
 
         private void OnChanged(object source, FileSystemEventArgs e)
         {
             logger.Info("File: " + e.FullPath + " " + e.ChangeType.ToString());
-//            _callbackOnChanged(e.FullPath, e.ChangeType);
+            //Debug.Assert(false);
+            _callbackOnChanged(e.FullPath, e.ChangeType);
         }
 
         private void OnRenamed(object source, RenamedEventArgs e)
         {
             logger.Info("File: " + e.FullPath + " " + e.ChangeType.ToString());
-            _callbackOnChanged(e.FullPath, e.ChangeType);
+            //Debug.Assert(false);
+            //_callbackOnChanged(e.FullPath, e.ChangeType);
         }
 
     }
