@@ -1050,14 +1050,14 @@ namespace ScanMonitorApp
             // Clear menu
             btnDocTypeSelContextMenu.Items.Clear();
 
-            if (USE_QUICK_DOC_MENU)
-            {
-                // Add a quick type menu item
-                MenuItem quickTypeMenuItem = new MenuItem();
-                quickTypeMenuItem.Header = "<Quick New Type>";
-                quickTypeMenuItem.Click += QuickNewType_Click;
-                btnDocTypeSelContextMenu.Items.Add(quickTypeMenuItem);
-            }
+            //if (USE_QUICK_DOC_MENU)
+            //{
+            //    // Add a quick type menu item
+            //    MenuItem quickTypeMenuItem = new MenuItem();
+            //    quickTypeMenuItem.Header = "<Quick New Type>";
+            //    quickTypeMenuItem.Click += QuickNewType_Click;
+            //    btnDocTypeSelContextMenu.Items.Add(quickTypeMenuItem);
+            //}
 
             // Reload menu
             const int MAX_MENU_LEVELS = 6;

@@ -59,7 +59,10 @@ namespace ScanMonitorApp
 
             try
             {
-                _rasterizer.Open(inputPdfPath.Replace("/",@"\"), _lastInstalledVersion, false);
+                string inpPath = inputPdfPath.Replace("/", @"\");
+                inpPath = System.Text.Encoding.UTF8.GetString(System.Text.Encoding.UTF8.GetBytes(inpPath));
+                inpPath = @"C:\Users\rob\Documents\ScanSnap\2020_05_16_12_24_53.pdf";
+                _rasterizer.Open(inpPath, _lastInstalledVersion, false);
             }
             catch (Exception excp)
             {

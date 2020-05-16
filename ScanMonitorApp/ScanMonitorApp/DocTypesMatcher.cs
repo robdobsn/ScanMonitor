@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using NLog;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
-using MongoDB.Driver.Builders;
 using System.Windows.Media;
 using System.Diagnostics;
 
@@ -33,7 +32,8 @@ namespace ScanMonitorApp
                 var collection_doctypes = GetDocTypesCollection();
                 var keys = Builders<DocType>.IndexKeys.Ascending("docTypeName");
                 var opts = new CreateIndexOptions<DocType> { Unique = true };
-                collection_doctypes.Indexes.CreateOneAsync(keys, opts);
+                var model = new CreateIndexModel<DocType>(keys, opts);
+                collection_doctypes.Indexes.CreateOneAsync(model);
                 return true;
             }
             catch (Exception excp)
@@ -179,7 +179,7 @@ namespace ScanMonitorApp
             // Get first matching document
             IMongoCollection<DocType> collection_doctypes = GetDocTypesCollection();
             var foundDocTypes = collection_doctypes.Find(a => a.docTypeName == docTypeName);
-            if (foundDocTypes.Count() == 0)
+            if (foundDocTypes.CountDocuments() == 0)
                 return null;
 
             // Return first found
@@ -192,7 +192,7 @@ namespace ScanMonitorApp
             try
             {
                 IMongoCollection<DocType> collection_docTypes = GetDocTypesCollection();
-                collection_docTypes.ReplaceOne(a => a.docTypeName == docType.docTypeName, docType, new UpdateOptions { IsUpsert = true });
+                collection_docTypes.ReplaceOne(a => a.docTypeName == docType.docTypeName, docType, new ReplaceOptions { IsUpsert = true });
                 // Log it
                 logger.Info("Added/updated doctype record for {0}", docType.docTypeName);
             }
@@ -614,7 +614,7 @@ namespace ScanMonitorApp
             try
             {
                 IMongoCollection<PathSubstMacro> collection_pathSubst = GetPathSubstCollection();
-                collection_pathSubst.ReplaceOne(a => a.origText == pathSubstMacro.origText, pathSubstMacro, new UpdateOptions { IsUpsert = true });
+                collection_pathSubst.ReplaceOne(a => a.origText == pathSubstMacro.origText, pathSubstMacro, new ReplaceOptions { IsUpsert = true });
                 // Log it
                 logger.Info("Added/updated pathSubstMacro record for {0}", pathSubstMacro.origText);
             }

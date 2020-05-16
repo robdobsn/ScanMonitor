@@ -35,7 +35,7 @@ namespace ScanMonitorApp
     public partial class MainWindow : MetroWindow
     {
         private const bool TEST_MODE = false;
-        BackgroundWorker _bwThread_forAuditLoading;
+        //BackgroundWorker _bwThread_forAuditLoading;
         BackgroundWorker _bwThread_forFileHashCreation = null;
         private string _dbConnectionStr = Properties.Settings.Default.DbConnectionString;
         private string _foldersToMonitor = Properties.Settings.Default.FoldersToMonitor;

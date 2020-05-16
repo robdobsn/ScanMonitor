@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using NLog;
 using MongoDB.Driver;
-using MongoDB.Driver.Builders;
 using MongoDB.Driver.Linq;
 using Newtonsoft.Json;
 using System.Diagnostics;
@@ -15,6 +14,7 @@ using System.Net.Mail;
 using System.Net;
 using System.Security.Cryptography;
 using System.IO;
+using iTextSharp.text.pdf.qrcode;
 
 namespace ScanMonitorApp
 {
@@ -93,14 +93,19 @@ namespace ScanMonitorApp
 
             // Setup indexes
             IMongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
-            collection_sdinfo.Indexes.CreateOneAsync(Builders<ScanDocInfo>.IndexKeys.Ascending("uniqName"), new CreateIndexOptions<ScanDocInfo> { Unique = true });
+            var scanDocModel = new CreateIndexModel<ScanDocInfo>(Builders<ScanDocInfo>.IndexKeys.Ascending("uniqName"), new CreateIndexOptions<ScanDocInfo> { Unique = true });
+            collection_sdinfo.Indexes.CreateOneAsync(scanDocModel);
             IMongoCollection<ScanPages> collection_spages = GetDocPagesCollection();
-            collection_spages.Indexes.CreateOneAsync(Builders<ScanPages>.IndexKeys.Ascending("uniqName"), new CreateIndexOptions<ScanPages> { Unique = true });
+            var scanPagesmodel = new CreateIndexModel<ScanPages>(Builders<ScanPages>.IndexKeys.Ascending("uniqName"), new CreateIndexOptions<ScanPages> { Unique = true });
+            collection_spages.Indexes.CreateOneAsync(scanPagesmodel);
             IMongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
-            collection_fdinfo.Indexes.CreateOneAsync(Builders<FiledDocInfo>.IndexKeys.Ascending("uniqName"), new CreateIndexOptions<FiledDocInfo> { Unique = true });
+            var filedDocmodel = new CreateIndexModel<FiledDocInfo>(Builders<FiledDocInfo>.IndexKeys.Ascending("uniqName"), new CreateIndexOptions<FiledDocInfo> { Unique = true });
+            collection_fdinfo.Indexes.CreateOneAsync(filedDocmodel);
             IMongoCollection<ExistingFileInfoRec> collection_existingFiles = GetExistingFileInfoCollection();
-            collection_existingFiles.Indexes.CreateOneAsync(Builders<ExistingFileInfoRec>.IndexKeys.Ascending("filename"), new CreateIndexOptions<ExistingFileInfoRec> { Unique = false });
-            collection_existingFiles.Indexes.CreateOneAsync(Builders<ExistingFileInfoRec>.IndexKeys.Ascending("md5Hash"), new CreateIndexOptions<ExistingFileInfoRec> { Unique = false });
+            var existingFileInfoModel1 = new CreateIndexModel<ExistingFileInfoRec>(Builders<ExistingFileInfoRec>.IndexKeys.Ascending("filename"), new CreateIndexOptions<ExistingFileInfoRec> { Unique = false });
+            collection_existingFiles.Indexes.CreateOneAsync(existingFileInfoModel1);
+            var existingFileInfoModel2 = new CreateIndexModel<ExistingFileInfoRec>(Builders<ExistingFileInfoRec>.IndexKeys.Ascending("md5Hash"), new CreateIndexOptions<ExistingFileInfoRec> { Unique = false });
+            collection_existingFiles.Indexes.CreateOneAsync(existingFileInfoModel2);
         }
 
         public bool CheckMongoConnection()
@@ -134,18 +139,18 @@ namespace ScanMonitorApp
             // Get first matching documents
             IMongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
             var foundScanDoc = collection_sdinfo.Find(a => a.uniqName == uniqName);
-            if (foundScanDoc.Count() == 0)
+            if (foundScanDoc.CountDocuments() == 0)
                 return null;
             ScanDocInfo scanDoc = foundScanDoc.First<ScanDocInfo>();
             IMongoCollection<ScanPages> collection_spages = GetDocPagesCollection();
             ScanPages scanPages = null;
             var foundScanPages = collection_spages.Find(a => a.uniqName == uniqName);
-            if (foundScanPages.Count() > 0)
+            if (foundScanPages.CountDocuments() > 0)
                 scanPages = foundScanPages.First<ScanPages>();
             FiledDocInfo filedDocInfo = null;
             IMongoCollection<FiledDocInfo> collection_filedinfo = GetFiledDocsCollection();
             var foundFiledDocInfo = collection_filedinfo.Find(a => a.uniqName == uniqName);
-            if (foundFiledDocInfo.Count() > 0)
+            if (foundFiledDocInfo.CountDocuments() > 0)
                 filedDocInfo = foundFiledDocInfo.First<FiledDocInfo>();
             return new ScanDocAllInfo(scanDoc, scanPages, filedDocInfo);
         }
@@ -175,7 +180,7 @@ namespace ScanMonitorApp
             // Get first matching document
             IMongoCollection<ScanSwSettings> collection_swsettings = GetScanSwSettingsCollection();
             var foundSwSettings = collection_swsettings.Find(_ => true);
-            if (foundSwSettings.Count() == 0)
+            if (foundSwSettings.CountDocuments() == 0)
                 return "";
             var swSettings = foundSwSettings.First<ScanSwSettings>();
             if (swSettings == null)
@@ -269,7 +274,7 @@ namespace ScanMonitorApp
                 IMongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
 
                 // Check if record exists already
-                return collection_sdinfo.Count(a => a.uniqName == uniqName) > 0;
+                return collection_sdinfo.CountDocuments(a => a.uniqName == uniqName) > 0;
             }
             catch (Exception excp)
             {
@@ -289,7 +294,7 @@ namespace ScanMonitorApp
             try
             {
                 IMongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
-                collection_sdinfo.ReplaceOne(a => a.uniqName == scanDocInfo.uniqName, scanDocInfo, new UpdateOptions { IsUpsert = true });
+                collection_sdinfo.ReplaceOne(a => a.uniqName == scanDocInfo.uniqName, scanDocInfo, new ReplaceOptions { IsUpsert = true });
                 // Log it
                 logger.Info("Added/updated scandocinfo record for {0}", scanDocInfo.uniqName);
                 // Update cache
@@ -393,7 +398,7 @@ namespace ScanMonitorApp
             try
             {
                 IMongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
-                collection_fdinfo.ReplaceOne(a => a.uniqName == filedDocInfo.uniqName, filedDocInfo, new UpdateOptions { IsUpsert = true });
+                collection_fdinfo.ReplaceOne(a => a.uniqName == filedDocInfo.uniqName, filedDocInfo, new ReplaceOptions { IsUpsert = true });
                 // Log it
                 logger.Info("Added/updated fileddoc record for {0} filedAt {1}", filedDocInfo.uniqName, filedDocInfo.filedAs_pathAndFileName);
                 // Update cache
