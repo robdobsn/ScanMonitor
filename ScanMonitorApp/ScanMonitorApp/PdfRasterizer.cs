@@ -17,7 +17,7 @@ namespace ScanMonitorApp
 {
     class PdfRasterizer
     {
-        private GhostscriptVersionInfo _lastInstalledVersion = null;
+        //private GhostscriptVersionInfo _lastInstalledVersion = null;
         private static GhostscriptRasterizer _rasterizer = new GhostscriptRasterizer();
         private Dictionary<int, System.Drawing.Image> _pageCache = new Dictionary<int, System.Drawing.Image>();
         private string _inputPdfPath;
@@ -52,17 +52,21 @@ namespace ScanMonitorApp
                 logger.Error("Cannot open PDF with iTextSharp {0} excp {1}", inputPdfPath, excp.Message);
             }
 
-            _lastInstalledVersion =
-                GhostscriptVersionInfo.GetLastInstalledVersion(
-                        GhostscriptLicense.GPL | GhostscriptLicense.AFPL,
-                        GhostscriptLicense.GPL);
+            //_lastInstalledVersion =
+            //    GhostscriptVersionInfo.GetLastInstalledVersion(
+            //            GhostscriptLicense.GPL | GhostscriptLicense.AFPL,
+            //            GhostscriptLicense.GPL);
 
             try
             {
-                string inpPath = inputPdfPath.Replace("/", @"\");
-                inpPath = System.Text.Encoding.UTF8.GetString(System.Text.Encoding.UTF8.GetBytes(inpPath));
-                inpPath = @"C:\Users\rob\Documents\ScanSnap\2020_05_16_12_24_53.pdf";
-                _rasterizer.Open(inpPath, _lastInstalledVersion, false);
+                //string inpPath = inputPdfPath.Replace("/", @"\");
+                byte[] buffer = File.ReadAllBytes(inputPdfPath);
+                MemoryStream ms = new MemoryStream(buffer);
+                _rasterizer.Open(ms);
+
+                //string inpPath = inputPdfPath.Replace("/", @"\");
+                //inpPath = System.Text.Encoding.UTF8.GetString(System.Text.Encoding.UTF8.GetBytes(inpPath));
+                //_rasterizer.Open(inpPath, _lastInstalledVersion, false);
             }
             catch (Exception excp)
             {

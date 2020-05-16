@@ -994,6 +994,7 @@ namespace ScanMonitorApp
             else
             {
                 logger.Info("Archive file already exists {0}", archiveFileName);
+                // Don't quit at this point - ensure the doc has been added to the db
             }
 
             // Extract text blocks from file
