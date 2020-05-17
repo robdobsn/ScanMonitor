@@ -220,7 +220,7 @@ namespace ScanMonitorApp
         {
             // Notify icon
             _notifyIcon = new System.Windows.Forms.NotifyIcon();
-            _notifyIcon.Icon = ScanMonitorApp.Properties.Resources.simley64;
+            _notifyIcon.Icon = ScanMonitorApp.Properties.Resources.ScanMonitorIcon;
             _notifyIcon.Visible = true;
             _notifyIcon.MouseUp +=
                 new System.Windows.Forms.MouseEventHandler(delegate (object sender, System.Windows.Forms.MouseEventArgs args)

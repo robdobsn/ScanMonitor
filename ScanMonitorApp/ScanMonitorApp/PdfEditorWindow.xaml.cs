@@ -467,7 +467,7 @@ namespace ScanMonitorApp
                 if (outputFileNames.Contains(fileName))
                 {
                     MessageDialog md = new MessageDialog("At least one output file is an input file - cannot continue", "Ok", "", "", null, this);
-                    md.Show();
+                    md.ShowDialog();
                     return false;
                 }
             }

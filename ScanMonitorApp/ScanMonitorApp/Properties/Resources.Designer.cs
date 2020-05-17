@@ -63,6 +63,16 @@ namespace ScanMonitorApp.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
         /// </summary>
+        internal static System.Drawing.Icon ScanMonitorIcon {
+            get {
+                object obj = ResourceManager.GetObject("ScanMonitorIcon", resourceCulture);
+                return ((System.Drawing.Icon)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
+        /// </summary>
         internal static System.Drawing.Icon scanner48x48 {
             get {
                 object obj = ResourceManager.GetObject("scanner48x48", resourceCulture);
