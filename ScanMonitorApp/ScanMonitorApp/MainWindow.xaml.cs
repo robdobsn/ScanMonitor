@@ -78,7 +78,8 @@ namespace ScanMonitorApp
             }
 
             // Scanned document handler
-            _scanDocHandler = new ScanDocHandler(AddToStatusText, _docTypesMatcher, _scanDocHandlerConfig, _dbConnectionStr);
+            _scanDocHandler = new ScanDocHandler(AddToStatusText, _docTypesMatcher, 
+                        _scanDocHandlerConfig, _dbConnectionStr);
 
             // Scan folder watcher
             statusRunningMonitor.Content = "This PC is " + System.Environment.MachineName;
@@ -123,7 +124,8 @@ namespace ScanMonitorApp
         private void butViewScanFiling_Click(object sender, RoutedEventArgs e)
         {
             disableButtons();
-            DocFilingView dfv = new DocFilingView(_scanDocHandler, _docTypesMatcher, curViewClosedCB, _thisPCIsScanningPC);
+            DocFilingView dfv = new DocFilingView(_scanDocHandler, _docTypesMatcher, 
+                        curViewClosedCB, _thisPCIsScanningPC);
             dfv.Show();
         }
 

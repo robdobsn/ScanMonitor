@@ -63,7 +63,8 @@ namespace ScanMonitorApp
             none, drc_dayPlus, drc_dayMinus, drc_monthPlus, drc_monthMinus, drc_yearPlus, drc_yearMinus
         }
         private WindowClosingDelegate _windowClosingCB;
-        private bool _openFullScreen = false;
+        private bool _thisIsScanningMachine = false;
+        private bool _formFieldsUserModified = false;
 
         #region Init
 
@@ -71,7 +72,7 @@ namespace ScanMonitorApp
                     WindowClosingDelegate windowClosingCB, bool openFullScreen)
         {
             InitializeComponent();
-            _openFullScreen = openFullScreen;
+            _thisIsScanningMachine = openFullScreen;
             _scanDocHandler = scanDocHandler;
             _docTypesMatcher = docTypesMatcher;
             _windowClosingCB = windowClosingCB;
@@ -114,9 +115,12 @@ namespace ScanMonitorApp
 
         private void NewDocumentTimer_Tick(object sender, EventArgs e)
         {
-            if (txtDestFileSuffix.Text.Trim() == "")
+            if (!_formFieldsUserModified && _thisIsScanningMachine)
                 if (_lastHashOfUnfiledDocs != _scanDocHandler.GetHashOfUnfiledDocs())
-                    ShowDocToBeFiled(_curDocToBeFiledIdxInList);
+                {
+                    // Force showing of latest doc
+                    ShowDocToBeFiled(10000000);
+                }
         }
 
         #endregion
@@ -193,6 +197,7 @@ namespace ScanMonitorApp
 
             // Display image of first page
             DisplayScannedDocImage(1);
+            _formFieldsUserModified = false;
 
             // Signal that the cur doc has changed
             _newCurDocProcessingCancel = true;
@@ -316,9 +321,10 @@ namespace ScanMonitorApp
 
         private void ShowDocumentTypeAndDate(string docTypeName)
         {
+            if (_formFieldsUserModified)
+                return;
             _curSelectedDocTypeName = docTypeName;
             _newDocTypeSignal.Set();
-
         }
 
 
@@ -342,6 +348,10 @@ namespace ScanMonitorApp
 
         private void CompleteDocTypeChange(string docTypeName)
         {
+            // Check id user has made changes
+            if (_formFieldsUserModified)
+                return;
+
             // Reset the override folder
             _overrideFolderForFiling = "";
             if (btnMoveToUndo.IsEnabled != false)
@@ -644,51 +654,63 @@ namespace ScanMonitorApp
             DisplayScannedDocImage(_curDocDisplay_pageNum + 1);
         }
 
-        private void btnViewDocTypes_Click(object sender, RoutedEventArgs e)
-        {
-            DocTypeView dtv = new DocTypeView(_scanDocHandler, _docTypesMatcher);
-            dtv.ShowDocTypeList((_curSelectedDocType == null) ? "" : _curSelectedDocType.docTypeName, _curDocScanDocInfo, _curDocScanPages);
-            dtv.ShowDialog();
-            ShowDocToBeFiled(_curDocToBeFiledIdxInList);
-            // Use a background worker to repopulate the list of images
-            if (!_bwThreadForImagesPopup.IsBusy)
-                _bwThreadForImagesPopup.RunWorkerAsync();
-        }
+        //private void btnViewDocTypes_Click(object sender, RoutedEventArgs e)
+        //{
+        //    DocTypeView dtv = new DocTypeView(_scanDocHandler, _docTypesMatcher);
+        //    dtv.ShowDocTypeList((_curSelectedDocType == null) ? "" : _curSelectedDocType.docTypeName, _curDocScanDocInfo, _curDocScanPages);
+        //    dtv.ShowDialog();
+        //    ShowDocToBeFiled(_curDocToBeFiledIdxInList);
+        //    // Use a background worker to repopulate the list of images
+        //    if (!_bwThreadForImagesPopup.IsBusy)
+        //        _bwThreadForImagesPopup.RunWorkerAsync();
+        //}
 
         private void btnDayUp_Click(object sender, RoutedEventArgs e)
         {
             DateTime dt = GetDateFromRollers();
             SetDateRollers(dt.Year, dt.Month, dt.Day + 1, dateRollerChange.drc_dayPlus);
+            // User modified
+            _formFieldsUserModified = true;
         }
 
         private void btnMonthUp_Click(object sender, RoutedEventArgs e)
         {
             DateTime dt = GetDateFromRollers();
             SetDateRollers(dt.Year, dt.Month + 1, dt.Day, dateRollerChange.drc_monthPlus);
+            // User modified
+            _formFieldsUserModified = true;
         }
 
         private void btnYearUp_Click(object sender, RoutedEventArgs e)
         {
             DateTime dt = GetDateFromRollers();
             SetDateRollers(dt.Year + 1, dt.Month, dt.Day, dateRollerChange.drc_yearPlus);
+            // User modified
+            _formFieldsUserModified = true;
         }
 
         private void btnDayDown_Click(object sender, RoutedEventArgs e)
         {
             DateTime dt = GetDateFromRollers();
             SetDateRollers(dt.Year, dt.Month, dt.Day - 1, dateRollerChange.drc_dayMinus);
+            // User modified
+            _formFieldsUserModified = true;
         }
 
         private void btnMonthDown_Click(object sender, RoutedEventArgs e)
         {
             DateTime dt = GetDateFromRollers();
             SetDateRollers(dt.Year, dt.Month - 1, dt.Day, dateRollerChange.drc_monthMinus);
+            // User modified
+            _formFieldsUserModified = true;
         }
 
         private void btnYearDown_Click(object sender, RoutedEventArgs e)
         {
             DateTime dt = GetDateFromRollers();
             SetDateRollers(dt.Year - 1, dt.Month, dt.Day, dateRollerChange.drc_yearMinus);
+            // User modified
+            _formFieldsUserModified = true;
         }
 
         private void btnPickDocType_Click(object sender, RoutedEventArgs e)
@@ -709,7 +731,11 @@ namespace ScanMonitorApp
             if (sender.GetType() == typeof(Button))
                 tag = ((Button)sender).Tag;
             if (tag.GetType() == typeof(string))
+            {
                 ShowDocumentTypeAndDate((string)tag);
+                // User modified
+                _formFieldsUserModified = true;
+            }
         }
 
         private void btnOtherDocTypes_Click(object sender, RoutedEventArgs e)
@@ -725,31 +751,46 @@ namespace ScanMonitorApp
             if (sender.GetType() == typeof(Label))
                 tag = ((Label)sender).Tag;
             if (tag.GetType() == typeof(string))
+            {
                 ShowDocumentTypeAndDate((string)tag);
+                // User modified
+                _formFieldsUserModified = true;
+            }
         }
 
-        private void MetroWindow_Loaded(object sender, RoutedEventArgs e)
+            private void MetroWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            if (_openFullScreen)
+            if (_thisIsScanningMachine)
                 this.WindowState = System.Windows.WindowState.Maximized;
         }
 
         private void btnUseScanDate_Click(object sender, RoutedEventArgs e)
         {
             if (_curDocScanDocInfo != null)
+            {
                 SetDateRollers(_curDocScanDocInfo.createDate.Year, _curDocScanDocInfo.createDate.Month, _curDocScanDocInfo.createDate.Day, dateRollerChange.none);
+                // User modified
+                _formFieldsUserModified = true;
+            }
         }
 
         private void btnLastUsedDate_Click(object sender, RoutedEventArgs e)
         {
             if (_lastDocFiledAsDateTime != null)
+            {
                 SetDateRollers(_lastDocFiledAsDateTime.Year, _lastDocFiledAsDateTime.Month, _lastDocFiledAsDateTime.Day, dateRollerChange.none);
+                // User modified
+                _formFieldsUserModified = true;
+            }
         }
 
         private void txtDestFilePrefix_TextChanged(object sender, TextChangedEventArgs e)
         {
             if (!txtDestFilePrefix.IsEnabled)
                 return;
+
+            // User modified
+            _formFieldsUserModified = true;
 
             // Show dest file name
             DisplayDestFileName();
@@ -760,6 +801,9 @@ namespace ScanMonitorApp
             if (!txtDestFileSuffix.IsEnabled)
                 return;
 
+            // User modified
+            _formFieldsUserModified = true;
+
             // Show dest file name
             DisplayDestFileName();
         }
@@ -767,6 +811,8 @@ namespace ScanMonitorApp
         private void btnPrefixErase_Click(object sender, RoutedEventArgs e)
         {
             txtDestFilePrefix.Text = (_curSelectedDocType == null) ? "" : DocType.GetFileNamePrefix(_curSelectedDocType.docTypeName);
+            // User modified
+            _formFieldsUserModified = true;
         }
 
         private void btnChangePrefix_Click(object sender, RoutedEventArgs e)
@@ -783,6 +829,8 @@ namespace ScanMonitorApp
         private void btnSuffixErase_Click(object sender, RoutedEventArgs e)
         {
             txtDestFileSuffix.Text = "";
+            // User modified
+            _formFieldsUserModified = true;
         }
 
         private void btnSuffixFromPageText_Click(object sender, RoutedEventArgs e)
@@ -835,21 +883,29 @@ namespace ScanMonitorApp
         private void chkFollowUpB_Checked(object sender, RoutedEventArgs e)
         {
             SetEventVisibility(true, false);
+            // User modified
+            _formFieldsUserModified = true;
         }
 
         private void chkFollowUpB_Unchecked(object sender, RoutedEventArgs e)
         {
             SetEventVisibility(false, false);
+            // User modified
+            _formFieldsUserModified = true;
         }
 
         private void chkFollowUpA_Checked(object sender, RoutedEventArgs e)
         {
             SetEventVisibility(true, false);
+            // User modified
+            _formFieldsUserModified = true;
         }
 
         private void chkFollowUpA_Unchecked(object sender, RoutedEventArgs e)
         {
             SetEventVisibility(false, false);
+            // User modified
+            _formFieldsUserModified = true;
         }
 
         private void btnEventDuration_Click(object sender, RoutedEventArgs e)
@@ -1034,12 +1090,6 @@ namespace ScanMonitorApp
 
             // Goto a file if there is one
             ShowDocToBeFiled(_curDocToBeFiledIdxInList);
-        }
-
-        private void btnAuditTrail_Click(object sender, RoutedEventArgs e)
-        {
-            AuditView av = new AuditView(_scanDocHandler, _docTypesMatcher, _windowClosingCB);
-            av.ShowDialog();
         }
 
         private void QuickNewType_Click(object sender, RoutedEventArgs e)
@@ -1633,7 +1683,8 @@ namespace ScanMonitorApp
             if (_curDocScanDocInfo != null)
             {
                 string docFormat = ((_curSelectedDocType == null) || isQuickDocTypeMode()) ? "" : _curSelectedDocType.renameFileTo;
-                string dfn = ScanDocHandler.FormatFileNameFromMacros(_curDocScanDocInfo.GetOrigFileNameWin(), docFormat, GetDateFromRollers(), txtDestFilePrefix.Text, txtDestFileSuffix.Text, txtDocTypeName.Text.Trim());
+                string dfn = ScanDocHandler.FormatFileNameFromMacros(_curDocScanDocInfo.GetOrigFileNameWin(), docFormat, 
+                            GetDateFromRollers(), txtDestFilePrefix.Text, txtDestFileSuffix.Text, txtDocTypeName.Text.Trim());
                 if (((string)lblDestFileName.Content) != dfn)
                     lblDestFileName.Content = dfn;
             }

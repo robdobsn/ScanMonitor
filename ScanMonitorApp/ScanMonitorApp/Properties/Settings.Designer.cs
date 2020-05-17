@@ -59,12 +59,15 @@ namespace ScanMonitorApp.Properties {
             }
         }
         
-        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("ScanManager")]
         public string DbNameForDocs {
             get {
                 return ((string)(this["DbNameForDocs"]));
+            }
+            set {
+                this["DbNameForDocs"] = value;
             }
         }
         
@@ -130,7 +133,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("[PREFIX] [Y-M-D] [SUBJECT]")]
+        [global::System.Configuration.DefaultSettingValueAttribute("[Y-M-D] [PREFIX] [SUBJECT]")]
         public string DefaultRenameTo {
             get {
                 return ((string)(this["DefaultRenameTo"]));

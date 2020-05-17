@@ -11,7 +11,7 @@
     <Setting Name="MaxPagesForText" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">10</Value>
     </Setting>
-    <Setting Name="DbNameForDocs" Type="System.String" Scope="Application">
+    <Setting Name="DbNameForDocs" Type="System.String" Scope="User">
       <Value Profile="(Default)">ScanManager</Value>
     </Setting>
     <Setting Name="DbCollectionForDocInfo" Type="System.String" Scope="User">
@@ -30,7 +30,7 @@
       <Value Profile="(Default)">150</Value>
     </Setting>
     <Setting Name="DefaultRenameTo" Type="System.String" Scope="User">
-      <Value Profile="(Default)">[PREFIX] [Y-M-D] [SUBJECT]</Value>
+      <Value Profile="(Default)">[Y-M-D] [PREFIX] [SUBJECT]</Value>
     </Setting>
     <Setting Name="DbCollectionForPathMacros" Type="System.String" Scope="User">
       <Value Profile="(Default)">DocTypePathMacros</Value>
