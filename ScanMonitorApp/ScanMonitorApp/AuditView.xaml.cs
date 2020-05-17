@@ -34,12 +34,14 @@ namespace ScanMonitorApp
         BackgroundWorker _bwThreadForPopulateList;
         const int MAX_NUM_DOCS_TO_ADD_TO_LIST = 500;
         const string SRCH_DOC_TYPE_ANY = "<<<ANY>>>";
+        private WindowClosingDelegate _windowClosingCB;
 
-        public AuditView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher)
+        public AuditView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher, WindowClosingDelegate windowClosingCB)
         {
             InitializeComponent();
             _scanDocHandler = scanDocHandler;
             _docTypesMatcher = docTypesMatcher;
+            _windowClosingCB = windowClosingCB;
 
             // List view for comparisons
             auditListView.ItemsSource = _auditDataColl;
@@ -485,7 +487,7 @@ namespace ScanMonitorApp
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             lblDocTypeToSearchFor.Content = SRCH_DOC_TYPE_ANY;
-            this.WindowState = System.Windows.WindowState.Maximized;
+            //this.WindowState = System.Windows.WindowState.Maximized;
             if (!_bwThreadForPopulateList.IsBusy)
             {
                 btnGo.Content = "Stop";
@@ -653,6 +655,11 @@ namespace ScanMonitorApp
         private void auditFileImage_Loaded(object sender, RoutedEventArgs e)
         {
             
+        }
+
+        private void Window_Closed(object sender, EventArgs e)
+        {
+            _windowClosingCB();
         }
     }
 

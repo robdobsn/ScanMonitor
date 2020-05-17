@@ -20,9 +20,12 @@ namespace ScanMonitorApp
     /// </summary>
     public partial class SettingsView : MetroWindow
     {
-        public SettingsView()
+        private WindowClosingDelegate _windowClosingCB;
+
+        public SettingsView(WindowClosingDelegate windowClosingCB)
         {
             InitializeComponent();
+            _windowClosingCB = windowClosingCB;
         }
 
         private void btnCancel_Click(object sender, RoutedEventArgs e)
@@ -53,6 +56,9 @@ namespace ScanMonitorApp
                 comboListOrder.SelectedIndex = 0;
         }
 
-
+        private void SettingsView_Closed(object sender, EventArgs e)
+        {
+            _windowClosingCB();
+        }
     }
 }

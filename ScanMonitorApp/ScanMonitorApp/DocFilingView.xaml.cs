@@ -62,14 +62,19 @@ namespace ScanMonitorApp
         {
             none, drc_dayPlus, drc_dayMinus, drc_monthPlus, drc_monthMinus, drc_yearPlus, drc_yearMinus
         }
+        private WindowClosingDelegate _windowClosingCB;
+        private bool _openFullScreen = false;
 
         #region Init
 
-        public DocFilingView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher)
+        public DocFilingView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher, 
+                    WindowClosingDelegate windowClosingCB, bool openFullScreen)
         {
             InitializeComponent();
+            _openFullScreen = openFullScreen;
             _scanDocHandler = scanDocHandler;
             _docTypesMatcher = docTypesMatcher;
+            _windowClosingCB = windowClosingCB;
             popupDocTypePickerThumbs.ItemsSource = _thumbnailsOfDocTypes;
             popupDocTypeResultList.ItemsSource = _listOfPossibleDocMatches;
             ShowDocToBeFiled(0);
@@ -726,7 +731,8 @@ namespace ScanMonitorApp
 
         private void MetroWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            this.WindowState = System.Windows.WindowState.Maximized;
+            if (_openFullScreen)
+                this.WindowState = System.Windows.WindowState.Maximized;
         }
 
         private void btnUseScanDate_Click(object sender, RoutedEventArgs e)
@@ -1033,7 +1039,7 @@ namespace ScanMonitorApp
 
         private void btnAuditTrail_Click(object sender, RoutedEventArgs e)
         {
-            AuditView av = new AuditView(_scanDocHandler, _docTypesMatcher);
+            AuditView av = new AuditView(_scanDocHandler, _docTypesMatcher, _windowClosingCB);
             av.ShowDialog();
         }
 
@@ -1161,7 +1167,7 @@ namespace ScanMonitorApp
 
         private void btnSettings_Click(object sender, RoutedEventArgs e)
         {
-            SettingsView sv = new SettingsView();
+            SettingsView sv = new SettingsView(_windowClosingCB);
             string oldViewOrder = Properties.Settings.Default.UnfiledDocListOrder;
             sv.ShowDialog();
             if (Properties.Settings.Default.UnfiledDocListOrder != oldViewOrder)
@@ -1796,6 +1802,11 @@ namespace ScanMonitorApp
             {
                 ShowDocToBeFiled(gtp.pageNum-1);
             }
+        }
+
+        private void WindowClosed(object sender, EventArgs e)
+        {
+            _windowClosingCB();
         }
     }
 
