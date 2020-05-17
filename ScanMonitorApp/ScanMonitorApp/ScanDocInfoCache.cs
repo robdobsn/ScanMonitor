@@ -1,4 +1,5 @@
 ﻿using MongoDB.Driver;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -22,6 +23,7 @@ namespace ScanMonitorApp
         private bool _threadRunning = true;
         private bool _requestUnfiledListUpdate = false;
         private bool _scanDocAllInfoPrimed = false;
+        private static Logger logger = LogManager.GetCurrentClassLogger();
 
         public ScanDocInfoCache(ScanDocHandler scanDocHandler)
         {
@@ -57,7 +59,14 @@ namespace ScanMonitorApp
             {
                 sdAllInfo = _scanDocHandler.GetScanDocAllInfo(uniqName);
                 if (sdAllInfo != null)
-                    _cacheScanDocAllInfo.Add(uniqName, sdAllInfo);
+                    try
+                    {
+                        _cacheScanDocAllInfo.Add(uniqName, sdAllInfo);
+                    }
+                    catch (Exception)
+                    {
+                        logger.Error("Key {uniqName} already cached");
+                    }
             }
             return sdAllInfo;
         }
@@ -159,12 +168,12 @@ namespace ScanMonitorApp
                 // See if the ScanDocAllInfo cache needs to be primed
                 if (!_scanDocAllInfoPrimed)
                 {
+                    _scanDocAllInfoPrimed = true;
                     for (int docIdx = 0; docIdx < GetCountOfUnfiledDocs(); docIdx++)
                     {
                         string uniqName = GetUniqNameOfDocToBeFiled(docIdx);
                         GetScanDocAllInfo(uniqName);
                     }
-                    _scanDocAllInfoPrimed = true;
                 }
 
                 // Wait for a bit - checking if a prompt has been received

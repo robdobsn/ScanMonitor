@@ -237,13 +237,7 @@
         <Button x:Name="btnNextPage" Grid.Column="0" Margin="283,0,0,2" Grid.Row="2" HorizontalAlignment="Left" Width="108" FontSize="16" Click="btnNextPage_Click" Height="75" VerticalAlignment="Bottom" Style="{DynamicResource SquareButtonStyle}">
             <Image Source="appbar.page.arrow.png" Margin="3"/>
         </Button>
-        <Button x:Name="btnViewDocTypes" Grid.Column="0"  Margin="0,0,70,3" FontSize="16" Click="btnViewDocTypes_Click" Height="74" VerticalAlignment="Bottom" Grid.Row="2" HorizontalAlignment="Right" Width="96" Style="{DynamicResource SquareButtonStyle}">
-            <StackPanel>
-                <Image Source="res/appbar.book.png" Margin="3" Height="31" Width="53"/>
-                <TextBlock HorizontalAlignment="Center"><Run Text="Types"/></TextBlock>
-            </StackPanel>
-        </Button>
-        <Button x:Name="btnEditPdf" Grid.Column="0"  Margin="0,0,193,3" FontSize="16" Click="btnEditPdf_Click" Height="74" VerticalAlignment="Bottom" Grid.Row="2" HorizontalAlignment="Right" Width="96" Style="{DynamicResource SquareButtonStyle}">
+        <Button x:Name="btnEditPdf" Grid.Column="0"  Margin="0,0,415,3" FontSize="16" Click="btnEditPdf_Click" Height="74" VerticalAlignment="Bottom" Grid.Row="2" HorizontalAlignment="Right" Width="96" Style="{DynamicResource SquareButtonStyle}">
             <StackPanel>
                 <Image Source="res/appbar.page.edit.png" Margin="3" Height="28" Width="57"/>
                 <TextBlock HorizontalAlignment="Center">PDF Edit</TextBlock>
@@ -316,17 +310,5 @@
 
         </Grid>
         <Label x:Name="lblPageNum" Content="Label" Margin="135,0,0,3" Grid.Row="2" FontSize="30" HorizontalAlignment="Left" Width="131" Height="64" VerticalAlignment="Bottom" HorizontalContentAlignment="Center" />
-        <Button x:Name="btnAuditTrail" Grid.Column="0"  Margin="0,0,310,3" FontSize="16" Click="btnAuditTrail_Click" Height="74" VerticalAlignment="Bottom" Grid.Row="2" HorizontalAlignment="Right" Width="96" Style="{DynamicResource SquareButtonStyle}">
-            <StackPanel>
-                <Image Source="res/appbar.list.gear.png" Margin="3" Height="29" Width="54"/>
-                <TextBlock HorizontalAlignment="Center">Audit</TextBlock>
-            </StackPanel>
-        </Button>
-        <Button x:Name="btnSettings" Grid.Column="0"  Margin="0,0,420,3" FontSize="16" Height="74" VerticalAlignment="Bottom" Grid.Row="2" HorizontalAlignment="Right" Width="96" Style="{DynamicResource SquareButtonStyle}" Click="btnSettings_Click">
-            <StackPanel>
-                <Image Source="res/appbar.settings.png" Margin="3" Height="26" Width="54"/>
-                <TextBlock HorizontalAlignment="Center">Settings</TextBlock>
-            </StackPanel>
-        </Button>
     </Grid>
 </Controls:MetroWindow>

@@ -107,6 +107,10 @@ namespace ScanMonitorApp
                 _scanFileMonitor.Start(foldersToMonitor, TEST_MODE);
                 statusRunningMonitor.Content += " and is Running Folder Monitor";
             }
+            else
+            {
+                statusRunningMonitor.Content += " and is not monitoring for new scans";
+            }
         }
 
         private void butViewAuditData_Click(object sender, RoutedEventArgs e)

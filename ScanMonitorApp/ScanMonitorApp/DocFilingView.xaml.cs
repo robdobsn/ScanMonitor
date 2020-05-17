@@ -1,4 +1,4 @@
-﻿//#define TEST_PERF_SHOWDOCFIRSTTIME
+﻿#define TEST_PERF_SHOWDOCFIRSTTIME
 //#define PERFORMANCE_CHECK
 using MahApps.Metro.Controls;
 using Microsoft.WindowsAPICodePack.Dialogs;
@@ -191,7 +191,6 @@ namespace ScanMonitorApp
                 _curFiledDocInfo = scanDocAllInfo.filedDocInfo;
             }
 
-
             // Display image of first page
             DisplayScannedDocImage(1);
 
@@ -208,9 +207,7 @@ namespace ScanMonitorApp
                 // Wait here until a new doc is requested
                 _newCurDocSignal.WaitOne();
                 _newCurDocProcessingCancel = false;
-
                 HandleDocMatchingAndDisplay();
-
             }
         }
 
@@ -309,7 +306,8 @@ namespace ScanMonitorApp
 
 #if TEST_PERF_SHOWDOCFIRSTTIME
             stopWatch6.Stop();
-            logger.Info("ShowDocFirstTime: {6} A {0:0.00}, B {1:0.00}, C {2:0.00}, D {3:0.00}, E {4:0.00}, F {5:0.00}", stopWatch1.ElapsedTicks * 1000.0 / Stopwatch.Frequency,
+            logger.Info("ShowDocFirstTime: {6} A {0:0.00}, B {1:0.00}, C {2:0.00}, D {3:0.00}, E {4:0.00}, F {5:0.00}", 
+                stopWatch1.ElapsedTicks * 1000.0 / Stopwatch.Frequency,
                 stopWatch2.ElapsedTicks * 1000.0 / Stopwatch.Frequency, stopWatch3.ElapsedTicks * 1000.0 / Stopwatch.Frequency,
                 stopWatch4.ElapsedTicks * 1000.0 / Stopwatch.Frequency, stopWatch5.ElapsedTicks * 1000.0 / Stopwatch.Frequency,
                 stopWatch6.ElapsedTicks * 1000.0 / Stopwatch.Frequency, _newCurDocProcessingCancel ? "CANCELLED" : "");
@@ -344,7 +342,6 @@ namespace ScanMonitorApp
 
         private void CompleteDocTypeChange(string docTypeName)
         {
-
             // Reset the override folder
             _overrideFolderForFiling = "";
             if (btnMoveToUndo.IsEnabled != false)
@@ -471,24 +468,26 @@ namespace ScanMonitorApp
                 statusStr = "FLAGGED";
                 foreColour = Brushes.Red;
             }
-            else if (_curDocScanDocInfo != null)
-            {
-                if (!File.Exists(_curDocScanDocInfo.GetOrigFileNameWin()))
-                {
-                    string archiveFileName = ScanDocHandler.GetArchiveFileName(_curDocScanDocInfo.uniqName);
-                    if (!File.Exists(archiveFileName))
-                    {
-                        statusStr = "ORIGINAL MISSING!";
-                        foreColour = Brushes.Red;
-                        btnEditPdf.IsEnabled = false;
-                        processButtonsEnabled = false;
-                    }
-                    else
-                    {
-                        statusStr = "Unfiled (original moved but backup ok)";
-                    }
-                }
-            }
+            //else if (_curDocScanDocInfo != null)
+            //{
+            //    if (!File.Exists(_curDocScanDocInfo.GetOrigFileNameWin()))
+            //    {
+            //        string archiveFileName = ScanDocHandler.GetArchiveFileName(_curDocScanDocInfo.uniqName);
+            //        if (!File.Exists(archiveFileName))
+            //        {
+            //            statusStr = "ORIGINAL MISSING!";
+            //            foreColour = Brushes.Red;
+            //            btnEditPdf.IsEnabled = false;
+            //            processButtonsEnabled = false;
+            //        }
+            //        else
+            //        {
+            //            statusStr = "Unfiled (original moved but backup ok)";
+            //        }
+            //    }
+            //}
+
+            // Enables
             btnEditPdf.IsEnabled = processButtonsEnabled;
             btnProcessDoc.IsEnabled = processButtonsEnabled;
             SetLabelContent(lblStatusBarFileName, (_curDocScanDocInfo != null) ? (_curDocScanDocInfo.uniqName + " " + statusStr) : "");
