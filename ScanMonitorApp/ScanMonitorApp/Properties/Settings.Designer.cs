@@ -37,7 +37,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("10")]
+        [global::System.Configuration.DefaultSettingValueAttribute("500")]
         public int MaxPagesForImages {
             get {
                 return ((int)(this["MaxPagesForImages"]));
@@ -49,7 +49,7 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("10")]
+        [global::System.Configuration.DefaultSettingValueAttribute("500")]
         public int MaxPagesForText {
             get {
                 return ((int)(this["MaxPagesForText"]));
@@ -369,6 +369,18 @@ namespace ScanMonitorApp.Properties {
             }
             set {
                 this["FoldersToSearchForFiledDocs"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("c:\\Users\\Rob\\Documents\\AlreadyFiledDocs")]
+        public string LocalFolderToMoveFiledTo {
+            get {
+                return ((string)(this["LocalFolderToMoveFiledTo"]));
+            }
+            set {
+                this["LocalFolderToMoveFiledTo"] = value;
             }
         }
     }

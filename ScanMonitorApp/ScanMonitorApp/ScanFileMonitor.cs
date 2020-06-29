@@ -16,6 +16,7 @@ namespace ScanMonitorApp
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private List<ScanFolderWatcher> _scanFolderWatchers;
         private List<string> _foldersToMonitor = new List<string>();
+        private string _localFolderForFiledDocs = "";
         public delegate void ReportStatus(string str);
         private ReportStatus _reportStatusFn;
         private bool _monitorRunning = true;
@@ -27,6 +28,7 @@ namespace ScanMonitorApp
         private volatile string _lastFileProcessed = "";
         private volatile string _lastTimeFilesChecked = "";
         private volatile string _lastStatusOfFileProcessing = "";
+        private Dictionary<string, DateTime> _lastDateTimeOnReprocessedDoc = new Dictionary<string, DateTime>();
 
         public ScanFileMonitor(ReportStatus reportStatusFn, ScanDocHandler scanDocHandler)
         {
@@ -48,12 +50,13 @@ namespace ScanMonitorApp
             _monitorRunning = false;
         }
 
-        public void Start(List<string> foldersToMonitor, bool testMode)
+        public void Start(List<string> foldersToMonitor, string localFolderForFiledDocs, bool testMode)
         {
             // Monitor folders
             MonitorFolders(foldersToMonitor);
             _monitorRunning = true;
             _testMode = testMode;
+            _localFolderForFiledDocs = localFolderForFiledDocs;
 
             // Run background thread to test for new files
             _bwFileMonitorThread.RunWorkerAsync();
@@ -145,14 +148,14 @@ namespace ScanMonitorApp
             _fileIsBeingProcessed = true;
 
             // Try to obtain a lock on the lock object but with a timeout to ensure we don't wait here for a long time
-            if(Monitor.TryEnter(_lockForDocProcessing, new TimeSpan(0, 0, 10)))
+            if (Monitor.TryEnter(_lockForDocProcessing, new TimeSpan(0, 0, 10)))
             {
-                try 
+                try
                 {
-                    HandleASinglePdfFile(fileName);
+                    HandleASinglePdfFile(fileName, false, "");
                     _lastFileProcessed = System.IO.Path.GetFileName(fileName) + " at " + DateTime.Now.ToShortTimeString() + " on " + DateTime.Now.ToShortDateString();
                 }
-                finally 
+                finally
                 {
                     Monitor.Exit(_lockForDocProcessing);
                 }
@@ -162,7 +165,7 @@ namespace ScanMonitorApp
             _fileIsBeingProcessed = false;
         }
 
-        private void HandleASinglePdfFile(string fileName)
+        private void HandleASinglePdfFile(string fileName, bool fileChanged, string curUniqName)
         {
             // Wait until file is moveable - or time-out
             if (!WaitForFileToBeAccessible(fileName))
@@ -171,10 +174,16 @@ namespace ScanMonitorApp
             // Process Pdf file
             try
             {
-                DateTime fileDateTime = File.GetCreationTime(fileName);
-                string uniqName = ScanDocInfo.GetUniqNameForFile(fileName, fileDateTime);
-                _scanDocHandler.ProcessPdfFile(fileName, uniqName, true, true, true, true, true, true);
-            }
+                if (fileChanged)
+                {
+                    _scanDocHandler.ProcessPdfFile(fileName, curUniqName, true, false, true, true, true, true);
+                }
+                else
+                {
+                    string uniqName = ScanDocInfo.GetUniqNameForFile(fileName);
+                    _scanDocHandler.ProcessPdfFile(fileName, uniqName, true, true, true, true, true, true);
+                }
+                }
             catch (Exception excp)
             {
                 logger.Error("Failed with excp {0}", excp.Message);
@@ -235,15 +244,43 @@ namespace ScanMonitorApp
 
                                 try
                                 {
-                                    DateTime fileDateTime = File.GetCreationTime(fsi.FullName);
-                                    string uniqName = ScanDocInfo.GetUniqNameForFile(fsi.FullName, fileDateTime);
+                                    // File unique name
+                                    string uniqName = ScanDocInfo.GetUniqNameForFile(fsi.FullName);
 
-                                    // Check if doc not already in database
+                                    // Check if doc already in database
                                     ScanDocInfo sdi = _scanDocHandler.GetScanDocInfo(uniqName);
                                     if (sdi == null)
                                     {
                                         // Process the doc
-                                        HandleASinglePdfFile(fsi.FullName);
+                                        HandleASinglePdfFile(fsi.FullName, false, "");
+                                    }
+                                    else
+                                    {
+                                        // Check if already filed
+                                        if (_scanDocHandler.AlreadyFiledCheck(fsi.FullName, uniqName))
+                                        {
+                                            // Move the file as it has been filed
+                                            string destFilenameForFiledDoc = Delimon.Win32.IO.Path.Combine(_localFolderForFiledDocs, fsi.Name);
+                                            Delimon.Win32.IO.File.Move(fsi.FullName, destFilenameForFiledDoc);
+                                        }
+                                        else if (ScanDocInfo.CheckFileModified(fsi.FullName, File.GetLastWriteTime(fsi.FullName), uniqName))
+                                        {
+                                            // Check if already in list of files reprocessed
+                                            bool reprocessFile = true;
+                                            var lastFileWriteTime = File.GetLastWriteTime(fsi.FullName);
+                                            if (_lastDateTimeOnReprocessedDoc.ContainsKey(uniqName))
+                                            {
+                                                if (_lastDateTimeOnReprocessedDoc[uniqName] == lastFileWriteTime)
+                                                    reprocessFile = false;
+                                            }
+                                            // Update the doc if necessary - this handles the A3 scanner which adds pages to
+                                            // existing files
+                                            if (reprocessFile)
+                                            {
+                                                HandleASinglePdfFile(fsi.FullName, true, uniqName);
+                                                _lastDateTimeOnReprocessedDoc.Add(uniqName, lastFileWriteTime);
+                                            }
+                                        }
                                     }
                                 }
                                 catch (Exception excp)

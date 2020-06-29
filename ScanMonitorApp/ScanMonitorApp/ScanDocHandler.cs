@@ -15,6 +15,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.IO;
 using iTextSharp.text.pdf.qrcode;
+using MongoDB.Bson;
 
 namespace ScanMonitorApp
 {
@@ -250,9 +251,9 @@ namespace ScanMonitorApp
             try
             {
                 IMongoCollection<ScanDocInfo> collection_sdinfo = GetDocInfoCollection();
-                collection_sdinfo.InsertOne(scanDocInfo);
+                collection_sdinfo.ReplaceOne(a => a.uniqName == scanDocInfo.uniqName, scanDocInfo, new ReplaceOptions { IsUpsert = true });
                 // Log it
-                logger.Info("Added scandocinfo record for {0}", scanDocInfo.uniqName);
+                logger.Info("Added/updated scandocinfo record for {0}", scanDocInfo.uniqName);
 
                 // Update cache
                 _scanDocInfoCache.UpdateDocInfo(scanDocInfo.uniqName);
@@ -260,7 +261,7 @@ namespace ScanMonitorApp
             }
             catch (Exception excp)
             {
-                logger.Error("Cannot insert scandoc recinfo into {0} Coll... {1} for file {2} excp {3}",
+                logger.Error("Cannot upsert scandoc recinfo into {0} Coll... {1} for file {2} excp {3}",
                             _scanConfig._dbNameForDocs, _scanConfig._dbCollectionForDocInfo, scanDocInfo.uniqName,
                             excp.Message);
             }
@@ -330,17 +331,17 @@ namespace ScanMonitorApp
 
         public void AddScanPagesRecToMongo(ScanPages scanPages)
         {
-            // Mongo append
+            // Mongo upsert
             try
             {
                 IMongoCollection<ScanPages> collection_spages = GetDocPagesCollection();
-                collection_spages.InsertOne(scanPages);
+                collection_spages.ReplaceOne(a => a.uniqName == scanPages.uniqName, scanPages, new ReplaceOptions { IsUpsert = true });
                 // Log it
-                logger.Info("Added scandocpages record for {0}", scanPages.uniqName);
+                logger.Info("Added/updated scandocpages record for {0}", scanPages.uniqName);
             }
             catch (Exception excp)
             {
-                logger.Error("Cannot insert scandocpages into {0} Coll... {1} for file {2} excp {3}",
+                logger.Error("Cannot upsert scandocpages into {0} Coll... {1} for file {2} excp {3}",
                             _scanConfig._dbNameForDocs, _scanConfig._dbCollectionForDocPages, scanPages.uniqName,
                             excp.Message);
             }
@@ -368,6 +369,14 @@ namespace ScanMonitorApp
             IMongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
             FiledDocInfo fdi = collection_fdinfo.Find(a => a.uniqName == uniqName).FirstOrDefault<FiledDocInfo>();
             return fdi;
+        }
+
+        public bool AlreadyFiledCheck(string fileName, string uniqName)
+        {
+            FiledDocInfo fdi = GetFiledDocInfo(uniqName);
+            if (fdi != null)
+                return true;
+            return false;
         }
 
         public bool AddFiledDocRecToMongo(FiledDocInfo filedDocInfo)
@@ -972,16 +981,21 @@ namespace ScanMonitorApp
         // - first move the file
         // - then update the doc record to say processed
 
-        public bool ProcessPdfFile(string fileName, string uniqName, bool bExtractImages, bool bDontOverwriteExistingImages, bool bExtractText, bool bRecogniseDoc,
+        public bool ProcessPdfFile(string fileName, string uniqName, bool bExtractImages, bool bDontOverwriteExisting, bool bExtractText, bool bRecogniseDoc,
                                 bool bAddToDocInfoDb, bool bAddToDocPagesDb)
         {
             // First check if doc details are already in db
-            if (ScanDocInfoRecordExists(uniqName))
+            if (bDontOverwriteExisting && ScanDocInfoRecordExists(uniqName))
+                return false;
+
+            // Check if already filed
+            FiledDocInfo fdi = GetFiledDocInfo(uniqName);
+            if (fdi != null)
                 return false;
 
             // Make a copy of the file in the archive location
             string archiveFileName = ScanDocHandler.GetArchiveFileName(uniqName);
-            if (!Delimon.Win32.IO.File.Exists(archiveFileName))
+            if (!bDontOverwriteExisting || !Delimon.Win32.IO.File.Exists(archiveFileName))
             {
                 string statusStr = "";
                 bool bResult = CopyFile(fileName, archiveFileName, ref statusStr);
@@ -1009,7 +1023,7 @@ namespace ScanMonitorApp
             // Extract images from file
             if (bExtractImages)
             {
-                bool procImages = (!bDontOverwriteExistingImages) | (!Delimon.Win32.IO.File.Exists(PdfRasterizer.GetFilenameOfImageOfPage(_scanConfig._docAdminImgFolderBase, uniqName, 1, false)));
+                bool procImages = (!bDontOverwriteExisting) | (!Delimon.Win32.IO.File.Exists(PdfRasterizer.GetFilenameOfImageOfPage(_scanConfig._docAdminImgFolderBase, uniqName, 1, false)));
                 if (procImages)
                 {
                     PdfRasterizer rs = new PdfRasterizer(fileName, THUMBNAIL_POINTS_PER_INCH);
@@ -1160,7 +1174,7 @@ namespace ScanMonitorApp
             bool bResult = false;
             try
             {
-                Delimon.Win32.IO.File.Copy(srcName, destName, false);
+                Delimon.Win32.IO.File.Copy(srcName, destName, true);
                 bResult = true;
             }
             catch (Exception e)
@@ -1276,8 +1290,7 @@ namespace ScanMonitorApp
             // Process the files
             foreach (string fileName in (List<string>)(args[0]))
             {
-                DateTime fileDateTime = File.GetCreationTime(fileName);
-                string uniqName = ScanDocInfo.GetUniqNameForFile(fileName, fileDateTime);
+                string uniqName = ScanDocInfo.GetUniqNameForFile(fileName);
                 ProcessPdfFile(fileName, uniqName, true, true, true, true, true, true);
             }
         }

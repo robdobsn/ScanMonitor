@@ -6,10 +6,10 @@
       <Value Profile="(Default)">\\MACALLAN\Admin\ScanAdmin\ScannedDocImgs</Value>
     </Setting>
     <Setting Name="MaxPagesForImages" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">10</Value>
+      <Value Profile="(Default)">500</Value>
     </Setting>
     <Setting Name="MaxPagesForText" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">10</Value>
+      <Value Profile="(Default)">500</Value>
     </Setting>
     <Setting Name="DbNameForDocs" Type="System.String" Scope="User">
       <Value Profile="(Default)">ScanManager</Value>
@@ -88,6 +88,9 @@
     </Setting>
     <Setting Name="FoldersToSearchForFiledDocs" Type="System.String" Scope="User">
       <Value Profile="(Default)">\\MACALLAN\Main\RobAndJudyPersonal;\\MACALLAN\Main\Rob Business;\\MACALLAN\Main\Peter Wilson documents</Value>
+    </Setting>
+    <Setting Name="LocalFolderToMoveFiledTo" Type="System.String" Scope="User">
+      <Value Profile="(Default)">c:\Users\Rob\Documents\AlreadyFiledDocs</Value>
     </Setting>
   </Settings>
 </SettingsFile>

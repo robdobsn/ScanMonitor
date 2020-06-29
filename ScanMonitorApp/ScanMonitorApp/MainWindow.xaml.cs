@@ -105,7 +105,7 @@ namespace ScanMonitorApp
                     }
                     AddToStatusText("Watch folder not found " + folder);
                 }
-                _scanFileMonitor.Start(foldersToMonitor, TEST_MODE);
+                _scanFileMonitor.Start(foldersToMonitor, Properties.Settings.Default.LocalFolderToMoveFiledTo, TEST_MODE);
                 statusRunningMonitor.Content += " and is Running Folder Monitor";
             }
             else

@@ -55,16 +55,11 @@ namespace ScanMonitorApp
             return origFileName.Replace("/", @"\");
         }
 
-        public static string GetUniqNameForFile(string fileName, DateTime dt)
-        {
-            // If not prepend date and time
-            string dtStr = dt.ToString("yyyy_MM_dd_hh_mm_ss");
-            return GetUniqNameForFile(fileName, dtStr);
-        }
-
-        public static string GetUniqNameForFile(string fileName, string dateTimeStr)
+        public static string GetUniqNameForFile(string fileName)
         {
             // Check if file name already starts with date and time (14 digits)
+            DateTime fileDateTime = File.GetLastWriteTime(fileName);
+            string dtStr = fileDateTime.ToString("yyyy_MM_dd_HH_mm_ss");
             string uniqName = System.IO.Path.GetFileNameWithoutExtension(fileName);
             int digsFound = 0;
             foreach (char ch in uniqName)
@@ -81,11 +76,24 @@ namespace ScanMonitorApp
             if (digsFound >= 14)
                 return uniqName;
             // If not prepend date and time
-            dateTimeStr = dateTimeStr.Replace("-", "_");
-            dateTimeStr = dateTimeStr.Replace(" ", "_");
-            dateTimeStr = dateTimeStr.Replace(":", "_");
-            uniqName = dateTimeStr + "_" + uniqName;
+            dtStr = dtStr.Replace("-", "_");
+            dtStr = dtStr.Replace(" ", "_");
+            dtStr = dtStr.Replace(":", "_");
+            uniqName = dtStr + "_" + uniqName;
             return uniqName;
+        }
+
+        public static bool CheckFileModified(string fileName, DateTime dt, string uniqName)
+        {
+            // Check if file date/time has been changed since creation
+            DateTime rsltDt;
+            CultureInfo enUK = new CultureInfo("en-UK");
+            string dateFormatStr = "yyyy_MM_dd_HH_mm_ss";
+            bool convOk = DateTime.TryParseExact(uniqName.Substring(0,dateFormatStr.Length), dateFormatStr, enUK,
+                                 DateTimeStyles.None, out rsltDt);
+
+            // Check if date and time close - if not it has been modified
+            return (convOk && Math.Abs((dt - rsltDt).TotalSeconds) > 5);
         }
 
         public static string GetImageFolderForFile(string baseFolderForImages, string uniqName, bool bCreateIfReqd)

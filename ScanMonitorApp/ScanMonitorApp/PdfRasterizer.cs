@@ -143,12 +143,14 @@ namespace ScanMonitorApp
                                 img = RotateImageWithoutCrop(img, scanPages.pageRotations[pageNumber - 1]);
                     }
                     // Save to file
+                    if (Delimon.Win32.IO.File.Exists(pageFileName))
+                        Delimon.Win32.IO.File.Delete(pageFileName);
                     img.Save(pageFileName, ImageFormat.Jpeg);
                     imgFileNames.Add(pageFileName);
                 }
                 catch (Exception excp)
                 {
-                    logger.Error("Failed to create image of page {0}", pageFileName, excp.Message);
+                    logger.Error("Failed to create image of page {0} {1}", pageFileName, excp.Message);
                 }
             }
             // Stop timing
