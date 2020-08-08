@@ -16,6 +16,7 @@ using System.Security.Cryptography;
 using System.IO;
 using iTextSharp.text.pdf.qrcode;
 using MongoDB.Bson;
+using System.Windows.Media.Animation;
 
 namespace ScanMonitorApp
 {
@@ -40,8 +41,10 @@ namespace ScanMonitorApp
         private ScanDocInfoCache _scanDocInfoCache = null;
         private ScanDocLikelyDocType _scanDocLikelyDocType = null;
         private List<string> _lastNDocTypesFiled = new List<string>();
+        private DateTime _lastDatabaseChangeEventTime = DateTime.Now;
         // Background worker for multiple files - used by PDF editor save
         private BackgroundWorker _multiHandlerBkgndWorker = new BackgroundWorker();
+        private BackgroundWorker _bwCollectionWatcher = new BackgroundWorker();
 
         #region Init
 
@@ -66,14 +69,22 @@ namespace ScanMonitorApp
             _fileProcessBkgndWorker.ProgressChanged += new ProgressChangedEventHandler(FileProcessProgressChanged);
             _fileProcessBkgndWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(FileProcessRunWorkerCompleted);
 
-
             // Init worker for PDF file saves
             _multiHandlerBkgndWorker.WorkerSupportsCancellation = false;
             _multiHandlerBkgndWorker.WorkerReportsProgress = false;
             _multiHandlerBkgndWorker.DoWork += new DoWorkEventHandler(MultiHandlerDoWork);
 
+            // Use a background worker for collection change watching
+            _bwCollectionWatcher.WorkerSupportsCancellation = true;
+            _bwCollectionWatcher.WorkerReportsProgress = false;
+            _bwCollectionWatcher.DoWork += new DoWorkEventHandler(CollectionWatcher_DoWork);
+            _bwCollectionWatcher.RunWorkerAsync();
         }
 
+        ~ScanDocHandler()
+        {
+            _bwCollectionWatcher.CancelAsync();
+        }
         #endregion
 
         #region Database Common Code
@@ -130,6 +141,11 @@ namespace ScanMonitorApp
                 }
             }
             return bOk;
+        }
+
+        public bool RecentDatabaseChangeCheck(DateTime lastTimeProcessed)
+        {
+            return lastTimeProcessed < _lastDatabaseChangeEventTime;
         }
 
         public ScanDocAllInfo GetScanDocAllInfo(string uniqName)
@@ -312,12 +328,74 @@ namespace ScanMonitorApp
             return true;
         }
 
+        private void CollectionWatcher_DoWork(object sender, DoWorkEventArgs e)
+        {
+            // Watch database
+            using (var cursor = GetDocInfoCollection().Watch())
+            {
+                // Stay here forever watching
+                logger.Info("Watching for database changes ...");
+                while (true)
+                {
+                    // Check cancellation
+                    if (_bwCollectionWatcher.CancellationPending)
+                    {
+                        e.Cancel = true;
+                        return;
+                    }
 
-        #endregion
+                    while (cursor.MoveNext() && cursor.Current.Count() == 0) { }
+                    var change = cursor.Current.First();
+                    logger.Info("Database change detected {0}", change.ToString());
+                    _lastDatabaseChangeEventTime = DateTime.Now;
+                }
+            }
+        }
+  
+            //    // Watch collection
+            //    //var pipeline = new EmptyPipelineDefinition().Match("{ operationType: { $eq: 'insert' } }");
+            //    // start the watch on the collection
+            //    using (var cursor = GetDocInfoCollection().Watch())
+            //{
+            //    // loop is required so that we are always connected and looking for next document
+            //    while (true)
+            //    {
+            //        try
+            //        {
+            //            // If we get the document, serialize to our model
+            //            scanDocStream.MoveNext();
+            //            logger.Info("record in ScanDocInfo collection changed");
+            //            //            //var printQueueEntry = DeSerializePrintQueueKOTDocument(printQueueStream.Current.FullDocument);
+            //            //            //// We are locking the collection before inserting the latest record to avoid multiple insert
+            //            //            //lock (_lockKOTEntry)
+            //            //            //{
+            //            //            //    if (!_readyToBePickedKOTList.ContainsKey(printQueueEntry.RestaurantId))
+            //            //            //        _readyToBePickedKOTList.Add(printQueueEntry.RestaurantId, new List());
+            //            //            //    _readyToBePickedKOTList[printQueueEntry.RestaurantId].Add(printQueueEntry);
+            //            //            //}
+            //            //            //unHandledExceptionCounter = 0;
+            //        }
+            //        catch (Exception ex)
+            //        {
+            //            //            //// in case of some error we are incrementing the counter
+            //            //            //unHandledExceptionCounter++;
+            //            //            //if (unHandledExceptionCounter == 1)
+            //            //            //{
+            //            //            //    logger.Error($"Unhandled exception with the counter {unHandledExceptionCounter}.", ex);
+            //            //            //}
+            //            //            //else if (unHandledExceptionCounter > 10)
+            //            //            //{
+            //            //            //    logger.Error($"Too many unhandled exception with the counter {unHandledExceptionCounter}. We will break the loop.", ex);
+            //            //            //    break;
+            //            //            //}
+            //        }
+            //    }
+            //}
+    #endregion
 
-        #region ScanDocPages Collection Handling
+    #region ScanDocPages Collection Handling
 
-        private IMongoCollection<ScanPages> GetDocPagesCollection()
+    private IMongoCollection<ScanPages> GetDocPagesCollection()
         {
             var database = _dbClient.GetDatabase(_scanConfig._dbNameForDocs); // the name of the database
             return database.GetCollection<ScanPages>(_scanConfig._dbCollectionForDocPages);
@@ -1004,6 +1082,10 @@ namespace ScanMonitorApp
                     logger.Error("Can't make archive copy {0} excp {1}", archiveFileName, statusStr);
                     return false;
                 }
+                else
+                {
+                    logger.Debug("Made archive copy to {0}", archiveFileName);
+                }
             }
             else
             {
@@ -1018,6 +1100,7 @@ namespace ScanMonitorApp
             {
                 PdfTextAndLocExtractor pdfExtractor = new PdfTextAndLocExtractor();
                 scanPages = pdfExtractor.ExtractDocInfo(uniqName, fileName, _scanConfig._maxPagesForText, ref totalNumPages);
+                logger.Debug("Extracted {0} text blocks from {1} uniqName {2}", totalNumPages, fileName, uniqName);
             }
 
             // Extract images from file
@@ -1030,12 +1113,12 @@ namespace ScanMonitorApp
                     try
                     {
                         List<string> imgFileNames = rs.GeneratePageFiles(uniqName, scanPages, _scanConfig._docAdminImgFolderBase, _scanConfig._maxPagesForImages, false);
+                        logger.Debug("Extracted {0} page images from {1} uniqName {2}", imgFileNames.Count, fileName, uniqName);
                     }
                     finally
                     {
                         rs.Close();
                     }
-
                 }
             }
 
@@ -1050,7 +1133,10 @@ namespace ScanMonitorApp
                 AddDocInfoRecToMongo(scanDocInfo);
 
             // Request update to unfiled documents list
+            _scanDocInfoCache.AddDocToUnfiledCache(uniqName);
             _scanDocInfoCache.RequestUnfiledListUpdate();
+
+            logger.Debug("Completed processing of {0} uniqName {1}", fileName, uniqName);
 
             return true;
         }

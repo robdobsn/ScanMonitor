@@ -1,5 +1,6 @@
 ﻿#define TEST_PERF_SHOWDOCFIRSTTIME
 //#define PERFORMANCE_CHECK
+using Ghostscript.NET;
 using MahApps.Metro.Controls;
 using Microsoft.WindowsAPICodePack.Dialogs;
 using NLog;
@@ -56,6 +57,9 @@ namespace ScanMonitorApp
         private enum TouchFromPageText { TOUCH_NONE, TOUCH_DATE, TOUCH_SUFFIX, TOUCH_MONEY, TOUCH_EVENT_NAME, TOUCH_EVENT_DATE, TOUCH_EVENT_DESC, TOUCH_EVENT_LOCN }
         private TouchFromPageText _touchFromPageText = TouchFromPageText.TOUCH_SUFFIX;
         private System.Windows.Threading.DispatcherTimer _timerForNewDocumentCheck;
+        private const int MAX_UI_TIMER_COUNTS_BEFORE_CHECK = 60;
+        private int _uiUpdateTimerCount = 0;
+        private DateTime _lastDatabaseUpdateCheckTime = DateTime.Now;
         private string _overrideFolderForFiling = "";
         private string _lastHashOfUnfiledDocs = "";
         private enum dateRollerChange
@@ -89,7 +93,7 @@ namespace ScanMonitorApp
             // Timer to display latest doc
             _timerForNewDocumentCheck = new System.Windows.Threading.DispatcherTimer();
             _timerForNewDocumentCheck.Tick += new EventHandler(NewDocumentTimer_Tick);
-            _timerForNewDocumentCheck.Interval = new TimeSpan(0, 0, 2);
+            _timerForNewDocumentCheck.Interval = new TimeSpan(0, 0, 1);
             _timerForNewDocumentCheck.Start();
 
             // Current document display thread
@@ -110,17 +114,23 @@ namespace ScanMonitorApp
             // Use a background worker to populate
             _bwThreadForCurDocDisplay.RunWorkerAsync();
             _bwThreadForDocTypeDisplay.RunWorkerAsync();
-
         }
 
         private void NewDocumentTimer_Tick(object sender, EventArgs e)
         {
-            if (!_formFieldsUserModified && _thisIsScanningMachine)
-                if (_lastHashOfUnfiledDocs != _scanDocHandler.GetHashOfUnfiledDocs())
-                {
-                    // Force showing of latest doc
-                    ShowDocToBeFiled(10000000);
-                }
+            // Check if changes have been made to database since last checked
+            bool databaseChanged = _scanDocHandler.RecentDatabaseChangeCheck(_lastDatabaseUpdateCheckTime);
+            bool hashDiffers = (_uiUpdateTimerCount++ > MAX_UI_TIMER_COUNTS_BEFORE_CHECK) && (_lastHashOfUnfiledDocs != _scanDocHandler.GetHashOfUnfiledDocs());
+
+            //logger.Info("Checking {0} {1} {2}", databaseChanged, hashDiffers, _formFieldsUserModified);
+
+            // Don't change UI if user is modifying
+            if ((!_formFieldsUserModified) && (databaseChanged || hashDiffers))
+            {
+                // Force showing of latest doc
+                ShowDocToBeFiled(10000000);
+                _lastDatabaseUpdateCheckTime = DateTime.Now;
+            }
         }
 
         #endregion
@@ -171,6 +181,7 @@ namespace ScanMonitorApp
                 stopWatch2.ElapsedTicks * 1000.0 / Stopwatch.Frequency, stopWatch3.ElapsedTicks * 1000.0 / Stopwatch.Frequency,
                 stopWatch4.ElapsedTicks * 1000.0 / Stopwatch.Frequency);
 #endif
+            _uiUpdateTimerCount = 0;
         }
 
         #endregion

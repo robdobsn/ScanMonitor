@@ -156,7 +156,7 @@ namespace ScanMonitorApp
             // Stop timing
             stopwatch.Stop();
 
-            logger.Info("Converted {0} ({1} pages) to image files in {2}", _inputPdfPath, numPagesToConvert, stopwatch.Elapsed);
+            logger.Debug("Converted {0} ({1} pages) to image files in {2}", _inputPdfPath, numPagesToConvert, stopwatch.Elapsed);
 
             return imgFileNames;
         }

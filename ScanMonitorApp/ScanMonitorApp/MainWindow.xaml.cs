@@ -191,11 +191,23 @@ namespace ScanMonitorApp
         {
             // Updating the Label which displays the current second
             if (_scanFileMonitor != null)
+            {
                 statusFilingMonitor.Content = _scanFileMonitor.GetCurrentInfo();
+                string oldStatus = statusEvents.Text;
+                string newStatus = _scanFileMonitor.GetLastEvents();
+                if (oldStatus != newStatus)
+                {
+                    statusEvents.Text = newStatus;
+                    statusEvents.Focus();
+                    statusEvents.CaretIndex = statusEvents.Text.Length;
+                    statusEvents.ScrollToEnd();
+                }
+            }
         }
 
         public void ExitApp(object sender, EventArgs e)
         {
+            logger.Info("App Exit");
             System.Windows.Application.Current.Shutdown();
         }
 

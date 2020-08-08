@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 using NLog;
 using System.Threading;
 using System.ComponentModel;
+using System.Diagnostics.Tracing;
+using System.CodeDom;
+using System.Windows.Documents;
 
 namespace ScanMonitorApp
 {
@@ -28,6 +31,8 @@ namespace ScanMonitorApp
         private volatile string _lastFileProcessed = "";
         private volatile string _lastTimeFilesChecked = "";
         private volatile string _lastStatusOfFileProcessing = "";
+        private const int MAX_PROC_EVENTS_TO_STORE = 50;
+        private volatile List<string> _lastProcessEvents = new List<string>();
         private Dictionary<string, DateTime> _lastDateTimeOnReprocessedDoc = new Dictionary<string, DateTime>();
 
         public ScanFileMonitor(ReportStatus reportStatusFn, ScanDocHandler scanDocHandler)
@@ -87,7 +92,17 @@ namespace ScanMonitorApp
 
         public string GetCurrentInfo()
         {
-            return _lastFileProcessed + " " + _lastTimeFilesChecked + " " + _lastStatusOfFileProcessing;
+            string lastProcStr = "Last File Processed: ";
+            if (_lastFileProcessed.Length == 0)
+                lastProcStr += "None since restart";
+            else
+                lastProcStr += _lastFileProcessed;
+            return lastProcStr + "\n" + _lastTimeFilesChecked + "\n" + _lastStatusOfFileProcessing;
+        }
+
+        public string GetLastEvents()
+        {
+            return procEventsGet();
         }
 
         public void WatchFolderChanged(string fileName, WatcherChangeTypes changeInfo)
@@ -114,7 +129,7 @@ namespace ScanMonitorApp
             }
             catch (Exception excp)
             {
-                logger.Error("Failed with excp {0}", excp.Message);
+                addProcEvent(LogLevel.Error, String.Format("Failed with excp {0}", excp.Message));
                 checkOk = false;
             }
             return checkOk;
@@ -136,7 +151,7 @@ namespace ScanMonitorApp
             }
             if (!fileCheckOk)
             {
-                // logger.Info("File {0} detected but cannot be accessed", fileName);
+                addProcEvent(LogLevel.Debug, String.Format("File {0} detected but cannot be accessed", fileName));
                 return false;
             }
             return true;
@@ -152,24 +167,30 @@ namespace ScanMonitorApp
             {
                 try
                 {
-                    HandleASinglePdfFile(fileName, false, "");
-                    _lastFileProcessed = System.IO.Path.GetFileName(fileName) + " at " + DateTime.Now.ToShortTimeString() + " on " + DateTime.Now.ToShortDateString();
+                    HandleASinglePdfFile(fileName, true, false, "");
                 }
                 finally
                 {
                     Monitor.Exit(_lockForDocProcessing);
                 }
             }
+            else
+            {
+                addProcEvent(LogLevel.Warn, String.Format("Unable to obtain lock for processing file {0} - will try again later", fileName));
+            }
 
             // Clear flag indicating request to stop
             _fileIsBeingProcessed = false;
         }
 
-        private void HandleASinglePdfFile(string fileName, bool fileChanged, string curUniqName)
+        private bool HandleASinglePdfFile(string fileName, bool fromFolderWatcher, bool fileChanged, string curUniqName)
         {
             // Wait until file is moveable - or time-out
             if (!WaitForFileToBeAccessible(fileName))
-                return;
+            {
+                addProcEvent(LogLevel.Warn, String.Format("{1} File isn't accessible {0} - will try again later", fileName, fromFolderWatcher ? "Watcher" : "Timed"));
+                return false;
+            }
 
             // Process Pdf file
             try
@@ -177,17 +198,26 @@ namespace ScanMonitorApp
                 if (fileChanged)
                 {
                     _scanDocHandler.ProcessPdfFile(fileName, curUniqName, true, false, true, true, true, true);
+                    addProcEvent(LogLevel.Debug, String.Format("{2} File {0} changed - updated ScanDocInfo - uniqName {1}", fileName, curUniqName, fromFolderWatcher ? "Watcher" : "Timed"));
                 }
                 else
                 {
                     string uniqName = ScanDocInfo.GetUniqNameForFile(fileName);
+                    // Check it really is a new file
+                    if (_scanDocHandler.ScanDocInfoRecordExists(uniqName))
+                        return false;
+                    addProcEvent(LogLevel.Debug, String.Format("{2} File {0} is new - creating ScanDocInfo - uniqName {1}", fileName, uniqName, fromFolderWatcher ? "Watcher" : "Timed"));
                     _scanDocHandler.ProcessPdfFile(fileName, uniqName, true, true, true, true, true, true);
                 }
-                }
+                _lastFileProcessed = fileChanged ? "Updated " : "Created " + 
+                                System.IO.Path.GetFileName(fileName) + " at " + DateTime.Now.ToLongTimeString() + " on " + DateTime.Now.ToShortDateString();
+            }
             catch (Exception excp)
             {
-                logger.Error("Failed with excp {0}", excp.Message);
+                addProcEvent(LogLevel.Error, String.Format("{1} Failed with excp {0}", excp.Message, fromFolderWatcher ? "Watcher" : "Timed"));
+                return false;
             }
+            return true;
         }
 
         private List<FileSystemInfo> GetListOfFilesInWatchedFolder(string folderName)
@@ -201,7 +231,7 @@ namespace ScanMonitorApp
             }
             catch (Exception excp)
             {
-                logger.Error("Failed to get file list from {0} excp {1}", folderName, excp.Message);
+                addProcEvent(LogLevel.Error, String.Format("Failed to get file list from {0} excp {1}", folderName, excp.Message));
             }
             return new List<FileSystemInfo>();
         }
@@ -252,7 +282,7 @@ namespace ScanMonitorApp
                                     if (sdi == null)
                                     {
                                         // Process the doc
-                                        HandleASinglePdfFile(fsi.FullName, false, "");
+                                        HandleASinglePdfFile(fsi.FullName, false, false, "");
                                     }
                                     else
                                     {
@@ -262,6 +292,7 @@ namespace ScanMonitorApp
                                             // Move the file as it has been filed
                                             string destFilenameForFiledDoc = Delimon.Win32.IO.Path.Combine(_localFolderForFiledDocs, fsi.Name);
                                             Delimon.Win32.IO.File.Move(fsi.FullName, destFilenameForFiledDoc);
+                                            addProcEvent(LogLevel.Info, String.Format("File {0} moved to {1}", fsi.FullName, destFilenameForFiledDoc));
                                         }
                                         else if (ScanDocInfo.CheckFileModified(fsi.FullName, File.GetLastWriteTime(fsi.FullName), uniqName))
                                         {
@@ -277,7 +308,7 @@ namespace ScanMonitorApp
                                             // existing files
                                             if (reprocessFile)
                                             {
-                                                HandleASinglePdfFile(fsi.FullName, true, uniqName);
+                                                HandleASinglePdfFile(fsi.FullName, false, true, uniqName);
                                                 _lastDateTimeOnReprocessedDoc.Add(uniqName, lastFileWriteTime);
                                             }
                                         }
@@ -285,7 +316,7 @@ namespace ScanMonitorApp
                                 }
                                 catch (Exception excp)
                                 {
-                                    logger.Error("Failed to process file {0}", excp.Message);
+                                    addProcEvent(LogLevel.Error, String.Format("Failed to process file {0}", excp.Message));
                                 }
 
                                 // Check if we should terminate to allow a new file to be processed
@@ -315,5 +346,25 @@ namespace ScanMonitorApp
                 }
             }
         }
+        void addProcEvent(LogLevel logLevel, string eventInfo)
+        {
+            _lastProcessEvents.Add(eventInfo);
+            if (_lastProcessEvents.Count > MAX_PROC_EVENTS_TO_STORE)
+            {
+                _lastProcessEvents.RemoveAt(0);
+            }
+            logger.Log(logLevel, eventInfo);
+        }
+
+        string procEventsGet()
+        {
+            string evtListStr = "";
+            foreach (var evtStr in _lastProcessEvents)
+            {
+                evtListStr += evtStr + "\n";
+            }
+            return evtListStr;
+        }
+
     }
 }

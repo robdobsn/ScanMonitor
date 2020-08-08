@@ -55,21 +55,21 @@ namespace ScanMonitorApp
         // Define the event handlers. 
         private void OnCreated(object source, FileSystemEventArgs e)
         {
-            logger.Info("File: " + e.FullPath + " " + e.ChangeType.ToString());
+            logger.Debug("File: " + e.FullPath + " " + e.ChangeType.ToString() + " this event will be ignored");
             //Debug.Assert(false);
 //            _callbackOnChanged(e.FullPath, e.ChangeType);
         }
 
         private void OnChanged(object source, FileSystemEventArgs e)
         {
-            logger.Info("File: " + e.FullPath + " " + e.ChangeType.ToString());
+            logger.Debug("File: " + e.FullPath + " " + e.ChangeType.ToString() + " this event will be acted upon");
             //Debug.Assert(false);
             _callbackOnChanged(e.FullPath, e.ChangeType);
         }
 
         private void OnRenamed(object source, RenamedEventArgs e)
         {
-            logger.Info("File: " + e.FullPath + " " + e.ChangeType.ToString());
+            logger.Debug("File: " + e.FullPath + " " + e.ChangeType.ToString() + " this event will be ignored");
             //Debug.Assert(false);
             //_callbackOnChanged(e.FullPath, e.ChangeType);
         }

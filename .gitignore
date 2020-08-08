@@ -182,4 +182,8 @@ Desktop.ini
 
 # Recycle Bin used on file shares
 $RECYCLE.BIN/
+
 ScanMonitorApp/.vs/ScanMonitorApp/v16/Server/sqlite3/storage.ide
+ScanMonitorApp/packages/
+
+

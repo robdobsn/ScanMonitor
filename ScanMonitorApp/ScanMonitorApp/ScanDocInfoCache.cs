@@ -176,12 +176,16 @@ namespace ScanMonitorApp
                     }
                 }
 
+                // Debug
+                logger.Info("UnfiledListUpdateCompleted");
+
                 // Wait for a bit - checking if a prompt has been received
                 for (int checkCtr = 0; checkCtr < Properties.Settings.Default.UnfiledDocCheckSeconds * 10; checkCtr++)
                 {
                     // See if a request (new file scanned etc) has been received
                     if (_requestUnfiledListUpdate)
                     {
+                        logger.Info("UnfiledListUpdateStarted");
                         _requestUnfiledListUpdate = false;
                         break;
                     }
@@ -232,6 +236,15 @@ namespace ScanMonitorApp
             {
                 _unfiledDocsUniqNames.Remove(uniqName);
             }            
+        }
+
+        public void AddDocToUnfiledCache(string uniqName)
+        {
+            lock (_lockForUnfiledListAccess)
+            {
+                if (!_unfiledDocsUniqNames.Contains(uniqName))
+                    _unfiledDocsUniqNames.Add(uniqName);
+            }
         }
 
     }
