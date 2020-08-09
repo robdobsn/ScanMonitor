@@ -33,7 +33,6 @@ namespace ScanMonitorApp
     public partial class AuditView : Window
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
-        ObservableCollection<AuditData> _auditDataColl = new ObservableCollection<AuditData>();
         private ScanDocHandler _scanDocHandler;
         private DocTypesMatcher _docTypesMatcher;
         private BackgroundWorker _bwThreadForPopulateList;
@@ -44,6 +43,7 @@ namespace ScanMonitorApp
         private IFindFluent<ScanPages, ScanPages> _lastSearchResult = null;
         private int _resultListCurSkip = 0;
         private int _resultListNumToShow = MAX_NUM_DOCS_TO_ADD_TO_LIST;
+        private int _resultListCount = 0;
 
         public AuditView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher, WindowClosingDelegate windowClosingCB)
         {
@@ -53,7 +53,7 @@ namespace ScanMonitorApp
             _windowClosingCB = windowClosingCB;
 
             // List view for comparisons
-            auditListView.ItemsSource = _auditDataColl;
+            auditListView.ItemsSource = AuditDataColl;
 
             // Search thread
             _bwThreadForSearch = new BackgroundWorker();
@@ -71,10 +71,7 @@ namespace ScanMonitorApp
             _bwThreadForPopulateList.RunWorkerCompleted += new RunWorkerCompletedEventHandler(PopulateList_RunWorkerCompleted);
         }
 
-        public ObservableCollection<AuditData> AuditDataColl
-        {
-            get { return _auditDataColl; }
-        }
+        public ObservableCollection<AuditData> AuditDataColl { get; private set; } = new ObservableCollection<AuditData>();
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
@@ -104,16 +101,8 @@ namespace ScanMonitorApp
             object[] args = (object[])e.Argument;
             string searchText = (string)args[0];
 
-            // Execute database query
+            // Form database query
             IMongoCollection<ScanPages> collection_spages = _scanDocHandler.GetDocPagesCollection();
-            ScanPages scanPages = null;
-            //var builder = Builders<BsonDocument>.Filter;
-            //var filter = builder.Eq("scanPagesText", new BsonDocument { { "$elemMatch", new BsonDocument { { "text", new BsonDocument { { "$regex", "BRADFORD" } } } } } });
-            //var filter = builder.Eq("uniqName", "2013_04_15_16_17_13");
-            //var foundScanPages = collection_spages.Find(filter);
-            //if (foundScanPages.CountDocuments() > 0)
-            //    scanPages = foundScanPages.First<ScanPages>();
-
             BsonDocument query = new BsonDocument{{
                 "scanPagesText", new BsonDocument {{
                     "$elemMatch", new BsonDocument {{
@@ -125,6 +114,8 @@ namespace ScanMonitorApp
                     }}
                 }}
             }};
+
+            // Execute query
             try
             {
                 var foundScanDoc = collection_spages.Find(query);
@@ -155,53 +146,17 @@ namespace ScanMonitorApp
             else
             {
                 // Successful search
-                _lastSearchResult = (IFindFluent<ScanPages, ScanPages>)e.Result;
-                this.Dispatcher.BeginInvoke((Action)delegate ()
-                {
-                    lblListStatus.Content = _lastSearchResult.CountDocuments().ToString() + " scans found";
-                });
+                var srchRslt = (IFindFluent<ScanPages, ScanPages>)e.Result;
+                _resultListCount = (int)srchRslt.CountDocuments();
+                lblListStatus.Content = _resultListCount.ToString() + " found";
 
                 // Start list population
                 _resultListCurSkip = 0;
                 _resultListNumToShow = MAX_NUM_DOCS_TO_ADD_TO_LIST;
-                if (_bwThreadForPopulateList.IsBusy)
-                {
-                    _bwThreadForPopulateList.CancelAsync();
-                    // Allow worker to stop
-                    Thread.Sleep(1000);
-                }
-
-                // Clear list
-                _auditDataColl.Clear();
-
-                // Start search
-                string srchText = txtSearch.Text;
-                if (!_bwThreadForPopulateList.IsBusy)
-                {
-                    object[] args = { _lastSearchResult, _resultListCurSkip, _resultListNumToShow };
-                    _bwThreadForPopulateList.RunWorkerAsync(args);
-                }
-                progBar.Value = (30);
+                _lastSearchResult = srchRslt;
+                PopulateSearchList();
             }
         }
-
-        private void EnableSearchButtons(bool en)
-        {
-            listNavGrid.IsEnabled = en;
-            btnSearch.IsEnabled = en;
-        }
-
-        public class ComboEntity
-        {
-            public ObjectId id;
-            public string uniqName { get; set; }
-            public int numPages { get; set; }
-            public int numPagesWithText { get; set; }
-            public DateTime createDate { get; set; }
-            public string origFileName { get; set; }
-            public bool flagForHelpFiling { get; set; }
-            public IEnumerable<FiledDocInfo> filedInfo;
-        };
 
         private void PopulateList_DoWork(object sender, DoWorkEventArgs e)
         {
@@ -218,23 +173,8 @@ namespace ScanMonitorApp
             List<string> foundUniqNames = new List<string>();
             foreach (var findRslt in rsltCursor.Skip(numToSkip).Limit(numToShow).ToEnumerable<ScanPages>())
             {
-                //Console.WriteLine(findRslt.uniqName);
                 foundUniqNames.Add(findRslt.uniqName);
             }
-
-            //var resultSet = new BsonDocument[]
-            //{
-            //    new BsonDocument{
-            //        { "uniqName",
-            //            new BsonDocument{
-            //                {
-            //                    "$in",
-            //                    rsltCursor
-            //                }
-            //            }
-            //        }
-            //    },
-            //};
 
             // Join
             try
@@ -249,351 +189,44 @@ namespace ScanMonitorApp
                         foreignCollection: filedDocColl,
                         localField: q => q.uniqName,
                         foreignField: f => f.uniqName,
-                        @as: (ComboEntity eo) => eo.filedInfo
+                        @as: (ScanCombinedInfo eo) => eo.filedInfo
                     )
-                    //.Project(p => new { p.id, p.name, other = p.others.First() })
                     //.Sort(new BsonDocument("other.name", -1))
                     .ToList();
 
-                //var pipeline2 = new BsonDocument[]
-                //{
-                //        new BsonDocument{{ "$match",
-                //            new BsonDocument{{
-                //                    "uniqName", "2013_04_12_16_14_17"
-                //                }}
-                //            }}
-                //};
-                //var result2 = coll.Aggregate<BsonDocument>(pipeline2).ToList();
-                //logger.Debug("pipe2 {0}", pipeline2.ToJson());
-                //logger.Debug("result of aggregate2 {0}", result2.Count);
+                // Successful search
+                this.Dispatcher.BeginInvoke((Action)delegate ()
+                {
+                    progBar.Value = (70);
+                });
 
-                //var pipeline = new BsonDocument[]
-                //{
-                //        new BsonDocument{
-                //            { "$lookup",
-                //                new BsonDocument{
-                //                        { "from", "FiledDocInfo" },
-                //                        { "localField", "uniqName" },
-                //                        { "foreignField", "uniqName" },
-                //                        { "as", "FiledInfo" }
-                //                    }
-                //            }
-                //        },
-                //        new BsonDocument{
-                //            { "$limit", 10
-                //            }
-                //        }
-                //};
-                //var result = coll.Aggregate<BsonDocument>(pipeline).ToList();
-                //logger.Debug("pipe {0}", pipeline.ToJson());
-                //logger.Debug("result of aggregate {0}", result.Count);
+                // Parse records
+                List<AuditData> auditDataColl = new List<AuditData>();
+                foreach (var rec in result)
+                {
+                    var auditData = new AuditData();
 
-                //var pipeline = new BsonDocument[]
-                //{
-                //        //new BsonDocument
-                //        //{
-                //        //    { "$match",
-                //        //        new BsonDocument
-                //        //        {
-                //        //            { "$expr",
-                //        //                new BsonDocument
-                //        //                {
-                //        //                    {
-                //        //                        "$in",
-                //        //                        new BsonDocument("uniqName", new BsonArray(foundUniqNames))
-                //        //                    }
-                //        //                }
-                //        //            }
-                //        //        }
-                //        //    }
-                //        //},
-                //        new BsonDocument{
-                //            { "$lookup",
-                //                new BsonDocument{
-                //                        { "from", "FiledDocInfo" },
-                //                        { "localField", "uniqName" },
-                //                        { "foreignField", "uniqName" },
-                //                        { "as", "FiledInfo" }
-                //                    }
-                //            }
-                //        },
-                //        new BsonDocument{
-                //            { "$skip", numToSkip
-                //            }
-                //        },
-                //        new BsonDocument{
-                //            { "$limit", numToShow
-                //            }
-                //        }
-                //};
-                //logger.Debug("pipe {0}", pipeline.ToJson());
-                //var result = coll.Aggregate<BsonDocument>(pipeline).ToList();
-                //logger.Debug("result of aggregate {0}", result.Count);
+                    // Get uniqName
+                    string uniqName = rec.uniqName;
+                    auditData.UniqName = uniqName;
 
-                e.Result = result;
+                    // Get filed info
+                    if (rec.filedInfo.Count() > 0)
+                    {
+                        FiledDocInfo fdi = rec.filedInfo.First();
+                        auditData.DocTypeFiledAs = fdi.filedAs_docType;
+                        auditData.FinalStatus = FiledDocInfo.GetFinalStatusStr(fdi.filedAt_finalStatus);
+                    }
+                    auditDataColl.Add(auditData);
+                }
 
-                // Create 
-                //var match = new BsonDocument
-                //{
-                //    {
-                //        "$match",
-                //        new BsonDocument
-                //            {
-                //                {"uniqName", "2013_04_12_16_14_17"}
-                //            }
-                //    }
-                //};
-                //var pipeline = new[] { match };
-                //var result = coll.Aggregate<ScanDocInfo>(pipeline);
-
-                //logger.Debug("result of aggregate {0}", result.ToString());
+                // Result returned                
+                e.Result = auditDataColl;
             }
             catch (Exception excp)
             {
                 logger.Error("Failed to aggregate {0}", excp.ToString());
             }
-
-            //IMongoCollection<ScanDocInfo> collection_sdinfo = _scanDocHandler.GetDocInfoCollection();
-            //var foundScanDoc = collection_sdinfo.Find(a => a.uniqName == uniqName);
-
-
-            //List<ScanDocInfo> sdiList = _scanDocHandler.GetListOfScanDocs();
-            //this.Dispatcher.BeginInvoke((Action)delegate()
-            //{
-            //    lblTotalsInfo.Content = sdiList.Count().ToString() + " total docs";
-            //});
-
-            //object[] args = (object[])e.Argument;
-            //string rsltFilter = (string)args[0];
-            //int includeInListFromIdxNonInclusive = (int)args[1];
-            //string srchText = (string)args[2];
-            //string srchDocType = "";
-            //if (args.Length > 3)
-            //    srchDocType = (string)args[3];
-
-            //// Start filling list from the end
-            //int nEndIdx = includeInListFromIdxNonInclusive-1;
-            //if (nEndIdx >= sdiList.Count - 1)
-            //    nEndIdx = sdiList.Count - 1;
-            //int numFound = 0;
-            //int nDocIdx = nEndIdx;
-            //while (nDocIdx >= 0)
-            //{
-            //    // Check for cancel
-            //    if ((worker.CancellationPending == true))
-            //    {
-            //        e.Cancel = true;
-            //        break;
-            //    }
-
-            //    // Update status
-            //    if (srchText != "")
-            //        worker.ReportProgress((int)((nEndIdx-nDocIdx) * 100 / nEndIdx));
-            //    else
-            //        worker.ReportProgress((int)(numFound * 100 / MAX_NUM_DOCS_TO_ADD_TO_LIST));
-
-            //    // Get scan doc info and filed doc info
-            //    ScanDocInfo sdi = sdiList[nDocIdx];
-            //    FiledDocInfo fdi = _scanDocHandler.GetFiledDocInfo(sdi.uniqName);
-
-            //    // Filter out records that aren't interesting
-            //    bool bInclude = true;
-            //    switch (rsltFilter)
-            //    {
-            //        case "filed":
-            //        case "filedNotFound":
-            //        case "filedAutoLocate":
-            //        case "filedRemaining":
-            //            if (fdi == null)
-            //            {
-            //                bInclude = false;
-            //            }
-            //            else
-            //            {
-            //                if ((rsltFilter != "filedRemaining") && (fdi.filedAt_finalStatus != FiledDocInfo.DocFinalStatus.STATUS_FILED))
-            //                    bInclude = false;
-            //            }
-            //            break;
-            //        default:
-            //            break;
-            //    }
-            //    if (!bInclude)
-            //    {
-            //        nDocIdx--;
-            //        continue;
-            //    }
-
-            //    // Check it contains required text - if requested
-            //    if (srchText != "")
-            //    {
-            //        bInclude = false;
-            //        if ((fdi != null) && (fdi.filedAs_pathAndFileName != null) && (fdi.filedAs_pathAndFileName.Trim() != ""))
-            //        {
-            //            if (System.IO.Path.GetFileName(fdi.filedAs_pathAndFileName).ToLower().Contains(srchText.ToLower()))
-            //                bInclude = true;
-            //        }
-            //        if (!bInclude)
-            //        {
-            //            ScanPages scanPages = _scanDocHandler.GetScanPages(sdi.uniqName);
-            //            if ((scanPages != null) && (scanPages.ContainText(srchText)))
-            //                bInclude = true;
-            //        }
-            //        if (!bInclude)
-            //        {
-            //            nDocIdx--;
-            //            continue;
-            //        }
-            //    }
-
-            //    // Check it has the right type - if requested
-            //    if (srchDocType != "" && srchDocType != SRCH_DOC_TYPE_ANY)
-            //    {
-            //        if ((fdi != null) && (fdi.filedAs_docType != srchDocType))
-            //        {
-            //            nDocIdx--;
-            //            continue;
-            //        }
-            //    }
-
-            //    // Check if we are looking for filedRemaining (i.e. it has been filed (or deleted) but the original still exists on the scan machine)
-            //    if (rsltFilter == "filedRemaining")
-            //    {
-            //        if (!File.Exists(sdi.GetOrigFileNameWin()))
-            //        {
-            //            nDocIdx--;
-            //            continue;
-            //        }
-
-            //    }
-
-            //    // Show this record
-            //    AuditData audDat = new AuditData();
-            //    audDat.UniqName = sdi.uniqName;
-            //    string statStr = "Unfiled";
-            //    bool filedFileNotFound = false;
-            //    if (fdi != null)
-            //    {
-            //        statStr = FiledDocInfo.GetFinalStatusStr(fdi.filedAt_finalStatus);
-            //        statStr += " on " + fdi.filedAt_dateAndTime.ToShortDateString();
-            //        // Check if the file is where it was placed
-            //        if (fdi.filedAt_finalStatus == FiledDocInfo.DocFinalStatus.STATUS_FILED)
-            //        {
-            //            filedFileNotFound = true;
-            //            try
-            //            {
-            //                if (File.Exists(fdi.filedAs_pathAndFileName))
-            //                    filedFileNotFound = false;
-            //            }
-            //            catch
-            //            {
-
-            //            }
-            //        }
-            //    }
-
-            //    // Check special result filters
-            //    if ((fdi != null) && !filedFileNotFound && ((rsltFilter == "filedNotFound") || (rsltFilter == "filedAutoLocate")))
-            //    {
-            //        nDocIdx--;
-            //        continue;
-            //    }
-
-            //    audDat.FinalStatus = statStr;
-            //    audDat.FiledDocPresent = (fdi == null) ? "" : (filedFileNotFound ? "Not found" : "Ok");
-
-            //    audDat.DocTypeFiledAs = (fdi == null) ? "" : fdi.filedAs_docType;
-
-            //    // See if we can find a file which matches this one in the existing files database
-            //    string movedToFileName = "";
-            //    string archiveFileName = ScanDocHandler.GetArchiveFileName(sdi.uniqName);
-            //    if ((filedFileNotFound) && (File.Exists(archiveFileName)))
-            //    {
-            //        long fileLen = 0;
-            //        byte[] md5Val = ScanDocHandler.GenHashOnFileExcludingMetadata(archiveFileName, out fileLen);
-            //        List<ExistingFileInfoRec> efirList = _scanDocHandler.FindExistingFileRecsByHash(md5Val);
-            //        foreach (ExistingFileInfoRec efir in efirList)
-            //        {
-            //            // Check for a file length within 10% (metadata may have changed)
-            //            if ((fileLen > efir.fileLength * 9 / 10) && (fileLen < efir.fileLength * 11 / 10))
-            //            {
-            //                movedToFileName = efir.filename;
-            //                break;
-            //            }
-            //        }
-            //    }
-            //    audDat.MovedToFileName = movedToFileName;
-
-            //    // Check for auto locate
-            //    if ((fdi != null) && filedFileNotFound && (rsltFilter == "filedAutoLocate") && (movedToFileName != ""))
-            //    {
-            //        // Re-file at the new location
-            //        fdi.filedAs_pathAndFileName = movedToFileName;
-            //        _scanDocHandler.AddOrUpdateFiledDocRecInDb(fdi);
-            //        audDat.MovedToFileName = "FIXED " + movedToFileName;
-            //    }
-
-            //    // Check for Filed-Remaining (i.e. was not removed from scanning computer)
-            //    else if ((fdi != null) && (!filedFileNotFound) && (rsltFilter == "filedRemaining"))
-            //    {
-            //        //string rsltStr = ScanUtils.AttemptToDeleteFile(sdi.origFileName);
-            //        //                    audDat.MovedToFileName = "Original file delete attempt " + rsltStr;
-            //        if (sdi.GetOrigFileNameWin().ToLower().Contains("macallan"))
-            //        {
-            //            audDat.MovedToFileName = "Ignoring as this was filed from macallan - probably when PDF editor worked from there " + sdi.GetOrigFileNameWin();
-            //        }
-            //        else
-            //        {
-            //            if (fdi.filedAs_pathAndFileName == "")
-            //            {
-            //                audDat.MovedToFileName = "Going to delete as unfiled " + sdi.GetOrigFileNameWin();
-            //            }
-            //            else
-            //            {
-            //                long fileLen1 = 0;
-            //                long fileLen2 = 0;
-            //                byte[] md5Val1 = ScanDocHandler.GenHashOnFileExcludingMetadata(fdi.filedAs_pathAndFileName, out fileLen1);
-            //                byte[] md5Val2 = ScanDocHandler.GenHashOnFileExcludingMetadata(sdi.GetOrigFileNameWin(), out fileLen2);
-
-            //                if (md5Val1.SequenceEqual(md5Val2))
-            //                {
-            //                    audDat.MovedToFileName = "Deleted (same md5 as filed) " + sdi.GetOrigFileNameWin();
-            //                    try
-            //                    {
-            //                        File.Delete(sdi.GetOrigFileNameWin());
-            //                    }
-            //                    catch (Exception)
-            //                    {
-            //                        logger.Error("Failed to delete %s", sdi.GetOrigFileNameWin());
-            //                    }
-            //                }
-            //                else if ((fileLen1 > fileLen2 * 9 / 10) && (fileLen1 < fileLen2 * 11 / 10))
-            //                {
-            //                    audDat.MovedToFileName = "Probably same (filed " + fileLen1.ToString() + "/orig " + fileLen2.ToString() + ")" + sdi.GetOrigFileNameWin();
-            //                }
-            //                else
-            //                {
-            //                    audDat.MovedToFileName = "File differs frm that filed (filed " + fileLen1.ToString() + "/orig " + fileLen2.ToString() + ")" + sdi.GetOrigFileNameWin();
-            //                }
-            //            }
-            //        }
-            //    }
-
-            //    // Add to the audit data collection
-            //    this.Dispatcher.BeginInvoke((Action)delegate()
-            //        {
-            //            _auditDataColl.Add(audDat);
-            //        });
-
-            //    numFound++;
-            //    if (numFound >= MAX_NUM_DOCS_TO_ADD_TO_LIST)
-            //        break;
-            //    nDocIdx--;
-            //}
-            //e.Result = "Ok";
-            //this.Dispatcher.BeginInvoke((Action)delegate()
-            //{
-            //    txtStart.Text = (nDocIdx).ToString();
-            //});
         }
 
         private void PopulateList_ProgressChanged(object sender, ProgressChangedEventArgs e)
@@ -603,11 +236,6 @@ namespace ScanMonitorApp
 
         private void PopulateList_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            //progBar.Value = (100);
-            //btnGo.Content = "Latest";
-            //btnNext.IsEnabled = true;
-            //btnSearch.IsEnabled = true;
-
             // Handle results
             if (e.Error != null)
             {
@@ -623,89 +251,25 @@ namespace ScanMonitorApp
             }
             else
             {
-                // Successful search
-                //_lastSearchResult = (IFindFluent<ScanPages, ScanPages>)e.Result;
-                //this.Dispatcher.BeginInvoke((Action)delegate ()
-                //{
-                //    lblListStatus.Content = _lastSearchResult.CountDocuments().ToString() + " scans found";
-                //});
-                progBar.Value = (70);
-
-                // Clear list
-                _auditDataColl.Clear();
-
-                // Parse records
-                List<ComboEntity> rslt = (List<ComboEntity>)e.Result;
-                foreach (var rec in rslt)
+                // Update status text
+                int startDocNum = _resultListCurSkip + 1;
+                int numDocsShown = MAX_NUM_DOCS_TO_ADD_TO_LIST;
+                if (numDocsShown > _resultListCount)
+                    numDocsShown = _resultListCount;
+                int endDocNum = _resultListCurSkip + numDocsShown;
+                lblListStatus.Content = _resultListCount.ToString() + " found";
+                if (numDocsShown > 0)
                 {
-                    var auditData = new AuditData();
-
-                    // Get uniqName
-                    string uniqName = rec.uniqName;
-                    auditData.UniqName = uniqName;
-
-                    // Get filed info
-                    if (rec.filedInfo.Count() > 0)
-                    {
-                        FiledDocInfo fdi = rec.filedInfo.First();
-                        auditData.DocTypeFiledAs = fdi.filedAs_docType;
-                        auditData.FinalStatus = FiledDocInfo.GetFinalStatusStr(fdi.filedAt_finalStatus);
-                        //var filedInfo = rec.GetValue("FiledInfo").AsBsonArray;
-                        //foreach (var infoVal in filedInfo)
-                        //{
-                        //    BsonValue finalStatus;
-                        //    if (infoVal.AsBsonDocument.TryGetValue("filedAt_finalStatus", out finalStatus))
-                        //    {
-                        //        auditData.FinalStatus = FiledDocInfo.GetFinalStatusStr((FiledDocInfo.DocFinalStatus)finalStatus.AsInt32);
-                        //        ////statStr += " on " + fdi.filedAt_dateAndTime.ToShortDateString();
-                        //    }
-                        //}
-                    }
-
-                    //List<BsonDocument> rslt = (List<BsonDocument>)e.Result;
-                    //foreach (var rec in rslt)
-                    //{
-                    //    var auditData = new AuditData();
-
-                    //    // Get uniqName
-                    //    string uniqName = rec.GetValue("uniqName").AsString;
-                    //    auditData.UniqName = uniqName;
-
-                    //    // Get filed info
-                    //    if (rec.GetValue("FiledInfo").IsBsonArray)
-                    //    {
-                    //        var filedInfo = rec.GetValue("FiledInfo").AsBsonArray;
-                    //        foreach (var infoVal in filedInfo)
-                    //        {
-                    //            BsonValue finalStatus;
-                    //            if (infoVal.AsBsonDocument.TryGetValue("filedAt_finalStatus", out finalStatus))
-                    //            {
-                    //                auditData.FinalStatus = FiledDocInfo.GetFinalStatusStr((FiledDocInfo.DocFinalStatus) finalStatus.AsInt32);
-                    //                ////statStr += " on " + fdi.filedAt_dateAndTime.ToShortDateString();
-                    //            }
-                    //        }
-                    //    }
-
-
-                    //var dict = rec.ToDictionary();
-
-                    //// UniqName
-                    //object retVal = new object();
-                    //if (dict.TryGetValue("uniqName", out retVal))
-                    //    auditData.UniqName = (string)retVal;
-
-                    //// Filing info
-                    //object filedInfo = new object();
-                    //if (dict.TryGetValue("FiledInfo", out filedInfo))
-                    //    Console.WriteLine("FiledInfo {0}", filedInfo.ToString());
-
-                    ////string statStr = FiledDocInfo.GetFinalStatusStr();
-                    ////statStr += " on " + fdi.filedAt_dateAndTime.ToShortDateString();
-                    _auditDataColl.Add(auditData);
+                    lblListStatus.Content += ", showing " + startDocNum.ToString() + " to " + endDocNum.ToString();
                 }
+
+                // List contents returned
+                List<AuditData> rslt = (List<AuditData>)e.Result;
+                AuditDataColl.Clear();
+                foreach (var el in rslt)
+                    AuditDataColl.Add(el);
                 progBar.Value = (100);
             }
-
             EnableSearchButtons(true);
         }
 
@@ -730,7 +294,7 @@ namespace ScanMonitorApp
 
                     // Doc info
                     ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(selectedRow.UniqName);
-                    
+
                     btnOpenFiled.IsEnabled = (scanDocAllInfo.filedDocInfo != null) && (scanDocAllInfo.filedDocInfo.filedAt_finalStatus == FiledDocInfo.DocFinalStatus.STATUS_FILED);
 
                     txtScanDocInfo.Text = ScanDocHandler.GetScanDocInfoText(scanDocAllInfo.scanDocInfo);
@@ -752,40 +316,6 @@ namespace ScanMonitorApp
                     }
                     txtPageText.Text = pagesStr;
                     txtPageText.IsReadOnly = true;
-
-                    //// Get doc type info
-                    //DocType dtype = _docTypesMatcher.GetDocType(selectedRow.DocType);
-                    //if (dtype != null)
-                    //{
-                    //    txtOrigDocTypeName.Text = dtype.docTypeName;
-                    //    txtOrigExpression.Text = dtype.matchExpression;
-                    //}
-
-                    //ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(selectedRow.UniqName);
-                    //txtNewDocTypeName.Text = scanDocAllInfo.scanDocInfo.docTypeMatchResult.docTypeName + "(" + scanDocAllInfo.scanDocInfo.docTypeMatchResult.matchCertaintyPercent.ToString() + "%)";
-                    //DocType dtype2 = _docTypesMatcher.GetDocType(scanDocAllInfo.scanDocInfo.docTypeMatchResult.docTypeName);
-                    //if (dtype2 != null)
-                    //{
-                    //    txtNewExpression.Text = dtype2.matchExpression;
-                    //}
-
-                    // Get file name
-                    //string fileName = selectedRow.ArchiveFile;
-                    //if (File.Exists(fileName))
-                    //{
-                    //    string imgName = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(selectedRow.ArchiveFile), System.IO.Path.GetFileNameWithoutExtension(selectedRow.ArchiveFile) + ".jpg");
-                    //    if (File.Exists(imgName))
-                    //        auditFileImage.Source = new BitmapImage(new Uri(imgName));
-
-                        //System.Drawing.Image img = PdfRasterizer.GetImageOfPage(fileName, 1);
-                        //MemoryStream ms = new MemoryStream();
-                        //img.Save(ms, System.Drawing.Imaging.ImageFormat.Jpeg);
-                        //System.Windows.Media.Imaging.BitmapImage bImg = new System.Windows.Media.Imaging.BitmapImage();
-                        //bImg.BeginInit();
-                        //bImg.StreamSource = new MemoryStream(ms.ToArray());
-                        //bImg.EndInit();
-                        //auditFileImage.Source = bImg;
-                    // }
                 }
             }
         }
@@ -805,7 +335,7 @@ namespace ScanMonitorApp
             }
 
             // Clear list
-            _auditDataColl.Clear();
+            AuditDataColl.Clear();
 
             //int startVal = 100000000;
             //if (!_bwThreadForPopulateList.IsBusy)
@@ -821,7 +351,7 @@ namespace ScanMonitorApp
         private void btnNext_Click(object sender, RoutedEventArgs e)
         {
             // Clear list
-            _auditDataColl.Clear();
+            AuditDataColl.Clear();
 
             //int startVal = 100000000;
             //Int32.TryParse(txtStart.Text, out startVal);
@@ -852,7 +382,7 @@ namespace ScanMonitorApp
             if (selectedRow != null)
             {
                 string uniqName = selectedRow.UniqName;
-//                string imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, uniqName, 1, false);
+                //                string imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, uniqName, 1, false);
                 string archiveFileName = ScanDocHandler.GetArchiveFileName(uniqName);
                 try
                 {
@@ -1038,33 +568,100 @@ namespace ScanMonitorApp
 
         private void auditFileImage_Loaded(object sender, RoutedEventArgs e)
         {
-            
+
         }
 
         private void btnListFirst_Click(object sender, RoutedEventArgs e)
         {
-
+            if (_resultListCurSkip == 0)
+                return;
+            _resultListCurSkip = 0;
+            _resultListNumToShow = MAX_NUM_DOCS_TO_ADD_TO_LIST;
+            PopulateSearchList();
         }
 
         private void btnListLast_Click(object sender, RoutedEventArgs e)
         {
-
+            int curSkip = _resultListCount - MAX_NUM_DOCS_TO_ADD_TO_LIST;
+            if (curSkip < 0)
+                curSkip = 0;
+            if (curSkip == _resultListCurSkip)
+                return;
+            _resultListCurSkip = curSkip;
+            _resultListNumToShow = MAX_NUM_DOCS_TO_ADD_TO_LIST;
+            PopulateSearchList();
         }
 
         private void btnListPrev_Click(object sender, RoutedEventArgs e)
         {
-
+            int curSkip = _resultListCurSkip - MAX_NUM_DOCS_TO_ADD_TO_LIST;
+            if (curSkip < 0)
+                curSkip = 0;
+            if (curSkip == _resultListCurSkip)
+                return;
+            _resultListCurSkip = curSkip;
+            _resultListNumToShow = MAX_NUM_DOCS_TO_ADD_TO_LIST;
+            PopulateSearchList();
         }
 
         private void btnListNext_Click(object sender, RoutedEventArgs e)
         {
+            int curSkip = _resultListCurSkip + MAX_NUM_DOCS_TO_ADD_TO_LIST;
+            if (_resultListCount - curSkip < MAX_NUM_DOCS_TO_ADD_TO_LIST)
+                curSkip = _resultListCount - MAX_NUM_DOCS_TO_ADD_TO_LIST;
+            if (curSkip < 0)
+                curSkip = 0;
+            if (curSkip == _resultListCurSkip)
+                return;
+            _resultListCurSkip = curSkip;
+            _resultListNumToShow = MAX_NUM_DOCS_TO_ADD_TO_LIST;
+            PopulateSearchList();
+        }
 
+        private void txtSearch_KeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                // Start search
+                string srchText = txtSearch.Text;
+                if (!_bwThreadForSearch.IsBusy)
+                {
+                    EnableSearchButtons(false);
+                    object[] args = { srchText };
+                    _bwThreadForSearch.RunWorkerAsync(args);
+                }
+            }
+        }
+
+        private void EnableSearchButtons(bool en)
+        {
+            listNavGrid.IsEnabled = en;
+            btnSearch.IsEnabled = en;
+        }
+
+        private void PopulateSearchList()
+        {
+            if (_bwThreadForPopulateList.IsBusy)
+            {
+                _bwThreadForPopulateList.CancelAsync();
+                // Allow worker to stop
+                Thread.Sleep(100);
+            }
+
+            // Start populating list
+            string srchText = txtSearch.Text;
+            if (!_bwThreadForPopulateList.IsBusy)
+            {
+                object[] args = { _lastSearchResult, _resultListCurSkip, _resultListNumToShow };
+                _bwThreadForPopulateList.RunWorkerAsync(args);
+            }
+            progBar.Value = (30);
         }
     }
 
     public class AuditData
     {
-        public string UniqName {get; set;}
+        public string UniqName { get; set; }
         public string FinalStatus { get; set; }
         public string FiledDocPresent { get; set; }
         public string MovedToFileName { get; set; }

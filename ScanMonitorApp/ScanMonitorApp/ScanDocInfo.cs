@@ -308,4 +308,16 @@ namespace ScanMonitorApp
         public string _emailPassword;
     }
 
+    public class ScanCombinedInfo
+    {
+        public ObjectId id;
+        public string uniqName { get; set; }
+        public int numPages { get; set; }
+        public int numPagesWithText { get; set; }
+        public DateTime createDate { get; set; }
+        public string origFileName { get; set; }
+        public bool flagForHelpFiling { get; set; }
+        public IEnumerable<FiledDocInfo> filedInfo;
+    };
+
 }
