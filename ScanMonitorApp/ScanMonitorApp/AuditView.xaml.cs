@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.ServiceModel.Configuration;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -138,18 +139,18 @@ namespace ScanMonitorApp
 
         private void Search_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            EnableSearchButtons(true);
-
             // Handle results
             if (e.Error != null)
             {
                 // Exception
                 logger.Error("Search error {0}", e.Error.Message);
+                progBar.Value = (0);
             }
             else if (e.Cancelled)
             {
                 // Cancelled
                 logger.Info("Search cancelled");
+                progBar.Value = (0);
             }
             else
             {
@@ -180,6 +181,7 @@ namespace ScanMonitorApp
                     object[] args = { _lastSearchResult, _resultListCurSkip, _resultListNumToShow };
                     _bwThreadForPopulateList.RunWorkerAsync(args);
                 }
+                progBar.Value = (30);
             }
         }
 
@@ -188,6 +190,18 @@ namespace ScanMonitorApp
             listNavGrid.IsEnabled = en;
             btnSearch.IsEnabled = en;
         }
+
+        public class ComboEntity
+        {
+            public ObjectId id;
+            public string uniqName { get; set; }
+            public int numPages { get; set; }
+            public int numPagesWithText { get; set; }
+            public DateTime createDate { get; set; }
+            public string origFileName { get; set; }
+            public bool flagForHelpFiling { get; set; }
+            public IEnumerable<FiledDocInfo> filedInfo;
+        };
 
         private void PopulateList_DoWork(object sender, DoWorkEventArgs e)
         {
@@ -200,10 +214,46 @@ namespace ScanMonitorApp
             int numToSkip = (int)args[1];
             int numToShow = (int)args[2];
 
+            // Get range for list box
+            List<string> foundUniqNames = new List<string>();
+            foreach (var findRslt in rsltCursor.Skip(numToSkip).Limit(numToShow).ToEnumerable<ScanPages>())
+            {
+                //Console.WriteLine(findRslt.uniqName);
+                foundUniqNames.Add(findRslt.uniqName);
+            }
+
+            //var resultSet = new BsonDocument[]
+            //{
+            //    new BsonDocument{
+            //        { "uniqName",
+            //            new BsonDocument{
+            //                {
+            //                    "$in",
+            //                    rsltCursor
+            //                }
+            //            }
+            //        }
+            //    },
+            //};
+
             // Join
             try
             {
+
                 var coll = _scanDocHandler.GetDocInfoCollection();
+                var filedDocColl = _scanDocHandler.GetFiledDocsCollection();
+
+                var result = coll.Aggregate()
+                    .Match(p => foundUniqNames.Contains(p.uniqName))
+                    .Lookup(
+                        foreignCollection: filedDocColl,
+                        localField: q => q.uniqName,
+                        foreignField: f => f.uniqName,
+                        @as: (ComboEntity eo) => eo.filedInfo
+                    )
+                    //.Project(p => new { p.id, p.name, other = p.others.First() })
+                    //.Sort(new BsonDocument("other.name", -1))
+                    .ToList();
 
                 //var pipeline2 = new BsonDocument[]
                 //{
@@ -238,31 +288,51 @@ namespace ScanMonitorApp
                 //logger.Debug("pipe {0}", pipeline.ToJson());
                 //logger.Debug("result of aggregate {0}", result.Count);
 
-                var pipeline = new BsonDocument[]
-                {
-                        new BsonDocument{
-                            { "$lookup",
-                                new BsonDocument{
-                                        { "from", "FiledDocInfo" },
-                                        { "localField", "uniqName" },
-                                        { "foreignField", "uniqName" },
-                                        { "as", "FiledInfo" }
-                                    }
-                            }
-                        },
-                        new BsonDocument{
-                            { "$skip", numToSkip
-                            }
-                        },
-                        new BsonDocument{
-                            { "$limit", numToShow
-                            }
-                        }
-                };
-                var result = coll.Aggregate<BsonDocument>(pipeline).ToList();
-                logger.Debug("pipe {0}", pipeline.ToJson());
-                logger.Debug("result of aggregate {0}", result.Count);
+                //var pipeline = new BsonDocument[]
+                //{
+                //        //new BsonDocument
+                //        //{
+                //        //    { "$match",
+                //        //        new BsonDocument
+                //        //        {
+                //        //            { "$expr",
+                //        //                new BsonDocument
+                //        //                {
+                //        //                    {
+                //        //                        "$in",
+                //        //                        new BsonDocument("uniqName", new BsonArray(foundUniqNames))
+                //        //                    }
+                //        //                }
+                //        //            }
+                //        //        }
+                //        //    }
+                //        //},
+                //        new BsonDocument{
+                //            { "$lookup",
+                //                new BsonDocument{
+                //                        { "from", "FiledDocInfo" },
+                //                        { "localField", "uniqName" },
+                //                        { "foreignField", "uniqName" },
+                //                        { "as", "FiledInfo" }
+                //                    }
+                //            }
+                //        },
+                //        new BsonDocument{
+                //            { "$skip", numToSkip
+                //            }
+                //        },
+                //        new BsonDocument{
+                //            { "$limit", numToShow
+                //            }
+                //        }
+                //};
+                //logger.Debug("pipe {0}", pipeline.ToJson());
+                //var result = coll.Aggregate<BsonDocument>(pipeline).ToList();
+                //logger.Debug("result of aggregate {0}", result.Count);
 
+                e.Result = result;
+
+                // Create 
                 //var match = new BsonDocument
                 //{
                 //    {
@@ -533,10 +603,110 @@ namespace ScanMonitorApp
 
         private void PopulateList_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            progBar.Value = (100);
-            btnGo.Content = "Latest";
-            btnNext.IsEnabled = true;
-            btnSearch.IsEnabled = true;
+            //progBar.Value = (100);
+            //btnGo.Content = "Latest";
+            //btnNext.IsEnabled = true;
+            //btnSearch.IsEnabled = true;
+
+            // Handle results
+            if (e.Error != null)
+            {
+                // Exception
+                logger.Error("Populate error {0}", e.Error.Message);
+                progBar.Value = (0);
+            }
+            else if (e.Cancelled)
+            {
+                // Cancelled
+                logger.Info("Populate cancelled");
+                progBar.Value = (0);
+            }
+            else
+            {
+                // Successful search
+                //_lastSearchResult = (IFindFluent<ScanPages, ScanPages>)e.Result;
+                //this.Dispatcher.BeginInvoke((Action)delegate ()
+                //{
+                //    lblListStatus.Content = _lastSearchResult.CountDocuments().ToString() + " scans found";
+                //});
+                progBar.Value = (70);
+
+                // Clear list
+                _auditDataColl.Clear();
+
+                // Parse records
+                List<ComboEntity> rslt = (List<ComboEntity>)e.Result;
+                foreach (var rec in rslt)
+                {
+                    var auditData = new AuditData();
+
+                    // Get uniqName
+                    string uniqName = rec.uniqName;
+                    auditData.UniqName = uniqName;
+
+                    // Get filed info
+                    if (rec.filedInfo.Count() > 0)
+                    {
+                        FiledDocInfo fdi = rec.filedInfo.First();
+                        auditData.DocTypeFiledAs = fdi.filedAs_docType;
+                        auditData.FinalStatus = FiledDocInfo.GetFinalStatusStr(fdi.filedAt_finalStatus);
+                        //var filedInfo = rec.GetValue("FiledInfo").AsBsonArray;
+                        //foreach (var infoVal in filedInfo)
+                        //{
+                        //    BsonValue finalStatus;
+                        //    if (infoVal.AsBsonDocument.TryGetValue("filedAt_finalStatus", out finalStatus))
+                        //    {
+                        //        auditData.FinalStatus = FiledDocInfo.GetFinalStatusStr((FiledDocInfo.DocFinalStatus)finalStatus.AsInt32);
+                        //        ////statStr += " on " + fdi.filedAt_dateAndTime.ToShortDateString();
+                        //    }
+                        //}
+                    }
+
+                    //List<BsonDocument> rslt = (List<BsonDocument>)e.Result;
+                    //foreach (var rec in rslt)
+                    //{
+                    //    var auditData = new AuditData();
+
+                    //    // Get uniqName
+                    //    string uniqName = rec.GetValue("uniqName").AsString;
+                    //    auditData.UniqName = uniqName;
+
+                    //    // Get filed info
+                    //    if (rec.GetValue("FiledInfo").IsBsonArray)
+                    //    {
+                    //        var filedInfo = rec.GetValue("FiledInfo").AsBsonArray;
+                    //        foreach (var infoVal in filedInfo)
+                    //        {
+                    //            BsonValue finalStatus;
+                    //            if (infoVal.AsBsonDocument.TryGetValue("filedAt_finalStatus", out finalStatus))
+                    //            {
+                    //                auditData.FinalStatus = FiledDocInfo.GetFinalStatusStr((FiledDocInfo.DocFinalStatus) finalStatus.AsInt32);
+                    //                ////statStr += " on " + fdi.filedAt_dateAndTime.ToShortDateString();
+                    //            }
+                    //        }
+                    //    }
+
+
+                    //var dict = rec.ToDictionary();
+
+                    //// UniqName
+                    //object retVal = new object();
+                    //if (dict.TryGetValue("uniqName", out retVal))
+                    //    auditData.UniqName = (string)retVal;
+
+                    //// Filing info
+                    //object filedInfo = new object();
+                    //if (dict.TryGetValue("FiledInfo", out filedInfo))
+                    //    Console.WriteLine("FiledInfo {0}", filedInfo.ToString());
+
+                    ////string statStr = FiledDocInfo.GetFinalStatusStr();
+                    ////statStr += " on " + fdi.filedAt_dateAndTime.ToShortDateString();
+                    _auditDataColl.Add(auditData);
+                }
+                progBar.Value = (100);
+            }
+
+            EnableSearchButtons(true);
         }
 
         private void auditListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -709,9 +879,6 @@ namespace ScanMonitorApp
 
         private void btnSearch_Click(object sender, RoutedEventArgs e)
         {
-            // Clear list
-            _auditDataColl.Clear();
-
             // Start search
             string srchText = txtSearch.Text;
             if (!_bwThreadForSearch.IsBusy)
