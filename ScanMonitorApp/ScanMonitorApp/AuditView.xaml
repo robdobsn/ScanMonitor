@@ -1,19 +1,21 @@
 ﻿<Window x:Class="ScanMonitorApp.AuditView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="AuditView" Height="738.474" Width="1276.765" Loaded="Window_Loaded" Closed="Window_Closed"
+        Title="SearchView" Height="738.474" Width="1276.765" Loaded="Window_Loaded" Closed="Window_Closed"
         >
     <Grid RenderTransformOrigin="0.498,0.734">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition />
-            <ColumnDefinition />
+            <ColumnDefinition Width="63*" />
+            <ColumnDefinition Width="572*"/>
+            <ColumnDefinition Width="634*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="56"/>
             <RowDefinition Height="91*"/>
+            <RowDefinition Height="30"/>
             <RowDefinition Height="237*" />
         </Grid.RowDefinitions>
-        <ListView x:Name="auditListView" Margin="1,0,10,1" SelectionChanged="auditListView_SelectionChanged" Grid.Row="1" Grid.Column="0">
+        <ListView x:Name="auditListView" Margin="1,0,10,1" SelectionChanged="auditListView_SelectionChanged" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="Uniq Name" DisplayMemberBinding="{Binding UniqName}"/>
@@ -29,10 +31,41 @@
                 </ContextMenu>
             </ListView.ContextMenu>
         </ListView>
-        <GridSplitter Grid.Column="1" Margin="0,0,413,0" Width="0"/>
-        <Image x:Name="auditFileImage" Margin="5,1,10,1" Grid.Column="1" Grid.Row="1" Grid.RowSpan="2" Loaded="auditFileImage_Loaded"/>
-        <GridSplitter Grid.Column="1" Margin="0,0,413,0" Width="0"/>
-        <Grid x:Name="auditFileInfoGrid" Margin="10,10,10,0" Grid.Column="0" Grid.Row="2">
+        <Grid x:Name="listNavGrid" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2">
+            <Grid.Resources>
+                <Style x:Key="{x:Type Label}" BasedOn="{StaticResource {x:Type Label}}" TargetType="Label">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Label">
+                                <Border>
+                                    <ContentPresenter
+                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                  RecognizesAccessKey="False" />
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Grid.Resources>
+            <Button x:Name="btnListFirst" VerticalAlignment="Top" HorizontalAlignment="Left" Height="20" Width="60" FontSize="16" Margin="11,3,0,0" Click="btnListFirst_Click" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.chevron.leftleft.png" Margin="0"></Image>
+            </Button>
+            <Button x:Name="btnListPrev" VerticalAlignment="Top" HorizontalAlignment="Left" Height="20" Width="60" FontSize="16" Margin="84,3,0,0" Click="btnListPrev_Click" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.chevron.left.png" Margin="0"></Image>
+            </Button>
+            <Button x:Name="btnListNext" VerticalAlignment="Top" HorizontalAlignment="Left" Height="20" Width="60" FontSize="16" Margin="157,3,0,0" Click="btnListNext_Click" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.chevron.right.png" Margin="0"></Image>
+            </Button>
+            <Button x:Name="btnListLast" VerticalAlignment="Top" HorizontalAlignment="Left" Height="20" Width="60" FontSize="16" Margin="229,3,0,0" Click="btnListLast_Click" Style="{DynamicResource SquareButtonStyle}">
+                <Image Source="res/appbar.chevron.rightright.png" Margin="0"></Image>
+            </Button>
+            <Label x:Name="lblListStatus" Content="" Margin="312,3,6,2" FontSize="20" Background="#FFF2F2F2"/>
+        </Grid>
+        <GridSplitter Grid.Column="2" Margin="0,0,413,0" Width="0"/>
+        <Image x:Name="auditFileImage" Margin="5,1,10,1" Grid.Column="2" Grid.Row="1" Grid.RowSpan="3" Loaded="auditFileImage_Loaded"/>
+        <GridSplitter Grid.Column="2" Margin="0,0,413,0" Width="0"/>
+        <Grid x:Name="auditFileInfoGrid" Margin="10,10,10,0" Grid.Column="0" Grid.Row="3" Grid.ColumnSpan="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="69*"/>
                 <ColumnDefinition Width="596*"/>
@@ -47,8 +80,8 @@
             <Button x:Name="btnOpenArchive" Content="Archive" HorizontalAlignment="Left" Height="31" Margin="1,67,0,0" VerticalAlignment="Top" Width="78" Click="btnOpenArchive_Click" Grid.ColumnSpan="2"/>
             <Button x:Name="btnOpenFiled" Content="Filed" HorizontalAlignment="Left" Height="31" Margin="1,134,0,0" VerticalAlignment="Top" Width="78" Click="btnOpenFiled_Click" Grid.ColumnSpan="2"/>
         </Grid>
-        <Grid x:Name="controlButtonsGrid" Margin="0,0,0,0" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2">
-            <ComboBox x:Name="comboListView" HorizontalAlignment="Left" Height="30" Margin="10,11,0,0" VerticalAlignment="Top" Width="117" SelectedIndex="0">
+        <Grid x:Name="controlButtonsGrid" Margin="0,0,0,0" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3">
+            <ComboBox x:Name="comboListView" HorizontalAlignment="Left" Height="30" Margin="933,-8,0,0" VerticalAlignment="Top" Width="117" SelectedIndex="0">
                 <ComboBoxItem Tag="filed">Filed</ComboBoxItem>
                 <ComboBoxItem Tag="filedNotFound">Filed-NotFound</ComboBoxItem>
                 <ComboBoxItem Tag="filedAutoLocate">Filed-AutoLocate</ComboBoxItem>
@@ -56,14 +89,14 @@
                 <ComboBoxItem Tag="NotInDb">Not In Database</ComboBoxItem>
                 <ComboBoxItem Tag="all">All</ComboBoxItem>
             </ComboBox>
-            <Label x:Name="lblTotalsInfo" Content="" HorizontalAlignment="Left" Height="31" Margin="132,10,0,0" VerticalAlignment="Top" Width="197"/>
-            <TextBox x:Name="txtStart" HorizontalAlignment="Left" Height="31" Margin="396,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="56"/>
-            <Button x:Name="btnGo" Content="Latest" HorizontalAlignment="Left" Height="31" Margin="334,11,0,0" VerticalAlignment="Top" Width="57" Click="btnGo_Click"/>
+            <Label x:Name="lblTotalsInfo" Content="" HorizontalAlignment="Left" Height="31" Margin="709,-8,0,0" VerticalAlignment="Top" Width="197"/>
+            <TextBox x:Name="txtStart" HorizontalAlignment="Left" Height="31" Margin="733,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="56"/>
+            <Button x:Name="btnGo" Content="Latest" HorizontalAlignment="Left" Height="31" Margin="671,11,0,0" VerticalAlignment="Top" Width="57" Click="btnGo_Click"/>
             <ProgressBar x:Name="progBar" HorizontalAlignment="Stretch" Height="8" Margin="137,46,0,0" VerticalAlignment="Top"/>
-            <Button x:Name="btnNext" Content="Next" HorizontalAlignment="Left" Height="31" Margin="457,10,0,0" VerticalAlignment="Top" Width="57" Click="btnNext_Click"/>
-            <TextBox x:Name="txtSearch" Height="31" Margin="594,10,408,0" TextWrapping="Wrap" VerticalAlignment="Top"/>
-            <Button x:Name="btnSearch" Content="Search" HorizontalAlignment="Right" Height="31" Margin="0,9,10,0" VerticalAlignment="Top" Width="57" Click="btnSearch_Click" Grid.Column="0"/>
-            <Label Content="Search Text" HorizontalAlignment="Left" Margin="519,12,0,0" VerticalAlignment="Top"/>
+            <Button x:Name="btnNext" Content="Next" HorizontalAlignment="Left" Height="31" Margin="794,10,0,0" VerticalAlignment="Top" Width="57" Click="btnNext_Click"/>
+            <TextBox x:Name="txtSearch" Height="31" Margin="46,9,956,0" TextWrapping="Wrap" VerticalAlignment="Top"/>
+            <Button x:Name="btnSearch" Content="Search" HorizontalAlignment="Right" Height="31" Margin="0,10,878,0" VerticalAlignment="Top" Width="57" Click="btnSearch_Click" Grid.Column="0"/>
+            <Label Content="Text" HorizontalAlignment="Left" Margin="10,9,0,0" VerticalAlignment="Top"/>
             <Button x:Name="btnDocTypeSel" Content="Filed Type" Height="28" Margin="0,9,341,0" VerticalAlignment="Top" HorizontalContentAlignment="Left" Click="btnDocTypeSel_Click" HorizontalAlignment="Right" Width="62">
                 <Button.ContextMenu>
                     <ContextMenu x:Name="btnDocTypeSelContextMenu" HorizontalAlignment="Right">

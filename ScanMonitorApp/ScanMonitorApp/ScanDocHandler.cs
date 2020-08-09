@@ -110,6 +110,8 @@ namespace ScanMonitorApp
             IMongoCollection<ScanPages> collection_spages = GetDocPagesCollection();
             var scanPagesmodel = new CreateIndexModel<ScanPages>(Builders<ScanPages>.IndexKeys.Ascending("uniqName"), new CreateIndexOptions<ScanPages> { Unique = true });
             collection_spages.Indexes.CreateOneAsync(scanPagesmodel);
+            var scanTextModel = new CreateIndexModel<ScanPages>(Builders<ScanPages>.IndexKeys.Ascending("scanPagesText"), new CreateIndexOptions<ScanPages> { Unique = false });
+            collection_spages.Indexes.CreateOneAsync(scanTextModel);
             IMongoCollection<FiledDocInfo> collection_fdinfo = GetFiledDocsCollection();
             var filedDocmodel = new CreateIndexModel<FiledDocInfo>(Builders<FiledDocInfo>.IndexKeys.Ascending("uniqName"), new CreateIndexOptions<FiledDocInfo> { Unique = true });
             collection_fdinfo.Indexes.CreateOneAsync(filedDocmodel);
@@ -395,7 +397,7 @@ namespace ScanMonitorApp
 
     #region ScanDocPages Collection Handling
 
-    private IMongoCollection<ScanPages> GetDocPagesCollection()
+        public IMongoCollection<ScanPages> GetDocPagesCollection()
         {
             var database = _dbClient.GetDatabase(_scanConfig._dbNameForDocs); // the name of the database
             return database.GetCollection<ScanPages>(_scanConfig._dbCollectionForDocPages);

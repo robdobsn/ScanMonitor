@@ -401,7 +401,7 @@
     <Resource Include="res\appbar.delete.red.png" />
     <Resource Include="res\appbar.folder.open.add.png" />
     <Resource Include="res\appbar.folder.open.png" />
-    <Resource Include="res\appbar.magnify.add.png" />
+    <Resource Include="res\appbar.search.png" />
     <Resource Include="res\appbar.save.multiple.png" />
     <Resource Include="res\appbar.save.png" />
     <Resource Include="res\appbar.save.replace.png" />

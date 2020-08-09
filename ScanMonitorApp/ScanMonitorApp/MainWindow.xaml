@@ -7,13 +7,13 @@
         <Button x:Name="btnFilingView" Grid.Column="0" FontSize="16" Style="{DynamicResource SquareButtonStyle}" Click="butViewScanFiling_Click" Margin="10,10,408,0" Height="69" VerticalAlignment="Top">
             <StackPanel>
                 <Image Source="res/appbar.folder.png" Margin="3" Height="26" Width="54"/>
-                <TextBlock HorizontalAlignment="Center" Text="Scan Filing"/>
+                <TextBlock HorizontalAlignment="Center" Text="Filing"/>
             </StackPanel>
         </Button>
         <Button x:Name="btnAuditTrail" FontSize="16" Click="butViewAuditData_Click" Style="{DynamicResource SquareButtonStyle}" Margin="111,10,307,0" Height="69" VerticalAlignment="Top">
             <StackPanel>
-                <Image Source="res/appbar.list.gear.png" Margin="3" Height="29" Width="54"/>
-                <TextBlock HorizontalAlignment="Center"><Run Text="Audit"/></TextBlock>
+                <Image Source="res/appbar.search.png" Margin="3" Height="29" Width="54"/>
+                <TextBlock HorizontalAlignment="Center"><Run Text="Search"/></TextBlock>
             </StackPanel>
         </Button>
         <Button x:Name="btnSettings"  FontSize="16" Style="{DynamicResource SquareButtonStyle}" Click="btnSettings_Click" Margin="212,10,206,0" Height="69" VerticalAlignment="Top">

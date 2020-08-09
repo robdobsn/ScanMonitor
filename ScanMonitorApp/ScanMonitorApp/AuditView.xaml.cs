@@ -1,4 +1,6 @@
 ﻿using Microsoft.WindowsAPICodePack.Dialogs;
+using MongoDB.Bson;
+using MongoDB.Driver;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -8,8 +10,10 @@ using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -31,10 +35,14 @@ namespace ScanMonitorApp
         ObservableCollection<AuditData> _auditDataColl = new ObservableCollection<AuditData>();
         private ScanDocHandler _scanDocHandler;
         private DocTypesMatcher _docTypesMatcher;
-        BackgroundWorker _bwThreadForPopulateList;
-        const int MAX_NUM_DOCS_TO_ADD_TO_LIST = 500;
+        private BackgroundWorker _bwThreadForPopulateList;
+        private BackgroundWorker _bwThreadForSearch;
+        const int MAX_NUM_DOCS_TO_ADD_TO_LIST = 100;
         const string SRCH_DOC_TYPE_ANY = "<<<ANY>>>";
         private WindowClosingDelegate _windowClosingCB;
+        private IFindFluent<ScanPages, ScanPages> _lastSearchResult = null;
+        private int _resultListCurSkip = 0;
+        private int _resultListNumToShow = MAX_NUM_DOCS_TO_ADD_TO_LIST;
 
         public AuditView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher, WindowClosingDelegate windowClosingCB)
         {
@@ -45,6 +53,13 @@ namespace ScanMonitorApp
 
             // List view for comparisons
             auditListView.ItemsSource = _auditDataColl;
+
+            // Search thread
+            _bwThreadForSearch = new BackgroundWorker();
+            _bwThreadForSearch.WorkerSupportsCancellation = true;
+            _bwThreadForSearch.WorkerReportsProgress = true;
+            _bwThreadForSearch.DoWork += new DoWorkEventHandler(Search_DoWork);
+            _bwThreadForSearch.RunWorkerCompleted += new RunWorkerCompletedEventHandler(Search_RunWorkerCompleted);
 
             // Populate list thread
             _bwThreadForPopulateList = new BackgroundWorker();
@@ -60,247 +75,455 @@ namespace ScanMonitorApp
             get { return _auditDataColl; }
         }
 
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            lblDocTypeToSearchFor.Content = SRCH_DOC_TYPE_ANY;
+            //this.WindowState = System.Windows.WindowState.Maximized;
+            //if (!_bwThreadForPopulateList.IsBusy)
+            //{
+            //    btnGo.Content = "Stop";
+            //    btnNext.IsEnabled = false;
+            //    btnSearch.IsEnabled = false;
+            //    object[] args = { GetListViewType(), 100000000, "", "" };
+            //    _bwThreadForPopulateList.RunWorkerAsync(args);
+            //}
+        }
+
+        private void Window_Closed(object sender, EventArgs e)
+        {
+            _windowClosingCB();
+        }
+
+        private void Search_DoWork(object sender, DoWorkEventArgs e)
+        {
+            e.Result = "";
+            BackgroundWorker worker = sender as BackgroundWorker;
+
+            // Extract args
+            object[] args = (object[])e.Argument;
+            string searchText = (string)args[0];
+
+            // Execute database query
+            IMongoCollection<ScanPages> collection_spages = _scanDocHandler.GetDocPagesCollection();
+            ScanPages scanPages = null;
+            //var builder = Builders<BsonDocument>.Filter;
+            //var filter = builder.Eq("scanPagesText", new BsonDocument { { "$elemMatch", new BsonDocument { { "text", new BsonDocument { { "$regex", "BRADFORD" } } } } } });
+            //var filter = builder.Eq("uniqName", "2013_04_15_16_17_13");
+            //var foundScanPages = collection_spages.Find(filter);
+            //if (foundScanPages.CountDocuments() > 0)
+            //    scanPages = foundScanPages.First<ScanPages>();
+
+            BsonDocument query = new BsonDocument{{
+                "scanPagesText", new BsonDocument {{
+                    "$elemMatch", new BsonDocument {{
+                      "$elemMatch", new BsonDocument {{
+                          "text", new BsonDocument {{
+                              "$regex", searchText
+                          }}
+                      }}
+                    }}
+                }}
+            }};
+            try
+            {
+                var foundScanDoc = collection_spages.Find(query);
+                e.Result = foundScanDoc;
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Failed to search {0}", excp.ToString());
+            }
+
+        }
+
+        private void Search_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            EnableSearchButtons(true);
+
+            // Handle results
+            if (e.Error != null)
+            {
+                // Exception
+                logger.Error("Search error {0}", e.Error.Message);
+            }
+            else if (e.Cancelled)
+            {
+                // Cancelled
+                logger.Info("Search cancelled");
+            }
+            else
+            {
+                // Successful search
+                _lastSearchResult = (IFindFluent<ScanPages, ScanPages>)e.Result;
+                this.Dispatcher.BeginInvoke((Action)delegate ()
+                {
+                    lblListStatus.Content = _lastSearchResult.CountDocuments().ToString() + " scans found";
+                });
+
+                // Start list population
+                _resultListCurSkip = 0;
+                _resultListNumToShow = MAX_NUM_DOCS_TO_ADD_TO_LIST;
+                if (_bwThreadForPopulateList.IsBusy)
+                {
+                    _bwThreadForPopulateList.CancelAsync();
+                    // Allow worker to stop
+                    Thread.Sleep(1000);
+                }
+
+                // Clear list
+                _auditDataColl.Clear();
+
+                // Start search
+                string srchText = txtSearch.Text;
+                if (!_bwThreadForPopulateList.IsBusy)
+                {
+                    object[] args = { _lastSearchResult, _resultListCurSkip, _resultListNumToShow };
+                    _bwThreadForPopulateList.RunWorkerAsync(args);
+                }
+            }
+        }
+
+        private void EnableSearchButtons(bool en)
+        {
+            listNavGrid.IsEnabled = en;
+            btnSearch.IsEnabled = en;
+        }
+
         private void PopulateList_DoWork(object sender, DoWorkEventArgs e)
         {
             e.Result = "";
             BackgroundWorker worker = sender as BackgroundWorker;
-            List<ScanDocInfo> sdiList = _scanDocHandler.GetListOfScanDocs();
-            this.Dispatcher.BeginInvoke((Action)delegate()
-            {
-                lblTotalsInfo.Content = sdiList.Count().ToString() + " total docs";
-            });
-            
+
+            // Extract args
             object[] args = (object[])e.Argument;
-            string rsltFilter = (string)args[0];
-            int includeInListFromIdxNonInclusive = (int)args[1];
-            string srchText = (string)args[2];
-            string srchDocType = "";
-            if (args.Length > 3)
-                srchDocType = (string)args[3];
+            IFindFluent<ScanPages, ScanPages> rsltCursor = (IFindFluent<ScanPages, ScanPages>)args[0];
+            int numToSkip = (int)args[1];
+            int numToShow = (int)args[2];
 
-            // Start filling list from the end
-            int nEndIdx = includeInListFromIdxNonInclusive-1;
-            if (nEndIdx >= sdiList.Count - 1)
-                nEndIdx = sdiList.Count - 1;
-            int numFound = 0;
-            int nDocIdx = nEndIdx;
-            while (nDocIdx >= 0)
+            // Join
+            try
             {
-                // Check for cancel
-                if ((worker.CancellationPending == true))
+                var coll = _scanDocHandler.GetDocInfoCollection();
+
+                //var pipeline2 = new BsonDocument[]
+                //{
+                //        new BsonDocument{{ "$match",
+                //            new BsonDocument{{
+                //                    "uniqName", "2013_04_12_16_14_17"
+                //                }}
+                //            }}
+                //};
+                //var result2 = coll.Aggregate<BsonDocument>(pipeline2).ToList();
+                //logger.Debug("pipe2 {0}", pipeline2.ToJson());
+                //logger.Debug("result of aggregate2 {0}", result2.Count);
+
+                //var pipeline = new BsonDocument[]
+                //{
+                //        new BsonDocument{
+                //            { "$lookup",
+                //                new BsonDocument{
+                //                        { "from", "FiledDocInfo" },
+                //                        { "localField", "uniqName" },
+                //                        { "foreignField", "uniqName" },
+                //                        { "as", "FiledInfo" }
+                //                    }
+                //            }
+                //        },
+                //        new BsonDocument{
+                //            { "$limit", 10
+                //            }
+                //        }
+                //};
+                //var result = coll.Aggregate<BsonDocument>(pipeline).ToList();
+                //logger.Debug("pipe {0}", pipeline.ToJson());
+                //logger.Debug("result of aggregate {0}", result.Count);
+
+                var pipeline = new BsonDocument[]
                 {
-                    e.Cancel = true;
-                    break;
-                }
-
-                // Update status
-                if (srchText != "")
-                    worker.ReportProgress((int)((nEndIdx-nDocIdx) * 100 / nEndIdx));
-                else
-                    worker.ReportProgress((int)(numFound * 100 / MAX_NUM_DOCS_TO_ADD_TO_LIST));
-
-                // Get scan doc info and filed doc info
-                ScanDocInfo sdi = sdiList[nDocIdx];
-                FiledDocInfo fdi = _scanDocHandler.GetFiledDocInfo(sdi.uniqName);
-
-                // Filter out records that aren't interesting
-                bool bInclude = true;
-                switch (rsltFilter)
-                {
-                    case "filed":
-                    case "filedNotFound":
-                    case "filedAutoLocate":
-                    case "filedRemaining":
-                        if (fdi == null)
-                        {
-                            bInclude = false;
-                        }
-                        else
-                        {
-                            if ((rsltFilter != "filedRemaining") && (fdi.filedAt_finalStatus != FiledDocInfo.DocFinalStatus.STATUS_FILED))
-                                bInclude = false;
-                        }
-                        break;
-                    default:
-                        break;
-                }
-                if (!bInclude)
-                {
-                    nDocIdx--;
-                    continue;
-                }
-
-                // Check it contains required text - if requested
-                if (srchText != "")
-                {
-                    bInclude = false;
-                    if ((fdi != null) && (fdi.filedAs_pathAndFileName != null) && (fdi.filedAs_pathAndFileName.Trim() != ""))
-                    {
-                        if (System.IO.Path.GetFileName(fdi.filedAs_pathAndFileName).ToLower().Contains(srchText.ToLower()))
-                            bInclude = true;
-                    }
-                    if (!bInclude)
-                    {
-                        ScanPages scanPages = _scanDocHandler.GetScanPages(sdi.uniqName);
-                        if ((scanPages != null) && (scanPages.ContainText(srchText)))
-                            bInclude = true;
-                    }
-                    if (!bInclude)
-                    {
-                        nDocIdx--;
-                        continue;
-                    }
-                }
-
-                // Check it has the right type - if requested
-                if (srchDocType != "" && srchDocType != SRCH_DOC_TYPE_ANY)
-                {
-                    if ((fdi != null) && (fdi.filedAs_docType != srchDocType))
-                    {
-                        nDocIdx--;
-                        continue;
-                    }
-                }
-
-                // Check if we are looking for filedRemaining (i.e. it has been filed (or deleted) but the original still exists on the scan machine)
-                if (rsltFilter == "filedRemaining")
-                {
-                    if (!File.Exists(sdi.GetOrigFileNameWin()))
-                    {
-                        nDocIdx--;
-                        continue;
-                    }
-
-                }
-
-                // Show this record
-                AuditData audDat = new AuditData();
-                audDat.UniqName = sdi.uniqName;
-                string statStr = "Unfiled";
-                bool filedFileNotFound = false;
-                if (fdi != null)
-                {
-                    statStr = FiledDocInfo.GetFinalStatusStr(fdi.filedAt_finalStatus);
-                    statStr += " on " + fdi.filedAt_dateAndTime.ToShortDateString();
-                    // Check if the file is where it was placed
-                    if (fdi.filedAt_finalStatus == FiledDocInfo.DocFinalStatus.STATUS_FILED)
-                    {
-                        filedFileNotFound = true;
-                        try
-                        {
-                            if (File.Exists(fdi.filedAs_pathAndFileName))
-                                filedFileNotFound = false;
-                        }
-                        catch
-                        {
-
-                        }
-                    }
-                }
-
-                // Check special result filters
-                if ((fdi != null) && !filedFileNotFound && ((rsltFilter == "filedNotFound") || (rsltFilter == "filedAutoLocate")))
-                {
-                    nDocIdx--;
-                    continue;
-                }
-
-                audDat.FinalStatus = statStr;
-                audDat.FiledDocPresent = (fdi == null) ? "" : (filedFileNotFound ? "Not found" : "Ok");
-
-                audDat.DocTypeFiledAs = (fdi == null) ? "" : fdi.filedAs_docType;
-
-                // See if we can find a file which matches this one in the existing files database
-                string movedToFileName = "";
-                string archiveFileName = ScanDocHandler.GetArchiveFileName(sdi.uniqName);
-                if ((filedFileNotFound) && (File.Exists(archiveFileName)))
-                {
-                    long fileLen = 0;
-                    byte[] md5Val = ScanDocHandler.GenHashOnFileExcludingMetadata(archiveFileName, out fileLen);
-                    List<ExistingFileInfoRec> efirList = _scanDocHandler.FindExistingFileRecsByHash(md5Val);
-                    foreach (ExistingFileInfoRec efir in efirList)
-                    {
-                        // Check for a file length within 10% (metadata may have changed)
-                        if ((fileLen > efir.fileLength * 9 / 10) && (fileLen < efir.fileLength * 11 / 10))
-                        {
-                            movedToFileName = efir.filename;
-                            break;
-                        }
-                    }
-                }
-                audDat.MovedToFileName = movedToFileName;
-
-                // Check for auto locate
-                if ((fdi != null) && filedFileNotFound && (rsltFilter == "filedAutoLocate") && (movedToFileName != ""))
-                {
-                    // Re-file at the new location
-                    fdi.filedAs_pathAndFileName = movedToFileName;
-                    _scanDocHandler.AddOrUpdateFiledDocRecInDb(fdi);
-                    audDat.MovedToFileName = "FIXED " + movedToFileName;
-                }
-
-                // Check for Filed-Remaining (i.e. was not removed from scanning computer)
-                else if ((fdi != null) && (!filedFileNotFound) && (rsltFilter == "filedRemaining"))
-                {
-                    //string rsltStr = ScanUtils.AttemptToDeleteFile(sdi.origFileName);
-                    //                    audDat.MovedToFileName = "Original file delete attempt " + rsltStr;
-                    if (sdi.GetOrigFileNameWin().ToLower().Contains("macallan"))
-                    {
-                        audDat.MovedToFileName = "Ignoring as this was filed from macallan - probably when PDF editor worked from there " + sdi.GetOrigFileNameWin();
-                    }
-                    else
-                    {
-                        if (fdi.filedAs_pathAndFileName == "")
-                        {
-                            audDat.MovedToFileName = "Going to delete as unfiled " + sdi.GetOrigFileNameWin();
-                        }
-                        else
-                        {
-                            long fileLen1 = 0;
-                            long fileLen2 = 0;
-                            byte[] md5Val1 = ScanDocHandler.GenHashOnFileExcludingMetadata(fdi.filedAs_pathAndFileName, out fileLen1);
-                            byte[] md5Val2 = ScanDocHandler.GenHashOnFileExcludingMetadata(sdi.GetOrigFileNameWin(), out fileLen2);
-                            
-                            if (md5Val1.SequenceEqual(md5Val2))
-                            {
-                                audDat.MovedToFileName = "Deleted (same md5 as filed) " + sdi.GetOrigFileNameWin();
-                                try
-                                {
-                                    File.Delete(sdi.GetOrigFileNameWin());
-                                }
-                                catch (Exception)
-                                {
-                                    logger.Error("Failed to delete %s", sdi.GetOrigFileNameWin());
-                                }
+                        new BsonDocument{
+                            { "$lookup",
+                                new BsonDocument{
+                                        { "from", "FiledDocInfo" },
+                                        { "localField", "uniqName" },
+                                        { "foreignField", "uniqName" },
+                                        { "as", "FiledInfo" }
+                                    }
                             }
-                            else if ((fileLen1 > fileLen2 * 9 / 10) && (fileLen1 < fileLen2 * 11 / 10))
-                            {
-                                audDat.MovedToFileName = "Probably same (filed " + fileLen1.ToString() + "/orig " + fileLen2.ToString() + ")" + sdi.GetOrigFileNameWin();
+                        },
+                        new BsonDocument{
+                            { "$skip", numToSkip
                             }
-                            else
-                            {
-                                audDat.MovedToFileName = "File differs frm that filed (filed " + fileLen1.ToString() + "/orig " + fileLen2.ToString() + ")" + sdi.GetOrigFileNameWin();
+                        },
+                        new BsonDocument{
+                            { "$limit", numToShow
                             }
                         }
-                    }
-                }
+                };
+                var result = coll.Aggregate<BsonDocument>(pipeline).ToList();
+                logger.Debug("pipe {0}", pipeline.ToJson());
+                logger.Debug("result of aggregate {0}", result.Count);
 
-                // Add to the audit data collection
-                this.Dispatcher.BeginInvoke((Action)delegate()
-                    {
-                        _auditDataColl.Add(audDat);
-                    });
+                //var match = new BsonDocument
+                //{
+                //    {
+                //        "$match",
+                //        new BsonDocument
+                //            {
+                //                {"uniqName", "2013_04_12_16_14_17"}
+                //            }
+                //    }
+                //};
+                //var pipeline = new[] { match };
+                //var result = coll.Aggregate<ScanDocInfo>(pipeline);
 
-                numFound++;
-                if (numFound >= MAX_NUM_DOCS_TO_ADD_TO_LIST)
-                    break;
-                nDocIdx--;
+                //logger.Debug("result of aggregate {0}", result.ToString());
             }
-            e.Result = "Ok";
-            this.Dispatcher.BeginInvoke((Action)delegate()
+            catch (Exception excp)
             {
-                txtStart.Text = (nDocIdx).ToString();
-            });
+                logger.Error("Failed to aggregate {0}", excp.ToString());
+            }
+
+            //IMongoCollection<ScanDocInfo> collection_sdinfo = _scanDocHandler.GetDocInfoCollection();
+            //var foundScanDoc = collection_sdinfo.Find(a => a.uniqName == uniqName);
+
+
+            //List<ScanDocInfo> sdiList = _scanDocHandler.GetListOfScanDocs();
+            //this.Dispatcher.BeginInvoke((Action)delegate()
+            //{
+            //    lblTotalsInfo.Content = sdiList.Count().ToString() + " total docs";
+            //});
+
+            //object[] args = (object[])e.Argument;
+            //string rsltFilter = (string)args[0];
+            //int includeInListFromIdxNonInclusive = (int)args[1];
+            //string srchText = (string)args[2];
+            //string srchDocType = "";
+            //if (args.Length > 3)
+            //    srchDocType = (string)args[3];
+
+            //// Start filling list from the end
+            //int nEndIdx = includeInListFromIdxNonInclusive-1;
+            //if (nEndIdx >= sdiList.Count - 1)
+            //    nEndIdx = sdiList.Count - 1;
+            //int numFound = 0;
+            //int nDocIdx = nEndIdx;
+            //while (nDocIdx >= 0)
+            //{
+            //    // Check for cancel
+            //    if ((worker.CancellationPending == true))
+            //    {
+            //        e.Cancel = true;
+            //        break;
+            //    }
+
+            //    // Update status
+            //    if (srchText != "")
+            //        worker.ReportProgress((int)((nEndIdx-nDocIdx) * 100 / nEndIdx));
+            //    else
+            //        worker.ReportProgress((int)(numFound * 100 / MAX_NUM_DOCS_TO_ADD_TO_LIST));
+
+            //    // Get scan doc info and filed doc info
+            //    ScanDocInfo sdi = sdiList[nDocIdx];
+            //    FiledDocInfo fdi = _scanDocHandler.GetFiledDocInfo(sdi.uniqName);
+
+            //    // Filter out records that aren't interesting
+            //    bool bInclude = true;
+            //    switch (rsltFilter)
+            //    {
+            //        case "filed":
+            //        case "filedNotFound":
+            //        case "filedAutoLocate":
+            //        case "filedRemaining":
+            //            if (fdi == null)
+            //            {
+            //                bInclude = false;
+            //            }
+            //            else
+            //            {
+            //                if ((rsltFilter != "filedRemaining") && (fdi.filedAt_finalStatus != FiledDocInfo.DocFinalStatus.STATUS_FILED))
+            //                    bInclude = false;
+            //            }
+            //            break;
+            //        default:
+            //            break;
+            //    }
+            //    if (!bInclude)
+            //    {
+            //        nDocIdx--;
+            //        continue;
+            //    }
+
+            //    // Check it contains required text - if requested
+            //    if (srchText != "")
+            //    {
+            //        bInclude = false;
+            //        if ((fdi != null) && (fdi.filedAs_pathAndFileName != null) && (fdi.filedAs_pathAndFileName.Trim() != ""))
+            //        {
+            //            if (System.IO.Path.GetFileName(fdi.filedAs_pathAndFileName).ToLower().Contains(srchText.ToLower()))
+            //                bInclude = true;
+            //        }
+            //        if (!bInclude)
+            //        {
+            //            ScanPages scanPages = _scanDocHandler.GetScanPages(sdi.uniqName);
+            //            if ((scanPages != null) && (scanPages.ContainText(srchText)))
+            //                bInclude = true;
+            //        }
+            //        if (!bInclude)
+            //        {
+            //            nDocIdx--;
+            //            continue;
+            //        }
+            //    }
+
+            //    // Check it has the right type - if requested
+            //    if (srchDocType != "" && srchDocType != SRCH_DOC_TYPE_ANY)
+            //    {
+            //        if ((fdi != null) && (fdi.filedAs_docType != srchDocType))
+            //        {
+            //            nDocIdx--;
+            //            continue;
+            //        }
+            //    }
+
+            //    // Check if we are looking for filedRemaining (i.e. it has been filed (or deleted) but the original still exists on the scan machine)
+            //    if (rsltFilter == "filedRemaining")
+            //    {
+            //        if (!File.Exists(sdi.GetOrigFileNameWin()))
+            //        {
+            //            nDocIdx--;
+            //            continue;
+            //        }
+
+            //    }
+
+            //    // Show this record
+            //    AuditData audDat = new AuditData();
+            //    audDat.UniqName = sdi.uniqName;
+            //    string statStr = "Unfiled";
+            //    bool filedFileNotFound = false;
+            //    if (fdi != null)
+            //    {
+            //        statStr = FiledDocInfo.GetFinalStatusStr(fdi.filedAt_finalStatus);
+            //        statStr += " on " + fdi.filedAt_dateAndTime.ToShortDateString();
+            //        // Check if the file is where it was placed
+            //        if (fdi.filedAt_finalStatus == FiledDocInfo.DocFinalStatus.STATUS_FILED)
+            //        {
+            //            filedFileNotFound = true;
+            //            try
+            //            {
+            //                if (File.Exists(fdi.filedAs_pathAndFileName))
+            //                    filedFileNotFound = false;
+            //            }
+            //            catch
+            //            {
+
+            //            }
+            //        }
+            //    }
+
+            //    // Check special result filters
+            //    if ((fdi != null) && !filedFileNotFound && ((rsltFilter == "filedNotFound") || (rsltFilter == "filedAutoLocate")))
+            //    {
+            //        nDocIdx--;
+            //        continue;
+            //    }
+
+            //    audDat.FinalStatus = statStr;
+            //    audDat.FiledDocPresent = (fdi == null) ? "" : (filedFileNotFound ? "Not found" : "Ok");
+
+            //    audDat.DocTypeFiledAs = (fdi == null) ? "" : fdi.filedAs_docType;
+
+            //    // See if we can find a file which matches this one in the existing files database
+            //    string movedToFileName = "";
+            //    string archiveFileName = ScanDocHandler.GetArchiveFileName(sdi.uniqName);
+            //    if ((filedFileNotFound) && (File.Exists(archiveFileName)))
+            //    {
+            //        long fileLen = 0;
+            //        byte[] md5Val = ScanDocHandler.GenHashOnFileExcludingMetadata(archiveFileName, out fileLen);
+            //        List<ExistingFileInfoRec> efirList = _scanDocHandler.FindExistingFileRecsByHash(md5Val);
+            //        foreach (ExistingFileInfoRec efir in efirList)
+            //        {
+            //            // Check for a file length within 10% (metadata may have changed)
+            //            if ((fileLen > efir.fileLength * 9 / 10) && (fileLen < efir.fileLength * 11 / 10))
+            //            {
+            //                movedToFileName = efir.filename;
+            //                break;
+            //            }
+            //        }
+            //    }
+            //    audDat.MovedToFileName = movedToFileName;
+
+            //    // Check for auto locate
+            //    if ((fdi != null) && filedFileNotFound && (rsltFilter == "filedAutoLocate") && (movedToFileName != ""))
+            //    {
+            //        // Re-file at the new location
+            //        fdi.filedAs_pathAndFileName = movedToFileName;
+            //        _scanDocHandler.AddOrUpdateFiledDocRecInDb(fdi);
+            //        audDat.MovedToFileName = "FIXED " + movedToFileName;
+            //    }
+
+            //    // Check for Filed-Remaining (i.e. was not removed from scanning computer)
+            //    else if ((fdi != null) && (!filedFileNotFound) && (rsltFilter == "filedRemaining"))
+            //    {
+            //        //string rsltStr = ScanUtils.AttemptToDeleteFile(sdi.origFileName);
+            //        //                    audDat.MovedToFileName = "Original file delete attempt " + rsltStr;
+            //        if (sdi.GetOrigFileNameWin().ToLower().Contains("macallan"))
+            //        {
+            //            audDat.MovedToFileName = "Ignoring as this was filed from macallan - probably when PDF editor worked from there " + sdi.GetOrigFileNameWin();
+            //        }
+            //        else
+            //        {
+            //            if (fdi.filedAs_pathAndFileName == "")
+            //            {
+            //                audDat.MovedToFileName = "Going to delete as unfiled " + sdi.GetOrigFileNameWin();
+            //            }
+            //            else
+            //            {
+            //                long fileLen1 = 0;
+            //                long fileLen2 = 0;
+            //                byte[] md5Val1 = ScanDocHandler.GenHashOnFileExcludingMetadata(fdi.filedAs_pathAndFileName, out fileLen1);
+            //                byte[] md5Val2 = ScanDocHandler.GenHashOnFileExcludingMetadata(sdi.GetOrigFileNameWin(), out fileLen2);
+
+            //                if (md5Val1.SequenceEqual(md5Val2))
+            //                {
+            //                    audDat.MovedToFileName = "Deleted (same md5 as filed) " + sdi.GetOrigFileNameWin();
+            //                    try
+            //                    {
+            //                        File.Delete(sdi.GetOrigFileNameWin());
+            //                    }
+            //                    catch (Exception)
+            //                    {
+            //                        logger.Error("Failed to delete %s", sdi.GetOrigFileNameWin());
+            //                    }
+            //                }
+            //                else if ((fileLen1 > fileLen2 * 9 / 10) && (fileLen1 < fileLen2 * 11 / 10))
+            //                {
+            //                    audDat.MovedToFileName = "Probably same (filed " + fileLen1.ToString() + "/orig " + fileLen2.ToString() + ")" + sdi.GetOrigFileNameWin();
+            //                }
+            //                else
+            //                {
+            //                    audDat.MovedToFileName = "File differs frm that filed (filed " + fileLen1.ToString() + "/orig " + fileLen2.ToString() + ")" + sdi.GetOrigFileNameWin();
+            //                }
+            //            }
+            //        }
+            //    }
+
+            //    // Add to the audit data collection
+            //    this.Dispatcher.BeginInvoke((Action)delegate()
+            //        {
+            //            _auditDataColl.Add(audDat);
+            //        });
+
+            //    numFound++;
+            //    if (numFound >= MAX_NUM_DOCS_TO_ADD_TO_LIST)
+            //        break;
+            //    nDocIdx--;
+            //}
+            //e.Result = "Ok";
+            //this.Dispatcher.BeginInvoke((Action)delegate()
+            //{
+            //    txtStart.Text = (nDocIdx).ToString();
+            //});
         }
 
         private void PopulateList_ProgressChanged(object sender, ProgressChangedEventArgs e)
@@ -308,7 +531,7 @@ namespace ScanMonitorApp
             progBar.Value = (e.ProgressPercentage);
         }
 
-        void PopulateList_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        private void PopulateList_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             progBar.Value = (100);
             btnGo.Content = "Latest";
@@ -414,15 +637,15 @@ namespace ScanMonitorApp
             // Clear list
             _auditDataColl.Clear();
 
-            int startVal = 100000000;
-            if (!_bwThreadForPopulateList.IsBusy)
-            {
-                btnGo.Content = "Stop";
-                btnNext.IsEnabled = false;
-                btnSearch.IsEnabled = false;
-                object[] args = { GetListViewType(), startVal, "", "" };
-                _bwThreadForPopulateList.RunWorkerAsync(args);
-            }
+            //int startVal = 100000000;
+            //if (!_bwThreadForPopulateList.IsBusy)
+            //{
+            //    btnGo.Content = "Stop";
+            //    btnNext.IsEnabled = false;
+            //    btnSearch.IsEnabled = false;
+            //    object[] args = { GetListViewType(), startVal, "", "" };
+            //    _bwThreadForPopulateList.RunWorkerAsync(args);
+            //}
         }
 
         private void btnNext_Click(object sender, RoutedEventArgs e)
@@ -430,16 +653,16 @@ namespace ScanMonitorApp
             // Clear list
             _auditDataColl.Clear();
 
-            int startVal = 100000000;
-            Int32.TryParse(txtStart.Text, out startVal);
-            if (!_bwThreadForPopulateList.IsBusy)
-            {
-                btnGo.Content = "Stop";
-                btnNext.IsEnabled = false;
-                btnSearch.IsEnabled = false;
-                object[] args = { GetListViewType(), startVal, "", "" };
-                _bwThreadForPopulateList.RunWorkerAsync(args);
-            }
+            //int startVal = 100000000;
+            //Int32.TryParse(txtStart.Text, out startVal);
+            //if (!_bwThreadForPopulateList.IsBusy)
+            //{
+            //    btnGo.Content = "Stop";
+            //    btnNext.IsEnabled = false;
+            //    btnSearch.IsEnabled = false;
+            //    object[] args = { GetListViewType(), startVal, "", "" };
+            //    _bwThreadForPopulateList.RunWorkerAsync(args);
+            //}
         }
 
         private void btnOpenOrig_Click(object sender, RoutedEventArgs e)
@@ -484,37 +707,31 @@ namespace ScanMonitorApp
             }
         }
 
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
-            lblDocTypeToSearchFor.Content = SRCH_DOC_TYPE_ANY;
-            //this.WindowState = System.Windows.WindowState.Maximized;
-            if (!_bwThreadForPopulateList.IsBusy)
-            {
-                btnGo.Content = "Stop";
-                btnNext.IsEnabled = false;
-                btnSearch.IsEnabled = false;
-                object[] args = { GetListViewType(), 100000000, "", "" };
-                _bwThreadForPopulateList.RunWorkerAsync(args);
-            }
-
-        }
-
         private void btnSearch_Click(object sender, RoutedEventArgs e)
         {
             // Clear list
             _auditDataColl.Clear();
 
-            int startVal = 100000000;
+            // Start search
             string srchText = txtSearch.Text;
-            string srchDocType = lblDocTypeToSearchFor.Content.ToString();
-            if (!_bwThreadForPopulateList.IsBusy)
+            if (!_bwThreadForSearch.IsBusy)
             {
-                btnGo.Content = "Stop";
-                btnNext.IsEnabled = false;
-                btnSearch.IsEnabled = false;
-                object[] args = { GetListViewType(), startVal, srchText, srchDocType };
-                _bwThreadForPopulateList.RunWorkerAsync(args);
+                EnableSearchButtons(false);
+                object[] args = { srchText };
+                _bwThreadForSearch.RunWorkerAsync(args);
             }
+
+            //int startVal = 100000000;
+            //string srchText = txtSearch.Text;
+            //string srchDocType = lblDocTypeToSearchFor.Content.ToString();
+            //if (!_bwThreadForPopulateList.IsBusy)
+            //{
+            //    btnGo.Content = "Stop";
+            //    btnNext.IsEnabled = false;
+            //    btnSearch.IsEnabled = false;
+            //    object[] args = { GetListViewType(), startVal, srchText, srchDocType };
+            //    _bwThreadForPopulateList.RunWorkerAsync(args);
+            //}
         }
 
         private void listViewCtxtLocate_Click(object sender, RoutedEventArgs e)
@@ -657,9 +874,24 @@ namespace ScanMonitorApp
             
         }
 
-        private void Window_Closed(object sender, EventArgs e)
+        private void btnListFirst_Click(object sender, RoutedEventArgs e)
         {
-            _windowClosingCB();
+
+        }
+
+        private void btnListLast_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void btnListPrev_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void btnListNext_Click(object sender, RoutedEventArgs e)
+        {
+
         }
     }
 
