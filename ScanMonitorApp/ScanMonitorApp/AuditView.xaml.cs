@@ -325,46 +325,6 @@ namespace ScanMonitorApp
             return ((ComboBoxItem)(comboListView.SelectedItem)).Tag.ToString();
         }
 
-        private void btnGo_Click(object sender, RoutedEventArgs e)
-        {
-            // Stop if required
-            if (_bwThreadForPopulateList.IsBusy)
-            {
-                _bwThreadForPopulateList.CancelAsync();
-                return;
-            }
-
-            // Clear list
-            AuditDataColl.Clear();
-
-            //int startVal = 100000000;
-            //if (!_bwThreadForPopulateList.IsBusy)
-            //{
-            //    btnGo.Content = "Stop";
-            //    btnNext.IsEnabled = false;
-            //    btnSearch.IsEnabled = false;
-            //    object[] args = { GetListViewType(), startVal, "", "" };
-            //    _bwThreadForPopulateList.RunWorkerAsync(args);
-            //}
-        }
-
-        private void btnNext_Click(object sender, RoutedEventArgs e)
-        {
-            // Clear list
-            AuditDataColl.Clear();
-
-            //int startVal = 100000000;
-            //Int32.TryParse(txtStart.Text, out startVal);
-            //if (!_bwThreadForPopulateList.IsBusy)
-            //{
-            //    btnGo.Content = "Stop";
-            //    btnNext.IsEnabled = false;
-            //    btnSearch.IsEnabled = false;
-            //    object[] args = { GetListViewType(), startVal, "", "" };
-            //    _bwThreadForPopulateList.RunWorkerAsync(args);
-            //}
-        }
-
         private void btnOpenOrig_Click(object sender, RoutedEventArgs e)
         {
             AuditData selectedRow = auditListView.SelectedItem as AuditData;
