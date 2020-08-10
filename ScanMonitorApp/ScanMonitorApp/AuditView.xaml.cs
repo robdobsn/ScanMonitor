@@ -1,4 +1,5 @@
-﻿using Microsoft.WindowsAPICodePack.Dialogs;
+﻿using DnsClient;
+using Microsoft.WindowsAPICodePack.Dialogs;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using NLog;
@@ -24,6 +25,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Text.RegularExpressions;
 
 namespace ScanMonitorApp
 {
@@ -44,6 +46,9 @@ namespace ScanMonitorApp
         private int _resultListCurSkip = 0;
         private int _resultListNumToShow = MAX_NUM_DOCS_TO_ADD_TO_LIST;
         private int _resultListCount = 0;
+        private AuditData _curDocDisplayed;
+        private ScanDocAllInfo _curDocAllInfo;
+        private int _curDocDisplayed_pageNum = 1;
 
         public AuditView(ScanDocHandler scanDocHandler, DocTypesMatcher docTypesMatcher, WindowClosingDelegate windowClosingCB)
         {
@@ -100,32 +105,71 @@ namespace ScanMonitorApp
             // Extract args
             object[] args = (object[])e.Argument;
             string searchText = (string)args[0];
+            bool ignoreCase = (bool)args[1];
+            bool useRegex = (bool)args[2];
 
             // Form database query
             IMongoCollection<ScanPages> collection_spages = _scanDocHandler.GetDocPagesCollection();
-            BsonDocument query = new BsonDocument{{
-                "scanPagesText", new BsonDocument {{
-                    "$elemMatch", new BsonDocument {{
-                      "$elemMatch", new BsonDocument {{
-                          "text", new BsonDocument {{
-                              "$regex", searchText
-                          }}
-                      }}
+            BsonDocument query = null;
+            if (searchText.Trim().Length == 0)
+            {
+                query = new BsonDocument();
+            }
+            else if (useRegex)
+            {
+                query = new BsonDocument{{
+                    "scanPagesText", new BsonDocument {{
+                        "$elemMatch", new BsonDocument {{
+                            "$elemMatch", new BsonDocument {{
+                                "text", new BsonDocument {
+                                    {
+                                        "$regex", searchText
+                                    },
+                                    {
+                                        "$options", ignoreCase ? "i" : ""
+                                    }
+                                }
+                            }}
+                        }}
                     }}
-                }}
-            }};
+                }};
+            }
+            else
+            {
+                query = new BsonDocument{{
+                    "scanPagesText", new BsonDocument {{
+                        "$elemMatch", new BsonDocument {{
+                            "$elemMatch", new BsonDocument {{
+                                "text", new BsonDocument {{
+                                    "$text", new BsonDocument {
+                                        {
+                                            "$search", searchText
+                                        },
+                                        {
+                                            "$caseSensitive", !ignoreCase
+                                        }
+                                    }
+                                }}
+                            }}
+                        }}
+                    }}
+                }};
+                Console.WriteLine(query.ToJson());
+            }
 
             // Execute query
-            try
+            if (query != null)
             {
-                var foundScanDoc = collection_spages.Find(query);
-                e.Result = foundScanDoc;
+                try
+                {
+                    var foundScanDoc = collection_spages.Find(query);
+                    e.Result = foundScanDoc;
+                }
+                catch (Exception excp)
+                {
+                    logger.Error("Failed to search {0}", excp.ToString());
+                }
             }
-            catch (Exception excp)
-            {
-                logger.Error("Failed to search {0}", excp.ToString());
-            }
-
         }
 
         private void Search_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -184,13 +228,14 @@ namespace ScanMonitorApp
                 var filedDocColl = _scanDocHandler.GetFiledDocsCollection();
 
                 var result = coll.Aggregate()
-                    .Match(p => foundUniqNames.Contains(p.uniqName))
                     .Lookup(
                         foreignCollection: filedDocColl,
                         localField: q => q.uniqName,
                         foreignField: f => f.uniqName,
                         @as: (ScanCombinedInfo eo) => eo.filedInfo
                     )
+                    .Match(p => foundUniqNames.Contains(p.uniqName))
+                    .Match(q => q.filedInfo.Any(r => r.filedAt_finalStatus == FiledDocInfo.DocFinalStatus.STATUS_DELETED))
                     //.Sort(new BsonDocument("other.name", -1))
                     .ToList();
 
@@ -216,6 +261,10 @@ namespace ScanMonitorApp
                         FiledDocInfo fdi = rec.filedInfo.First();
                         auditData.DocTypeFiledAs = fdi.filedAs_docType;
                         auditData.FinalStatus = FiledDocInfo.GetFinalStatusStr(fdi.filedAt_finalStatus);
+                    }
+                    else
+                    {
+                        auditData.FinalStatus = "Unfiled";
                     }
                     auditDataColl.Add(auditData);
                 }
@@ -268,8 +317,8 @@ namespace ScanMonitorApp
                 AuditDataColl.Clear();
                 foreach (var el in rslt)
                     AuditDataColl.Add(el);
-                progBar.Value = (100);
             }
+            progBar.Value = (100);
             EnableSearchButtons(true);
         }
 
@@ -280,42 +329,109 @@ namespace ScanMonitorApp
                 AuditData selectedRow = e.AddedItems[0] as AuditData;
                 if (selectedRow != null)
                 {
-                    string uniqName = selectedRow.UniqName;
-                    string imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, uniqName, 1, false);
-                    try
+                    _curDocDisplayed = selectedRow;
+                    _curDocAllInfo = null;
+                    DisplayDocPage(1);
+                    return;
+                }
+            }
+            ClearDocView();
+        }
+
+        private void ClearDocView()
+        {
+            _curDocDisplayed = null;
+            _curDocAllInfo = null;
+            auditFileImage.Source = null;
+            btnOpenFiled.IsEnabled = false;
+            txtScanDocInfo.Text = "";
+            txtFiledDocInfo.Text = "";
+            txtPageText.Text = "";
+        }
+
+        private void DisplayDocPage(int pageNum)
+        {
+            if (_curDocDisplayed == null)
+            {
+                ClearDocView();
+                return;
+            }
+            string uniqName = _curDocDisplayed.UniqName;
+
+            // Doc info
+            _curDocAllInfo = _scanDocHandler.GetScanDocAllInfo(uniqName);
+            if (!((pageNum >= 1) && (pageNum <= _curDocAllInfo.scanDocInfo.numPages)))
+                return;
+
+            btnOpenFiled.IsEnabled = (_curDocAllInfo.filedDocInfo != null) && (_curDocAllInfo.filedDocInfo.filedAt_finalStatus == FiledDocInfo.DocFinalStatus.STATUS_FILED);
+
+            txtScanDocInfo.Text = ScanDocHandler.GetScanDocInfoText(_curDocAllInfo.scanDocInfo);
+            txtScanDocInfo.IsReadOnly = true;
+
+            txtFiledDocInfo.Text = ScanDocHandler.GetFiledDocInfoText(_curDocAllInfo.filedDocInfo);
+            txtFiledDocInfo.IsReadOnly = true;
+
+            _curDocDisplayed_pageNum = pageNum;
+            txtPageNumber.Text = String.Format("Page {0} of {1}", pageNum, _curDocAllInfo.scanDocInfo.numPages);
+
+            string pagesStr = "";
+            if ((_curDocAllInfo.scanPages != null) && (pageNum >= 1) && (_curDocAllInfo.scanPages.scanPagesText.Count >= pageNum))
+            {
+                var pageElems = _curDocAllInfo.scanPages.scanPagesText.ElementAt(pageNum - 1);
+                foreach (ScanTextElem el in pageElems)
+                {
+                    pagesStr += el.text + " ";
+                }
+            }
+            txtPageText.Text = pagesStr;
+            txtPageText.IsReadOnly = true;
+
+            ShowSearchPosInText();
+
+            string imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, uniqName, pageNum, false);
+            if (!File.Exists(imgFileName))
+                return;
+            try
+            {
+                auditFileImage.Source = new BitmapImage(new Uri(imgFileName));
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Loading bitmap file {0} excp {1}", imgFileName, excp.Message);
+            }
+        }
+
+        private void ShowSearchPosInText()
+        {
+            // Check search type
+            string srchText = txtSearch.Text;
+            bool ignoreCase = chkBoxIgnoreCase.IsChecked ?? true;
+            bool useRegex = chkBoxRegEx.IsChecked ?? false;
+            if (srchText.Trim().Length > 0)
+            {
+                int findPos = -1;
+                int matchLen = 0;
+                if (!useRegex)
+                {
+                    findPos = txtPageText.Text.IndexOf(srchText, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+                    matchLen = srchText.Length;
+                }
+                else
+                {
+                    var match = System.Text.RegularExpressions.Regex.Match(txtPageText.Text, srchText, ignoreCase ? RegexOptions.IgnoreCase : RegexOptions.None);
+                    if (match.Success)
                     {
-                        auditFileImage.Source = new BitmapImage(new Uri(imgFileName));
+                        findPos = match.Index;
+                        matchLen = match.Length;
                     }
-                    catch (Exception excp)
-                    {
-                        logger.Error("Loading bitmap file {0} excp {1}", imgFileName, excp.Message);
-                    }
-
-
-                    // Doc info
-                    ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfo(selectedRow.UniqName);
-
-                    btnOpenFiled.IsEnabled = (scanDocAllInfo.filedDocInfo != null) && (scanDocAllInfo.filedDocInfo.filedAt_finalStatus == FiledDocInfo.DocFinalStatus.STATUS_FILED);
-
-                    txtScanDocInfo.Text = ScanDocHandler.GetScanDocInfoText(scanDocAllInfo.scanDocInfo);
-                    txtScanDocInfo.IsReadOnly = true;
-
-                    txtFiledDocInfo.Text = ScanDocHandler.GetFiledDocInfoText(scanDocAllInfo.filedDocInfo);
-                    txtFiledDocInfo.IsReadOnly = true;
-
-                    string pagesStr = "";
-                    if (scanDocAllInfo.scanPages != null)
-                    {
-                        foreach (List<ScanTextElem> stElemList in scanDocAllInfo.scanPages.scanPagesText)
-                        {
-                            foreach (ScanTextElem el in stElemList)
-                            {
-                                pagesStr += el.text + " ";
-                            }
-                        }
-                    }
-                    txtPageText.Text = pagesStr;
-                    txtPageText.IsReadOnly = true;
+                }
+                if (findPos >= 0)
+                {
+                    txtPageText.Select(findPos, matchLen);
+                    int lineIdx = txtPageText.GetLineIndexFromCharacterIndex(findPos);
+                    txtPageText.ScrollToLine(lineIdx);
+                    txtPageText.Focus();
+                    txtPageText.IsInactiveSelectionHighlightEnabled = true;
                 }
             }
         }
@@ -370,13 +486,7 @@ namespace ScanMonitorApp
         private void btnSearch_Click(object sender, RoutedEventArgs e)
         {
             // Start search
-            string srchText = txtSearch.Text;
-            if (!_bwThreadForSearch.IsBusy)
-            {
-                EnableSearchButtons(false);
-                object[] args = { srchText };
-                _bwThreadForSearch.RunWorkerAsync(args);
-            }
+            StartSearch();
 
             //int startVal = 100000000;
             //string srchText = txtSearch.Text;
@@ -583,13 +693,20 @@ namespace ScanMonitorApp
             if (e.Key == Key.Enter)
             {
                 // Start search
-                string srchText = txtSearch.Text;
-                if (!_bwThreadForSearch.IsBusy)
-                {
-                    EnableSearchButtons(false);
-                    object[] args = { srchText };
-                    _bwThreadForSearch.RunWorkerAsync(args);
-                }
+                StartSearch();
+            }
+        }
+
+        private void StartSearch()
+        {
+            string srchText = txtSearch.Text;
+            if (!_bwThreadForSearch.IsBusy)
+            {
+                EnableSearchButtons(false);
+                bool ignoreCase = chkBoxIgnoreCase.IsChecked ?? true;
+                bool useRegex = chkBoxRegEx.IsChecked ?? false;
+                object[] args = { srchText, ignoreCase, useRegex };
+                _bwThreadForSearch.RunWorkerAsync(args);
             }
         }
 
@@ -616,6 +733,56 @@ namespace ScanMonitorApp
                 _bwThreadForPopulateList.RunWorkerAsync(args);
             }
             progBar.Value = (30);
+        }
+
+        private void btnPageNext_Click(object sender, RoutedEventArgs e)
+        {
+            DisplayDocPage(_curDocDisplayed_pageNum + 1);
+        }
+
+        private void btnPagePrev_Click(object sender, RoutedEventArgs e)
+        {
+            DisplayDocPage(_curDocDisplayed_pageNum - 1);
+        }
+
+        private void FindPageWithSearchTextAndShow()
+        {
+            // Check doc info
+            if (_curDocAllInfo == null)
+                return;
+
+            int pageNum = 0;
+            string srchText = txtSearch.Text;
+            if (srchText.Trim().Length == 0)
+                return;
+            bool ignoreCase = chkBoxIgnoreCase.IsChecked ?? true;
+            foreach (var pageElems in _curDocAllInfo.scanPages.scanPagesText)
+            {
+                pageNum++;
+                string pageStr = "";
+                foreach (ScanTextElem el in pageElems)
+                {
+                    pageStr += el.text + " ";
+                }
+                int findPos = -1;
+                int matchLen = 0;
+                var match = System.Text.RegularExpressions.Regex.Match(pageStr, srchText, ignoreCase ? RegexOptions.IgnoreCase : RegexOptions.None);
+                if (match.Success)
+                {
+                    findPos = match.Index;
+                    matchLen = match.Length;
+                }
+                if (findPos >= 0)
+                {
+                    DisplayDocPage(pageNum);
+                    break;
+                }
+            }
+        }
+
+        private void btnFindText_Click(object sender, RoutedEventArgs e)
+        {
+            FindPageWithSearchTextAndShow();
         }
     }
 

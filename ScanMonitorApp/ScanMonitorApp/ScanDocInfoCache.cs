@@ -61,7 +61,8 @@ namespace ScanMonitorApp
                 if (sdAllInfo != null)
                     try
                     {
-                        _cacheScanDocAllInfo.Add(uniqName, sdAllInfo);
+                        if (!_cacheScanDocAllInfo.ContainsKey(uniqName))
+                            _cacheScanDocAllInfo.Add(uniqName, sdAllInfo);
                     }
                     catch (Exception)
                     {
