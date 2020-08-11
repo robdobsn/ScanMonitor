@@ -268,10 +268,10 @@ namespace ScanMonitorApp
                     .ToList();
 
                 // Successful search
-                this.Dispatcher.BeginInvoke((Action)delegate ()
-                {
-                    progBar.Value = (70);
-                });
+                //this.Dispatcher.BeginInvoke((Action)delegate ()
+                //{
+                //    progBar.Value = (70);
+                //});
 
                 // Parse records
                 List<AuditData> auditDataColl = new List<AuditData>();
@@ -341,12 +341,19 @@ namespace ScanMonitorApp
                 }
 
                 // List contents returned
+                double progVal = 50;
+                progBar.Value = progVal;
                 List<AuditData> rslt = (List<AuditData>)e.Result;
                 AuditDataColl.Clear();
+                double progInc = 50 / rslt.Count;
                 foreach (var el in rslt)
+                {
                     AuditDataColl.Add(el);
+                    progVal += progInc;
+                    progBar.Value = progVal;
+                }
             }
-            progBar.Value = (100);
+            progBar.Value = 100;
             EnableSearchButtons(true);
         }
 
@@ -374,6 +381,7 @@ namespace ScanMonitorApp
             btnOpenFiled.IsEnabled = false;
             txtScanDocInfo.Text = "";
             txtFiledDocInfo.Text = "";
+            txtPageText.SelectionStart = 100000000;
             txtPageText.Text = "";
         }
 
