@@ -320,4 +320,13 @@ namespace ScanMonitorApp
         public IEnumerable<FiledDocInfo> filedInfo;
     };
 
+    public class ScanCombinedFiledAndPages
+    {
+        public ObjectId Id;
+        public string uniqName { get; set; }
+        public List<List<ScanTextElem>> scanPagesText { get; set; }
+        public List<int> pageRotations { get; set; }
+        public IEnumerable<FiledDocInfo> filedInfo;
+    };
+
 }

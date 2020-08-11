@@ -29,9 +29,6 @@ using System.Text.RegularExpressions;
 
 namespace ScanMonitorApp
 {
-    /// <summary>
-    /// Interaction logic for AuditView.xaml
-    /// </summary>
     public partial class AuditView : Window
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
@@ -40,7 +37,8 @@ namespace ScanMonitorApp
         private BackgroundWorker _bwThreadForPopulateList;
         private BackgroundWorker _bwThreadForSearch;
         const int MAX_NUM_DOCS_TO_ADD_TO_LIST = 100;
-        const string SRCH_DOC_TYPE_ANY = "<<<ANY>>>";
+        const string SRCH_DOC_TYPE_ANY = "Any";
+        const string SRCH_DOC_TYPE_UNFILED = "Unfiled";
         private WindowClosingDelegate _windowClosingCB;
         private IFindFluent<ScanPages, ScanPages> _lastSearchResult = null;
         private int _resultListCurSkip = 0;
@@ -107,55 +105,85 @@ namespace ScanMonitorApp
             string searchText = (string)args[0];
             bool ignoreCase = (bool)args[1];
             bool useRegex = (bool)args[2];
+            string filedDocStatus = (string)args[3];
 
-            // Form database query
-            IMongoCollection<ScanPages> collection_spages = _scanDocHandler.GetDocPagesCollection();
+            // Check filed doc filtering required
             BsonDocument query = null;
-            if (searchText.Trim().Length == 0)
+            if (filedDocStatus == SRCH_DOC_TYPE_ANY)
             {
-                query = new BsonDocument();
-            }
-            else if (useRegex)
-            {
-                query = new BsonDocument{{
-                    "scanPagesText", new BsonDocument {{
-                        "$elemMatch", new BsonDocument {{
+                if (searchText.Trim().Length == 0)
+                {
+                    query = new BsonDocument();
+                }
+                else
+                {
+                    query = new BsonDocument{{
+                        "scanPagesText", new BsonDocument {{
                             "$elemMatch", new BsonDocument {{
-                                "text", new BsonDocument {
-                                    {
-                                        "$regex", searchText
-                                    },
-                                    {
-                                        "$options", ignoreCase ? "i" : ""
-                                    }
-                                }
-                            }}
-                        }}
-                    }}
-                }};
-            }
-            else
-            {
-                query = new BsonDocument{{
-                    "scanPagesText", new BsonDocument {{
-                        "$elemMatch", new BsonDocument {{
-                            "$elemMatch", new BsonDocument {{
-                                "text", new BsonDocument {{
-                                    "$text", new BsonDocument {
+                                "$elemMatch", new BsonDocument {{
+                                    "text", new BsonDocument {
                                         {
-                                            "$search", searchText
+                                            "$regex", searchText
                                         },
                                         {
-                                            "$caseSensitive", !ignoreCase
+                                            "$options", ignoreCase ? "i" : ""
                                         }
                                     }
                                 }}
                             }}
                         }}
-                    }}
-                }};
-                Console.WriteLine(query.ToJson());
+                    }};
+                }
             }
+            else
+            {
+                // Get filter list
+                List<string> filterList = new List<string>();
+                if (filedDocStatus == SRCH_DOC_TYPE_UNFILED)
+                {
+                    filterList = _scanDocHandler.GetCopyOfUnfiledDocsList();
+                }
+                else
+                {
+                    // Run query to get filed docs of type
+                    IMongoCollection<FiledDocInfo> collFiled = _scanDocHandler.GetFiledDocsCollection();
+                    IFindFluent<FiledDocInfo, FiledDocInfo> fdi = collFiled.Find(x => x.filedAs_docType == filedDocStatus);
+                    foreach (var fd in fdi.ToEnumerable())
+                    {
+                        filterList.Add(fd.uniqName);
+                    }
+                }
+
+                query = new BsonDocument{
+                    {
+                        "uniqName", new BsonDocument
+                        {
+                            {
+                                "$in", new BsonArray(filterList)
+                            }
+                        }
+                    },
+                    {
+                        "scanPagesText", new BsonDocument {{
+                            "$elemMatch", new BsonDocument {{
+                                "$elemMatch", new BsonDocument {{
+                                    "text", new BsonDocument {
+                                        {
+                                            "$regex", searchText
+                                        },
+                                        {
+                                            "$options", ignoreCase ? "i" : ""
+                                        }
+                                    }
+                                }}
+                            }}
+                        }}
+                    }
+                };
+            }
+
+            // Form database query
+            IMongoCollection<ScanPages> collection_spages = _scanDocHandler.GetDocPagesCollection();
 
             // Execute query
             if (query != null)
@@ -235,7 +263,7 @@ namespace ScanMonitorApp
                         @as: (ScanCombinedInfo eo) => eo.filedInfo
                     )
                     .Match(p => foundUniqNames.Contains(p.uniqName))
-                    .Match(q => q.filedInfo.Any(r => r.filedAt_finalStatus == FiledDocInfo.DocFinalStatus.STATUS_DELETED))
+                    //.Match(q => q.filedInfo.Any(r => r.filedAt_finalStatus == FiledDocInfo.DocFinalStatus.STATUS_DELETED))
                     //.Sort(new BsonDocument("other.name", -1))
                     .ToList();
 
@@ -436,11 +464,6 @@ namespace ScanMonitorApp
             }
         }
 
-        private string GetListViewType()
-        {
-            return ((ComboBoxItem)(comboListView.SelectedItem)).Tag.ToString();
-        }
-
         private void btnOpenOrig_Click(object sender, RoutedEventArgs e)
         {
             AuditData selectedRow = auditListView.SelectedItem as AuditData;
@@ -563,6 +586,7 @@ namespace ScanMonitorApp
             }
             docTypeStrings.Sort();
             docTypeStrings.Insert(0, SRCH_DOC_TYPE_ANY);
+            docTypeStrings.Insert(1, SRCH_DOC_TYPE_UNFILED);
             string[] prevMenuStrs = null;
             MenuItem[] prevMenuItems = new MenuItem[MAX_MENU_LEVELS];
             foreach (string docTypeString in docTypeStrings)
@@ -705,7 +729,7 @@ namespace ScanMonitorApp
                 EnableSearchButtons(false);
                 bool ignoreCase = chkBoxIgnoreCase.IsChecked ?? true;
                 bool useRegex = chkBoxRegEx.IsChecked ?? false;
-                object[] args = { srchText, ignoreCase, useRegex };
+                object[] args = { srchText, ignoreCase, useRegex, lblDocTypeToSearchFor.Content };
                 _bwThreadForSearch.RunWorkerAsync(args);
             }
         }
