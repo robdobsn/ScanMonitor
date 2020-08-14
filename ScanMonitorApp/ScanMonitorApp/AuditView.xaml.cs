@@ -190,7 +190,7 @@ namespace ScanMonitorApp
             {
                 try
                 {
-                    var foundScanDoc = collection_spages.Find(query);
+                    var foundScanDoc = collection_spages.Find(query).Sort(Builders<ScanPages>.Sort.Descending("uniqName"));
                     e.Result = foundScanDoc;
                 }
                 catch (Exception excp)
@@ -345,7 +345,7 @@ namespace ScanMonitorApp
                 progBar.Value = progVal;
                 List<AuditData> rslt = (List<AuditData>)e.Result;
                 AuditDataColl.Clear();
-                double progInc = 50 / rslt.Count;
+                double progInc = rslt.Count == 0 ? 1 : (50 / rslt.Count);
                 foreach (var el in rslt)
                 {
                     AuditDataColl.Add(el);
