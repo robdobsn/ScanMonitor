@@ -349,6 +349,7 @@ namespace ScanMonitorApp
                     while (cursor.MoveNext() && cursor.Current.Count() == 0) { }
                     var change = cursor.Current.First();
                     logger.Info("Database change detected {0}", change.ToString());
+                    _scanDocInfoCache.ReqUnfiledListUpdateAndWaitComplete(5);
                     _lastDatabaseChangeEventTime = DateTime.Now;
                 }
             }

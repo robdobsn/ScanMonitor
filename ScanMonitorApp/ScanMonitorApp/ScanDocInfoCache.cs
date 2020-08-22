@@ -22,6 +22,7 @@ namespace ScanMonitorApp
         private static readonly object _lockForUnfiledListAccess = new object();
         private bool _threadRunning = true;
         private bool _requestUnfiledListUpdate = false;
+        private bool _requestUnfiledListUpdateComplete = false;
         private bool _scanDocAllInfoPrimed = false;
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -45,6 +46,26 @@ namespace ScanMonitorApp
         public void RequestUnfiledListUpdate()
         {
             _requestUnfiledListUpdate = true;
+        }
+
+        public bool ReqUnfiledListUpdateAndWaitComplete(int maxSecsToWait)
+        {
+            _requestUnfiledListUpdateComplete = false;
+            _requestUnfiledListUpdate = true;
+            // Wait for a bit - checking if request has been actioned
+            for (int checkCtr = 0; checkCtr < maxSecsToWait * 10; checkCtr++)
+            {
+                // See if a request completed
+                if (_requestUnfiledListUpdateComplete)
+                {
+                    logger.Info("UnfiledListUpdateCompleted");
+                    return true;
+                }
+
+                // Sleep a while
+                Thread.Sleep(100);
+            }
+            return false;
         }
 
         public ScanDocAllInfo GetScanDocAllInfo(string uniqName)
@@ -179,6 +200,7 @@ namespace ScanMonitorApp
 
                 // Debug
                 logger.Info("UnfiledListUpdateCompleted");
+                _requestUnfiledListUpdateComplete = true;
 
                 // Wait for a bit - checking if a prompt has been received
                 for (int checkCtr = 0; checkCtr < Properties.Settings.Default.UnfiledDocCheckSeconds * 10; checkCtr++)

@@ -122,7 +122,7 @@ namespace ScanMonitorApp
             bool databaseChanged = _scanDocHandler.RecentDatabaseChangeCheck(_lastDatabaseUpdateCheckTime);
             bool hashDiffers = (_uiUpdateTimerCount++ > MAX_UI_TIMER_COUNTS_BEFORE_CHECK) && (_lastHashOfUnfiledDocs != _scanDocHandler.GetHashOfUnfiledDocs());
 
-            //logger.Info("Checking {0} {1} {2}", databaseChanged, hashDiffers, _formFieldsUserModified);
+            logger.Info("NewDocTimerTick CheckForDBChange dbChanged {0} hashDiffers {1} userFormFieldsModified {2}", databaseChanged, hashDiffers, _formFieldsUserModified);
 
             // Don't change UI if user is modifying
             if ((!_formFieldsUserModified) && (databaseChanged || hashDiffers))
