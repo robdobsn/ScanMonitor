@@ -276,25 +276,30 @@ namespace ScanMonitorApp
 
         protected override void OnStateChanged(EventArgs e)
         {
-            if (WindowState == WindowState.Minimized)
+            if (_thisPCIsScanningPC)
             {
-                HidePopupWindow();
+                if (WindowState == WindowState.Minimized)
+                {
+                    HidePopupWindow();
+                }
+
+                if (WindowState == WindowState.Maximized)
+                    WindowState = WindowState.Normal;
             }
-
-            if (WindowState == WindowState.Maximized)
-                WindowState = WindowState.Normal;
-
             base.OnStateChanged(e);
         }
 
         private void BringWindowToFront()
         {
-            this.Show();
-            this.WindowState = WindowState.Normal;
-            this.Activate();
-            this.Topmost = true;
-            this.Topmost = false;
-            this.Focus();
+            if (_thisPCIsScanningPC)
+            {
+                this.Show();
+                this.WindowState = WindowState.Normal;
+                this.Activate();
+                this.Topmost = true;
+                this.Topmost = false;
+                this.Focus();
+            }
         }
 
         private void ShowPopupWindow()

@@ -1858,6 +1858,7 @@ namespace ScanMonitorApp
         private void lblStatusBarFileNo_MouseUp(object sender, MouseButtonEventArgs e)
         {
             GoToPage gtp = new GoToPage(_curDocToBeFiledIdxInList+1, lblStatusBarFileNo, this);
+            gtp.Owner = this;
             gtp.ShowDialog();
             if (gtp.dlgResult)
             {

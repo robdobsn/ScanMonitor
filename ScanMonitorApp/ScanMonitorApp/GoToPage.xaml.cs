@@ -48,20 +48,20 @@ namespace ScanMonitorApp
 
         private void GoToPage1_Loaded(object sender, RoutedEventArgs e)
         {
-            if (_fromElem != null)
-            {
-                var positionTransform = _fromElem.TransformToAncestor(_fromWin);
-                var areaPosition = positionTransform.Transform(new Point(0, 0));
-                Application curApp = Application.Current;
-                Window mainWindow = curApp.MainWindow;
-                this.Left = mainWindow.Left + areaPosition.X + 100 - this.ActualWidth;
-                this.Top = mainWindow.Top + areaPosition.Y + 150;
-            }
-            else
-            {
-                Left = _fromWin.Left + (_fromWin.ActualWidth - ActualWidth) / 2;
-                Top = _fromWin.Top + (_fromWin.ActualHeight - ActualHeight) / 2;
-            }
+            //if (_fromElem != null)
+            //{
+            //    var positionTransform = _fromElem.TransformToAncestor(_fromWin);
+            //    var areaPosition = positionTransform.Transform(new Point(0, 0));
+            //    Application curApp = Application.Current;
+            //    Window mainWindow = curApp.MainWindow;
+            //    this.Left = mainWindow.Left + areaPosition.X + 100 - this.ActualWidth;
+            //    this.Top = mainWindow.Top + areaPosition.Y + 150;
+            //}
+            //else
+            //{
+            //    Left = _fromWin.Left + (_fromWin.ActualWidth - ActualWidth) / 2;
+            //    Top = _fromWin.Top + (_fromWin.ActualHeight - ActualHeight) / 2;
+            //}
         }
 
     }
