@@ -63,7 +63,6 @@ namespace ScanMonitorApp
         public MainWindow()
         {
             InitializeComponent();
-            InitNotifyIcon();
             logger.Info("App Started");
 
             // Document matcher
@@ -107,6 +106,7 @@ namespace ScanMonitorApp
                 }
                 _scanFileMonitor.Start(foldersToMonitor, Properties.Settings.Default.LocalFolderToMoveFiledTo, TEST_MODE);
                 statusRunningMonitor.Content += " and is Running Folder Monitor";
+                InitNotifyIcon();
             }
             else
             {
@@ -257,14 +257,18 @@ namespace ScanMonitorApp
 
         private void Window_Closed(object sender, EventArgs e)
         {
-            _notifyIcon.Visible = false;
+            if (_notifyIcon != null)
+                _notifyIcon.Visible = false;
         }
 
         protected override void OnClosing(CancelEventArgs e)
         {
             base.OnClosing(e);
-            e.Cancel = true;
-            WindowState = WindowState.Minimized;
+            if (_thisPCIsScanningPC)
+            {
+                e.Cancel = true;
+                WindowState = WindowState.Minimized;
+            }
             Properties.Settings.Default.Save();
             if (_scanFileMonitor != null)
                 _scanFileMonitor.Stop();
