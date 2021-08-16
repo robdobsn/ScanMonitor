@@ -314,7 +314,7 @@ namespace ScanMonitorApp
 #endif
 
                             // Show type and date
-                            ShowDocumentTypeAndDate(latestMatchResult.docTypeName);
+                            ShowDocumentTypeAndDate(latestMatchResult.docTypeName, false);
                         }
                     }
                 }
@@ -330,9 +330,9 @@ namespace ScanMonitorApp
 #endif
         }
 
-        private void ShowDocumentTypeAndDate(string docTypeName)
+        private void ShowDocumentTypeAndDate(string docTypeName, bool isUser)
         {
-            if (_formFieldsUserModified)
+            if (!isUser && _formFieldsUserModified)
                 return;
             _curSelectedDocTypeName = docTypeName;
             _newDocTypeSignal.Set();
@@ -359,10 +359,6 @@ namespace ScanMonitorApp
 
         private void CompleteDocTypeChange(string docTypeName)
         {
-            // Check id user has made changes
-            if (_formFieldsUserModified)
-                return;
-
             // Reset the override folder
             _overrideFolderForFiling = "";
             if (btnMoveToUndo.IsEnabled != false)
@@ -743,7 +739,7 @@ namespace ScanMonitorApp
                 tag = ((Button)sender).Tag;
             if (tag.GetType() == typeof(string))
             {
-                ShowDocumentTypeAndDate((string)tag);
+                ShowDocumentTypeAndDate((string)tag, true);
                 // User modified
                 _formFieldsUserModified = true;
             }
@@ -763,7 +759,7 @@ namespace ScanMonitorApp
                 tag = ((Label)sender).Tag;
             if (tag.GetType() == typeof(string))
             {
-                ShowDocumentTypeAndDate((string)tag);
+                ShowDocumentTypeAndDate((string)tag, true);
                 // User modified
                 _formFieldsUserModified = true;
             }
@@ -1108,7 +1104,7 @@ namespace ScanMonitorApp
             QuickNewDocType qndt = new QuickNewDocType(_scanDocHandler, _docTypesMatcher, _curDocScanDocInfo == null ? "" : _curDocScanDocInfo.uniqName, _curDocDisplay_pageNum);
             bool? rslt = qndt.ShowDialog();
             if (rslt != null && rslt == true)
-                ShowDocumentTypeAndDate(qndt._newDocTypeName);
+                ShowDocumentTypeAndDate(qndt._newDocTypeName, true);
         }
 
         private void btnDocTypeSel_Click(object sender, RoutedEventArgs e)
@@ -1197,7 +1193,7 @@ namespace ScanMonitorApp
             btnDocTypeSel.ContextMenu.IsOpen = false;
             object tag = menuItem.Tag;
             if (tag.GetType() == typeof(string))
-                ShowDocumentTypeAndDate((string)tag);
+                ShowDocumentTypeAndDate((string)tag, true);
         }
 
         private void docImgCtxtOriginal_Click(object sender, RoutedEventArgs e)
