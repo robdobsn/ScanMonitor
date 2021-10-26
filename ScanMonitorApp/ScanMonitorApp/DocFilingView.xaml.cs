@@ -246,13 +246,13 @@ namespace ScanMonitorApp
             // Re-check the document
             DocTypeMatchResult latestMatchResult;
             List<DocTypeMatchResult> possMatches = new List<DocTypeMatchResult>();
-            if (_curDocScanPages != null)
-            {
-                Task<DocTypeMatchResult> rslt = _docTypesMatcher.GetMatchingDocType(_curDocScanPages, possMatches);
-                rslt.Wait(30000);
-                latestMatchResult = rslt.Result;
-            }
-            else
+            //if (_curDocScanPages != null)
+            //{
+            //    Task<DocTypeMatchResult> rslt = _docTypesMatcher.GetMatchingDocType(_curDocScanPages, possMatches);
+            //    rslt.Wait(30000);
+            //    latestMatchResult = rslt.Result;
+            //}
+            //else
             {
                 latestMatchResult = new DocTypeMatchResult();
             }
