@@ -161,21 +161,21 @@ namespace ScanMonitorApp
 
         private void MetroWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            // Position window
-            PresentationSource MainWindowPresentationSource = PresentationSource.FromVisual(this);
-            Matrix m = MainWindowPresentationSource.CompositionTarget.TransformToDevice;
-            double DpiWidthFactor = m.M11;
-            double DpiHeightFactor = m.M22;
-            double ScreenHeight = SystemParameters.PrimaryScreenHeight * DpiHeightFactor;
-            double ScreenWidth = SystemParameters.PrimaryScreenWidth * DpiWidthFactor;
+            //// Position window
+            //PresentationSource MainWindowPresentationSource = PresentationSource.FromVisual(this);
+            //Matrix m = MainWindowPresentationSource.CompositionTarget.TransformToDevice;
+            //double DpiWidthFactor = m.M11;
+            //double DpiHeightFactor = m.M22;
+            //double ScreenHeight = SystemParameters.PrimaryScreenHeight * DpiHeightFactor;
+            //double ScreenWidth = SystemParameters.PrimaryScreenWidth * DpiWidthFactor;
 
-            logger.Info("W " + Screen.PrimaryScreen.WorkingArea.Width.ToString() + " . " + Width.ToString() + " . " + ScreenWidth.ToString() +
-                " H " + Screen.PrimaryScreen.WorkingArea.Height.ToString() + " . " + Height.ToString() + " . " + ScreenHeight.ToString());
-            if ((ScreenWidth - Width > 0) && (ScreenHeight - Height > 0))
-            {
-                Left = ScreenWidth - Width;
-                Top = ScreenHeight - Height - 100;
-            }
+            //logger.Info("W " + Screen.PrimaryScreen.WorkingArea.Width.ToString() + " . " + Width.ToString() + " . " + ScreenWidth.ToString() +
+            //    " H " + Screen.PrimaryScreen.WorkingArea.Height.ToString() + " . " + Height.ToString() + " . " + ScreenHeight.ToString());
+            //if ((ScreenWidth - Width > 0) && (ScreenHeight - Height > 0))
+            //{
+            //    Left = ScreenWidth - Width;
+            //    Top = ScreenHeight - Height - 100;
+            //}
 
             // UI update timer
             _uiUpdateTimer.Tick += new EventHandler(uiUpdateTimer_Tick);
