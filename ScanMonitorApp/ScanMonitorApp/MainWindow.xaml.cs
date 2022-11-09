@@ -1,4 +1,4 @@
-﻿#define USE_NOTIFY_ICON
+﻿//#define USE_NOTIFY_ICON
 
 using System;
 using System.Collections.Generic;

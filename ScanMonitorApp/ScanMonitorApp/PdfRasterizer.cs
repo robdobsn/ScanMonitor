@@ -97,7 +97,7 @@ namespace ScanMonitorApp
             System.Drawing.Image img = null;
             try
             {
-                img = _rasterizer.GetPage(_pointsPerInch, _pointsPerInch, pageNum);
+                img = _rasterizer.GetPage(_pointsPerInch, pageNum);
                 // Rotate image as required
                 if (rotateBasedOnText)
                 {
@@ -134,7 +134,7 @@ namespace ScanMonitorApp
                 string pageFileName = GetFilenameOfImageOfPage(outputPath, uniqName, pageNumber, true, "jpg");
                 try
                 {
-                    System.Drawing.Image img = _rasterizer.GetPage(_pointsPerInch, _pointsPerInch, pageNumber);
+                    System.Drawing.Image img = _rasterizer.GetPage(_pointsPerInch, pageNumber);
                     // Rotate image as required
                     if (rotateBasedOnText)
                     {
@@ -236,7 +236,7 @@ namespace ScanMonitorApp
             if (pageNum > rasterizer.PageCount)
                 return null;
 
-            System.Drawing.Image img = rasterizer.GetPage(desired_x_dpi, desired_y_dpi, pageNum);
+            System.Drawing.Image img = rasterizer.GetPage(desired_x_dpi, pageNum);
 
             rasterizer = null;
 

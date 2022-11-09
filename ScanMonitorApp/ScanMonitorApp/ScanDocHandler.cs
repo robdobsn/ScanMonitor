@@ -1,4 +1,6 @@
-﻿using System;
+﻿//#define USE_MONGO_REPLICASETS
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -332,6 +334,7 @@ namespace ScanMonitorApp
 
         private void CollectionWatcher_DoWork(object sender, DoWorkEventArgs e)
         {
+#if USE_MONGO_REPLICASETS
             // Watch database
             using (var cursor = GetDocInfoCollection().Watch())
             {
@@ -353,6 +356,7 @@ namespace ScanMonitorApp
                     _lastDatabaseChangeEventTime = DateTime.Now;
                 }
             }
+#endif
         }
   
             //    // Watch collection
@@ -394,9 +398,9 @@ namespace ScanMonitorApp
             //        }
             //    }
             //}
-    #endregion
+#endregion
 
-    #region ScanDocPages Collection Handling
+#region ScanDocPages Collection Handling
 
         public IMongoCollection<ScanPages> GetDocPagesCollection()
         {
@@ -428,9 +432,9 @@ namespace ScanMonitorApp
             }
         }
 
-        #endregion
+#endregion
 
-        #region FiledDocs Collection Handling
+#region FiledDocs Collection Handling
 
         public IMongoCollection<FiledDocInfo> GetFiledDocsCollection()
         {
@@ -530,9 +534,9 @@ namespace ScanMonitorApp
             return docTypesList;
         }
 
-        #endregion
+#endregion
 
-        #region Existing File Hash Information
+#region Existing File Hash Information
 
         public IMongoCollection<ExistingFileInfoRec> GetExistingFileInfoCollection()
         {
@@ -582,9 +586,9 @@ namespace ScanMonitorApp
             return efirList;
         }
 
-        #endregion
+#endregion
 
-        #region Unfiled Document Handling
+#region Unfiled Document Handling
 
         public List<string> GetCopyOfUnfiledDocsList()
         {
@@ -619,9 +623,9 @@ namespace ScanMonitorApp
             _lastNDocTypesFiled.Insert(0, docTypeFiledAs);
         }
 
-        #endregion
+#endregion
 
-        #region Delete File
+#region Delete File
 
         public bool DeleteFile(string uniqName, FiledDocInfo fdi, string fullSourceName, bool dueToFileEditing)
         {
@@ -664,9 +668,9 @@ namespace ScanMonitorApp
             return AddOrUpdateFiledDocRecInDb(fdi);
         }
 
-        #endregion
+#endregion
 
-        #region Validity Checking before Filing
+#region Validity Checking before Filing
 
         public bool CheckOkToFileDoc(string destDocPathAndFileName, out string rsltText)
         {
@@ -730,9 +734,9 @@ namespace ScanMonitorApp
             return true;
         }
 
-        #endregion
+#endregion
 
-        #region Doc Filing Processing
+#region Doc Filing Processing
 
         public void StartProcessFilingOfDoc(ReportStatus reportStatusCallback, ReportStatus filingCompleteCallback, ScanDocInfo sdi, FiledDocInfo fdi, string emailPassword, out string rsltText)
         {
@@ -1054,9 +1058,9 @@ namespace ScanMonitorApp
             }
         }
 
-        #endregion
+#endregion
 
-        #region PDF file processing
+#region PDF file processing
 
         // when processing file
         // - first move the file
@@ -1144,9 +1148,9 @@ namespace ScanMonitorApp
             return true;
         }
 
-        #endregion
+#endregion
 
-        #region Utility Functions
+#region Utility Functions
 
         public static string GetArchiveFileName(string uniqName)
         {
@@ -1352,9 +1356,9 @@ namespace ScanMonitorApp
             Process.Start(psi);
         }
 
-        #endregion
+#endregion
 
-        #region Multiple file processing (for PDF editor)
+#region Multiple file processing (for PDF editor)
 
         public bool backgroundProcessPdfFiles(List<String> filesToProcess)
         {
@@ -1384,7 +1388,7 @@ namespace ScanMonitorApp
             }
         }
 
-        #endregion
+#endregion
     }
 
     public class ScanDocHandlerConfig
