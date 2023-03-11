@@ -33,6 +33,7 @@ namespace ScanMonitorApp
         private volatile string _lastStatusOfFileProcessing = "";
         private const int MAX_PROC_EVENTS_TO_STORE = 50;
         private volatile List<string> _lastProcessEvents = new List<string>();
+        private static readonly object _lockForLastProcessEvents = new object();
         private Dictionary<string, DateTime> _lastDateTimeOnReprocessedDoc = new Dictionary<string, DateTime>();
 
         public ScanFileMonitor(ReportStatus reportStatusFn, ScanDocHandler scanDocHandler)
@@ -348,10 +349,13 @@ namespace ScanMonitorApp
         }
         void addProcEvent(LogLevel logLevel, string eventInfo)
         {
-            _lastProcessEvents.Add(eventInfo);
-            if (_lastProcessEvents.Count > MAX_PROC_EVENTS_TO_STORE)
+            lock (_lockForLastProcessEvents)
             {
-                _lastProcessEvents.RemoveAt(0);
+                _lastProcessEvents.Add(eventInfo);
+                if (_lastProcessEvents.Count > MAX_PROC_EVENTS_TO_STORE)
+                {
+                    _lastProcessEvents.RemoveAt(0);
+                }
             }
             logger.Log(logLevel, eventInfo);
         }
@@ -359,9 +363,24 @@ namespace ScanMonitorApp
         string procEventsGet()
         {
             string evtListStr = "";
-            foreach (var evtStr in _lastProcessEvents)
+            // Try to obtain a lock on the lock object but with a timeout to ensure we don't wait here for a long time
+            if (Monitor.TryEnter(_lockForLastProcessEvents, new TimeSpan(0, 0, 10)))
             {
-                evtListStr += evtStr + "\n";
+                try
+                {
+                    foreach (var evtStr in _lastProcessEvents)
+                    {
+                        evtListStr += evtStr + "\n";
+                    }
+                }
+                finally
+                {
+                    Monitor.Exit(_lockForLastProcessEvents);
+                }
+            }
+            else
+            {
+                addProcEvent(LogLevel.Warn, String.Format("Unable to obtain lock for procEventsGet"));
             }
             return evtListStr;
         }

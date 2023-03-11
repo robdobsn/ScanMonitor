@@ -222,7 +222,7 @@ namespace ScanMonitorApp
         public static System.Drawing.Image GetImageOfPage(string fileName, int pageNum)
         {
             int desired_x_dpi = 150;
-            int desired_y_dpi = 150;
+            //int desired_y_dpi = 150;
 
             GhostscriptVersionInfo lastInstalledVersion =
                 GhostscriptVersionInfo.GetLastInstalledVersion(
