@@ -291,8 +291,8 @@ namespace ScanMonitorApp
                                         if (_scanDocHandler.AlreadyFiledCheck(fsi.FullName, uniqName))
                                         {
                                             // Move the file as it has been filed
-                                            string destFilenameForFiledDoc = Delimon.Win32.IO.Path.Combine(_localFolderForFiledDocs, fsi.Name);
-                                            Delimon.Win32.IO.File.Move(fsi.FullName, destFilenameForFiledDoc);
+                                            string destFilenameForFiledDoc = System.IO.Path.Combine(_localFolderForFiledDocs, fsi.Name);
+                                            System.IO.File.Move(fsi.FullName, destFilenameForFiledDoc);
                                             addProcEvent(LogLevel.Info, String.Format("File {0} moved to {1}", fsi.FullName, destFilenameForFiledDoc));
                                         }
                                         else if (ScanDocInfo.CheckFileModified(fsi.FullName, File.GetLastWriteTime(fsi.FullName), uniqName))

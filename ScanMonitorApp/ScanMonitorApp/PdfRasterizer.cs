@@ -143,8 +143,8 @@ namespace ScanMonitorApp
                                 img = RotateImageWithoutCrop(img, scanPages.pageRotations[pageNumber - 1]);
                     }
                     // Save to file
-                    if (Delimon.Win32.IO.File.Exists(pageFileName))
-                        Delimon.Win32.IO.File.Delete(pageFileName);
+                    if (System.IO.File.Exists(pageFileName))
+                        System.IO.File.Delete(pageFileName);
                     img.Save(pageFileName, ImageFormat.Jpeg);
                     imgFileNames.Add(pageFileName);
                 }

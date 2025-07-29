@@ -68,17 +68,15 @@ namespace ScanMonitorApp
             try
             {
                 // Check file exists
-                if (!Delimon.Win32.IO.File.Exists(fileName))
+                if (!System.IO.File.Exists(fileName))
                 {
                     logger.Error("Trying to delete non-existent file {0}", fileName);
                     return "OK - file didn't exist";
                 }
                 else if (Properties.Settings.Default.TestModeFileTo == "")
                 {
-                    if (Delimon.Win32.IO.File.Delete(fileName))
-                        return "OK";
-                    else
-                        return "FAILED";
+                    System.IO.File.Delete(fileName);
+                    return "OK";
                 }
                 else
                 {
