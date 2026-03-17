@@ -12,6 +12,7 @@ using NLog;
 using MongoDB.Driver;
 using System.Drawing;
 using iTextSharp.text.pdf;
+using SkiaSharp;
 
 namespace ScanMonitorApp
 {
@@ -97,7 +98,7 @@ namespace ScanMonitorApp
             System.Drawing.Image img = null;
             try
             {
-                img = _rasterizer.GetPage(_pointsPerInch, pageNum);
+                img = SKBitmapToImage(_rasterizer.GetPage(_pointsPerInch, pageNum));
                 // Rotate image as required
                 if (rotateBasedOnText)
                 {
@@ -134,7 +135,7 @@ namespace ScanMonitorApp
                 string pageFileName = GetFilenameOfImageOfPage(outputPath, uniqName, pageNumber, true, "jpg");
                 try
                 {
-                    System.Drawing.Image img = _rasterizer.GetPage(_pointsPerInch, pageNumber);
+                    System.Drawing.Image img = SKBitmapToImage(_rasterizer.GetPage(_pointsPerInch, pageNumber));
                     // Rotate image as required
                     if (rotateBasedOnText)
                     {
@@ -206,6 +207,16 @@ namespace ScanMonitorApp
             else return b;
         }
 
+        private static System.Drawing.Image SKBitmapToImage(SKBitmap skBitmap)
+        {
+            using (var skImage = SKImage.FromBitmap(skBitmap))
+            using (var skData = skImage.Encode(SKEncodedImageFormat.Png, 100))
+            {
+                var stream = new MemoryStream(skData.ToArray());
+                return System.Drawing.Image.FromStream(stream);
+            }
+        }
+
         public static string GetFilenameOfImageOfPage(string baseFolderForImages, string uniqName, int pageNum, bool bCreateFolderIfReqd, string fileExtForced = "")
         {
             if (fileExtForced != "")
@@ -236,7 +247,7 @@ namespace ScanMonitorApp
             if (pageNum > rasterizer.PageCount)
                 return null;
 
-            System.Drawing.Image img = rasterizer.GetPage(desired_x_dpi, pageNum);
+            System.Drawing.Image img = SKBitmapToImage(rasterizer.GetPage(desired_x_dpi, pageNum));
 
             rasterizer = null;
 
