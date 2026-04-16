@@ -12,7 +12,7 @@ namespace ScanMonitorApp.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "16.10.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "18.6.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -20,18 +20,6 @@ namespace ScanMonitorApp.Properties {
         public static Settings Default {
             get {
                 return defaultInstance;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Admin\\ScanAdmin\\ScannedDocImgs")]
-        public string DocAdminImgFolderBase {
-            get {
-                return ((string)(this["DocAdminImgFolderBase"]));
-            }
-            set {
-                this["DocAdminImgFolderBase"] = value;
             }
         }
         
@@ -152,42 +140,6 @@ namespace ScanMonitorApp.Properties {
             }
             set {
                 this["DbCollectionForPathMacros"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("mongodb://macallan/")]
-        public string DbConnectionString {
-            get {
-                return ((string)(this["DbConnectionString"]));
-            }
-            set {
-                this["DbConnectionString"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Main\\RobAndJudyPersonal")]
-        public string BasePathForFilingFolderSelection {
-            get {
-                return ((string)(this["BasePathForFilingFolderSelection"]));
-            }
-            set {
-                this["BasePathForFilingFolderSelection"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Admin\\ScanAdmin\\ScanDocBackups")]
-        public string DocArchiveFolder {
-            get {
-                return ((string)(this["DocArchiveFolder"]));
-            }
-            set {
-                this["DocArchiveFolder"] = value;
             }
         }
         
@@ -325,18 +277,6 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Admin\\ScanAdmin\\PdfOutFolder")]
-        public string PdfEditorOutFolder {
-            get {
-                return ((string)(this["PdfEditorOutFolder"]));
-            }
-            set {
-                this["PdfEditorOutFolder"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("c:\\Users\\Rob\\Documents\\ScanSnap")]
         public string FoldersToMonitor {
             get {
@@ -361,19 +301,6 @@ namespace ScanMonitorApp.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Main\\RobAndJudyPersonal;\\\\MACALLAN\\Main\\Rob Business;\\\\MACALLAN\\Main\\P" +
-            "eter Wilson documents")]
-        public string FoldersToSearchForFiledDocs {
-            get {
-                return ((string)(this["FoldersToSearchForFiledDocs"]));
-            }
-            set {
-                this["FoldersToSearchForFiledDocs"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("c:\\Users\\Rob\\Documents\\AlreadyFiledDocs")]
         public string LocalFolderToMoveFiledTo {
             get {
@@ -381,6 +308,91 @@ namespace ScanMonitorApp.Properties {
             }
             set {
                 this["LocalFolderToMoveFiledTo"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("MACALLAN")]
+        public string ServerName {
+            get {
+                return ((string)(this["ServerName"]));
+            }
+            set {
+                this["ServerName"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("mongodb://MACALLAN/")]
+        public string DbConnectionString {
+            get {
+                return ((string)(this["DbConnectionString"]));
+            }
+            set {
+                this["DbConnectionString"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Admin\\ScanAdmin\\ScannedDocImgs")]
+        public string DocAdminImgFolderBase {
+            get {
+                return ((string)(this["DocAdminImgFolderBase"]));
+            }
+            set {
+                this["DocAdminImgFolderBase"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Main\\RobAndJudyPersonal")]
+        public string BasePathForFilingFolderSelection {
+            get {
+                return ((string)(this["BasePathForFilingFolderSelection"]));
+            }
+            set {
+                this["BasePathForFilingFolderSelection"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Admin\\ScanAdmin\\ScanDocBackups")]
+        public string DocArchiveFolder {
+            get {
+                return ((string)(this["DocArchiveFolder"]));
+            }
+            set {
+                this["DocArchiveFolder"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Admin\\ScanAdmin\\PdfOutFolder")]
+        public string PdfEditorOutFolder {
+            get {
+                return ((string)(this["PdfEditorOutFolder"]));
+            }
+            set {
+                this["PdfEditorOutFolder"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\MACALLAN\\Main\\RobAndJudyPersonal;\\\\MACALLAN\\Main\\Rob Business;\\\\MACALLAN\\Main" +
+            "\\Peter Wilson documents")]
+        public string FoldersToSearchForFiledDocs {
+            get {
+                return ((string)(this["FoldersToSearchForFiledDocs"]));
+            }
+            set {
+                this["FoldersToSearchForFiledDocs"] = value;
             }
         }
     }

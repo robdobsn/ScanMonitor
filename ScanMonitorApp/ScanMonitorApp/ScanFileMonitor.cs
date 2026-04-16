@@ -310,7 +310,7 @@ namespace ScanMonitorApp
                                             if (reprocessFile)
                                             {
                                                 HandleASinglePdfFile(fsi.FullName, false, true, uniqName);
-                                                _lastDateTimeOnReprocessedDoc.Add(uniqName, lastFileWriteTime);
+                                                _lastDateTimeOnReprocessedDoc[uniqName] = lastFileWriteTime;
                                             }
                                         }
                                     }

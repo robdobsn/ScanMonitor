@@ -156,6 +156,7 @@ namespace ScanMonitorApp
 #endif
             // Get name of doc
             string uniqName = _scanDocHandler.GetUniqNameOfDocToBeFiled(docIdx);
+            logger.Info("ShowDocToBeFiled: docIdx {0} of {1}, uniqName '{2}'", docIdx, _scanDocHandler.GetCountOfUnfiledDocs(), uniqName);
 
 #if TEST_PERF_SHOWDOCFIRSTTIME
             stopWatch2.Stop();
@@ -194,6 +195,8 @@ namespace ScanMonitorApp
             ScanDocAllInfo scanDocAllInfo = _scanDocHandler.GetScanDocAllInfoCached(uniqName);
             if ((scanDocAllInfo == null) || (scanDocAllInfo.scanDocInfo == null))
             {
+                logger.Warn("ShowDocumentFirstTime: scanDocAllInfo is {0} for uniqName '{1}', docIdx {2}",
+                    scanDocAllInfo == null ? "null" : "missing scanDocInfo", uniqName, _curDocToBeFiledIdxInList);
                 _curDocScanPages = null;
                 _curDocScanDocInfo = null;
                 _curFiledDocInfo = null;
@@ -581,7 +584,15 @@ namespace ScanMonitorApp
             {
                 imgFileName = PdfRasterizer.GetFilenameOfImageOfPage(Properties.Settings.Default.DocAdminImgFolderBase, _curDocScanDocInfo.uniqName, pageNum, false);
                 if (!File.Exists(imgFileName))
+                {
+                    logger.Warn("DisplayScannedDocImage: image file not found for doc '{0}' page {1}, path '{2}', docIdx {3}",
+                        _curDocScanDocInfo.uniqName, pageNum, imgFileName, _curDocToBeFiledIdxInList);
                     bNoImage = true;
+                }
+            }
+            else
+            {
+                logger.Warn("DisplayScannedDocImage: no ScanDocInfo available, docIdx {0}", _curDocToBeFiledIdxInList);
             }
             if (bNoImage)
             {
@@ -1219,6 +1230,31 @@ namespace ScanMonitorApp
 
                 }
             }
+        }
+
+        private void docImgCtxtRegenImages_Click(object sender, RoutedEventArgs e)
+        {
+            if (_curDocScanDocInfo == null)
+                return;
+            string uniqName = _curDocScanDocInfo.uniqName;
+            logger.Info("Regenerating images for {0}", uniqName);
+            Task.Run(() =>
+            {
+                bool result = _scanDocHandler.RegenerateImagesFromArchive(uniqName);
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (result)
+                    {
+                        logger.Info("Regenerated images successfully for {0}", uniqName);
+                        DisplayScannedDocImage(1);
+                    }
+                    else
+                    {
+                        logger.Warn("Failed to regenerate images for {0}", uniqName);
+                        MessageBox.Show("Failed to regenerate images for " + uniqName + ". Check that the archive PDF exists.", "Regenerate Images", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                }));
+            });
         }
 
         private void btnSettings_Click(object sender, RoutedEventArgs e)

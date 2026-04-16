@@ -19,13 +19,79 @@ namespace ScanMonitorApp
     class PdfRasterizer
     {
         //private GhostscriptVersionInfo _lastInstalledVersion = null;
-        private static GhostscriptRasterizer _rasterizer = new GhostscriptRasterizer();
+        private GhostscriptRasterizer _rasterizer = new GhostscriptRasterizer();
         private Dictionary<int, System.Drawing.Image> _pageCache = new Dictionary<int, System.Drawing.Image>();
         private string _inputPdfPath;
         private List<int> _pageRotationInfo = new List<int>();
         private List<iTextSharp.text.Rectangle> _pageSizes = new List<iTextSharp.text.Rectangle>();
         private int _pointsPerInch = 0;
         private static Logger logger = LogManager.GetCurrentClassLogger();
+
+        private static GhostscriptVersionInfo FindGhostscriptVersion()
+        {
+            // Search the standard Ghostscript install location first
+            string dllName = Environment.Is64BitProcess ? "gsdll64.dll" : "gsdll32.dll";
+            string[] searchRoots = new[]
+            {
+                Path.Combine(Environment.GetEnvironmentVariable("ProgramW6432") ?? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "gs"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "gs"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "gs"),
+            };
+
+            foreach (string root in searchRoots)
+            {
+                if (string.IsNullOrEmpty(root) || !Directory.Exists(root))
+                    continue;
+                try
+                {
+                    foreach (string file in Directory.GetFiles(root, dllName, SearchOption.AllDirectories))
+                    {
+                        logger.Info("Found Ghostscript native library at {0}", file);
+                        return new GhostscriptVersionInfo(file);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.Warn("Error searching {0} for Ghostscript: {1}", root, ex.Message);
+                }
+            }
+
+            // Fall back to registry-based discovery
+            try
+            {
+                var version = GhostscriptVersionInfo.GetLastInstalledVersion(
+                    GhostscriptLicense.GPL | GhostscriptLicense.AFPL,
+                    GhostscriptLicense.GPL);
+                if (version != null)
+                {
+                    logger.Info("Found Ghostscript via registry: {0}", version.DllPath);
+                    return version;
+                }
+            }
+            catch
+            {
+                // Registry lookup failed
+            }
+
+            return null;
+        }
+
+        private static GhostscriptVersionInfo _gsVersion;
+        private static bool _gsVersionSearched = false;
+
+        private static GhostscriptVersionInfo GetGhostscriptVersion()
+        {
+            if (!_gsVersionSearched)
+            {
+                _gsVersion = FindGhostscriptVersion();
+                _gsVersionSearched = true;
+                if (_gsVersion == null)
+                    logger.Error("Ghostscript native library not found. PDF rasterization will not work.");
+                else
+                    logger.Info("Using Ghostscript: {0}", _gsVersion.DllPath);
+            }
+            return _gsVersion;
+        }
 
         public PdfRasterizer(string inputPdfPath, int pointsPerInch)
         {
@@ -53,21 +119,15 @@ namespace ScanMonitorApp
                 logger.Error("Cannot open PDF with iTextSharp {0} excp {1}", inputPdfPath, excp.Message);
             }
 
-            //_lastInstalledVersion =
-            //    GhostscriptVersionInfo.GetLastInstalledVersion(
-            //            GhostscriptLicense.GPL | GhostscriptLicense.AFPL,
-            //            GhostscriptLicense.GPL);
-
             try
             {
-                //string inpPath = inputPdfPath.Replace("/", @"\");
                 byte[] buffer = File.ReadAllBytes(inputPdfPath);
                 MemoryStream ms = new MemoryStream(buffer);
-                _rasterizer.Open(ms);
-
-                //string inpPath = inputPdfPath.Replace("/", @"\");
-                //inpPath = System.Text.Encoding.UTF8.GetString(System.Text.Encoding.UTF8.GetBytes(inpPath));
-                //_rasterizer.Open(inpPath, _lastInstalledVersion, false);
+                var gsVersion = GetGhostscriptVersion();
+                if (gsVersion != null)
+                    _rasterizer.Open(ms, gsVersion, false);
+                else
+                    _rasterizer.Open(ms);
             }
             catch (Exception excp)
             {
@@ -220,11 +280,11 @@ namespace ScanMonitorApp
         public static string GetFilenameOfImageOfPage(string baseFolderForImages, string uniqName, int pageNum, bool bCreateFolderIfReqd, string fileExtForced = "")
         {
             if (fileExtForced != "")
-                return Path.Combine(ScanDocInfo.GetImageFolderForFile(baseFolderForImages, uniqName, bCreateFolderIfReqd), uniqName + "_" + pageNum.ToString() + "." + fileExtForced).Replace('\\', '/');
-            string jpgPath = Path.Combine(ScanDocInfo.GetImageFolderForFile(baseFolderForImages, uniqName, bCreateFolderIfReqd), uniqName + "_" + pageNum.ToString() + ".jpg").Replace('\\', '/');
+                return Path.Combine(ScanDocInfo.GetImageFolderForFile(baseFolderForImages, uniqName, bCreateFolderIfReqd), uniqName + "_" + pageNum.ToString() + "." + fileExtForced);
+            string jpgPath = Path.Combine(ScanDocInfo.GetImageFolderForFile(baseFolderForImages, uniqName, bCreateFolderIfReqd), uniqName + "_" + pageNum.ToString() + ".jpg");
             if (File.Exists(jpgPath))
                 return jpgPath;
-            string pngPath = Path.Combine(ScanDocInfo.GetImageFolderForFile(baseFolderForImages, uniqName, bCreateFolderIfReqd), uniqName + "_" + pageNum.ToString() + ".png").Replace('\\', '/');
+            string pngPath = Path.Combine(ScanDocInfo.GetImageFolderForFile(baseFolderForImages, uniqName, bCreateFolderIfReqd), uniqName + "_" + pageNum.ToString() + ".png");
             if (File.Exists(pngPath))
                 return pngPath;
             return jpgPath;
@@ -233,16 +293,15 @@ namespace ScanMonitorApp
         public static System.Drawing.Image GetImageOfPage(string fileName, int pageNum)
         {
             int desired_x_dpi = 150;
-            //int desired_y_dpi = 150;
 
-            GhostscriptVersionInfo lastInstalledVersion =
-                GhostscriptVersionInfo.GetLastInstalledVersion(
-                        GhostscriptLicense.GPL | GhostscriptLicense.AFPL,
-                        GhostscriptLicense.GPL);
+            var gsVersion = GetGhostscriptVersion();
 
             GhostscriptRasterizer rasterizer = new GhostscriptRasterizer();
 
-            rasterizer.Open(fileName, lastInstalledVersion, false);
+            if (gsVersion != null)
+                rasterizer.Open(fileName, gsVersion, false);
+            else
+                rasterizer.Open(fileName);
 
             if (pageNum > rasterizer.PageCount)
                 return null;

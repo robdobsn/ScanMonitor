@@ -1122,6 +1122,10 @@ namespace ScanMonitorApp
                         List<string> imgFileNames = rs.GeneratePageFiles(uniqName, scanPages, _scanConfig._docAdminImgFolderBase, _scanConfig._maxPagesForImages, false);
                         logger.Debug("Extracted {0} page images from {1} uniqName {2}", imgFileNames.Count, fileName, uniqName);
                     }
+                    catch (Exception excp)
+                    {
+                        logger.Error("Failed to extract images from {0} uniqName {1} excp {2}", fileName, uniqName, excp.Message);
+                    }
                     finally
                     {
                         rs.Close();
@@ -1146,6 +1150,41 @@ namespace ScanMonitorApp
             logger.Debug("Completed processing of {0} uniqName {1}", fileName, uniqName);
 
             return true;
+        }
+
+        public bool RegenerateImagesFromArchive(string uniqName)
+        {
+            // Get the archive file
+            string archiveFileName = GetArchiveFileName(uniqName);
+            if (!System.IO.File.Exists(archiveFileName))
+            {
+                logger.Error("RegenerateImages: archive file not found {0}", archiveFileName);
+                return false;
+            }
+
+            // Extract text to get page info for rotation
+            ScanPages scanPages = new ScanPages(uniqName);
+            int totalNumPages = 0;
+            PdfTextAndLocExtractor pdfExtractor = new PdfTextAndLocExtractor();
+            scanPages = pdfExtractor.ExtractDocInfo(uniqName, archiveFileName, _scanConfig._maxPagesForText, ref totalNumPages);
+
+            // Generate images
+            PdfRasterizer rs = new PdfRasterizer(archiveFileName, THUMBNAIL_POINTS_PER_INCH);
+            try
+            {
+                List<string> imgFileNames = rs.GeneratePageFiles(uniqName, scanPages, _scanConfig._docAdminImgFolderBase, _scanConfig._maxPagesForImages, false);
+                logger.Info("RegenerateImages: created {0} page images for {1}", imgFileNames.Count, uniqName);
+                return imgFileNames.Count > 0;
+            }
+            catch (Exception excp)
+            {
+                logger.Error("RegenerateImages: failed for {0} excp {1}", uniqName, excp.Message);
+                return false;
+            }
+            finally
+            {
+                rs.Close();
+            }
         }
 
 #endregion

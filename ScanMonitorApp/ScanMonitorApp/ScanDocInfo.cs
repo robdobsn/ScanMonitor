@@ -105,7 +105,7 @@ namespace ScanMonitorApp
             if (uniqName.Trim().Length == 0)
                 return "";
             subFolderName = subFolderName.Substring(0, 6);
-            string imgFolder = Path.Combine(baseFolderForImages, subFolderName).Replace('\\', '/');
+            string imgFolder = Path.Combine(baseFolderForImages, subFolderName);
 
             // Check exists and create if not
             if (bCreateIfReqd)
