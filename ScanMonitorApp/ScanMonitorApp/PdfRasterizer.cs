@@ -29,8 +29,32 @@ namespace ScanMonitorApp
 
         private static GhostscriptVersionInfo FindGhostscriptVersion()
         {
-            // Search the standard Ghostscript install location first
             string dllName = Environment.Is64BitProcess ? "gsdll64.dll" : "gsdll32.dll";
+
+            // Prefer the native library bundled with the application (ClickOnce / xcopy deploy)
+            try
+            {
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string[] bundledCandidates = new[]
+                {
+                    Path.Combine(baseDir, "Native", dllName),
+                    Path.Combine(baseDir, dllName),
+                };
+                foreach (string candidate in bundledCandidates)
+                {
+                    if (File.Exists(candidate))
+                    {
+                        logger.Info("Using bundled Ghostscript native library at {0}", candidate);
+                        return new GhostscriptVersionInfo(candidate);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Warn("Error probing for bundled Ghostscript: {0}", ex.Message);
+            }
+
+            // Fall back to the standard Ghostscript install location
             string[] searchRoots = new[]
             {
                 Path.Combine(Environment.GetEnvironmentVariable("ProgramW6432") ?? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "gs"),
